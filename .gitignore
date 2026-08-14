@@ -23,3 +23,7 @@ ios/DerivedData/
 .DS_Store
 Thumbs.db
 *.log
+
+# Workspace de scratch do Superpowers (ledger, briefs, reports de review) —
+# nunca faz parte do codigo, so existe durante a execucao de um plano.
+.superpowers/
