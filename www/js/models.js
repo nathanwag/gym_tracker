@@ -144,3 +144,58 @@ export function workoutSummary(sets) {
     reps: validas.reduce((acc, s) => acc + s.reps, 0),
   };
 }
+
+/* ---------- Resumo semanal por grupo muscular ---------- */
+
+/** Segunda-feira 00:00:00.000 (hora local) da semana que contem `data`. */
+function segundaFeira(data) {
+  const d = new Date(data);
+  d.setHours(0, 0, 0, 0);
+  const dia = d.getDay(); // 0=domingo .. 6=sabado
+  const diasDesdeSegunda = (dia + 6) % 7;
+  d.setDate(d.getDate() - diasDesdeSegunda);
+  return d;
+}
+
+/**
+ * Series validas da semana de calendario (segunda a domingo) que contem
+ * `referenceDate`, totalizadas e agrupadas por grupo muscular do exercicio.
+ * Series de exercicio apagado (sem entrada em `exercisesById`) contam nos
+ * totais gerais mas ficam fora de `porGrupo`, ja que nao ha grupo pra somar.
+ * @param {object[]} sets todas as series (de qualquer exercicio/treino)
+ * @param {Map<number, object>} workoutsById treinos indexados por id
+ * @param {Map<number, object>} exercisesById exercicios indexados por id
+ * @param {Date} referenceDate qualquer data dentro da semana desejada
+ * @returns {{inicio: Date, fim: Date, treinos: number, series: number, volume: number, porGrupo: {grupo: string, series: number, volume: number}[]}}
+ */
+export function weekMuscleGroupSummary(sets, workoutsById, exercisesById, referenceDate = new Date()) {
+  const inicio = segundaFeira(referenceDate);
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 7);
+  fim.setMilliseconds(-1); // domingo 23:59:59.999
+
+  const naSemana = workingSets(sets).filter((s) => {
+    const treino = workoutsById.get(s.workoutId);
+    const quando = new Date(treino?.iniciadoEm || s.criadoEm).getTime();
+    return quando >= inicio.getTime() && quando <= fim.getTime();
+  });
+
+  const porGrupoMap = new Map();
+  for (const s of naSemana) {
+    const ex = exercisesById.get(s.exerciseId);
+    if (!ex) continue;
+    let g = porGrupoMap.get(ex.grupoMuscular);
+    if (!g) { g = { grupo: ex.grupoMuscular, series: 0, volume: 0 }; porGrupoMap.set(ex.grupoMuscular, g); }
+    g.series += 1;
+    g.volume += setVolume(s);
+  }
+
+  return {
+    inicio,
+    fim,
+    treinos: new Set(naSemana.map((s) => s.workoutId)).size,
+    series: naSemana.length,
+    volume: naSemana.reduce((acc, s) => acc + setVolume(s), 0),
+    porGrupo: [...porGrupoMap.values()].sort((a, b) => b.series - a.series),
+  };
+}
