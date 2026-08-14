@@ -48,9 +48,14 @@ git remote add origin https://github.com/SEU-USUARIO/treino.git
 git push -u origin main
 ```
 
-No GitHub: **Settings → Pages → Source: GitHub Actions**. O workflow em
+No GitHub: **Settings → Pages → Source: GitHub Actions** — e não *Deploy from a branch*, que faria o
+Jekyll renderizar este README como página inicial em vez de publicar o app. O workflow em
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publica a pasta `www/` a cada push e
 devolve uma URL `https://SEU-USUARIO.github.io/treino/`.
+
+> Se a primeira execução falhar com *"Get Pages site failed"*, é porque ela rodou antes de o Pages
+> estar em modo GitHub Actions. Trocar a opção no Settings **não re-dispara o workflow**: rode-o de
+> novo em **Actions → Publicar no GitHub Pages → Run workflow**, ou faça um novo push.
 
 ### 2. Instalar
 
