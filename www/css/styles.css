@@ -466,6 +466,39 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .tabbar__item[aria-current="page"] { color: var(--accent); }
 
+.fab-treino {
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  transform: translateX(-50%);
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.fab-treino:active { transform: translateX(-50%) translateY(1px); }
+.fab-treino[disabled] { opacity: .6; pointer-events: none; }
+.fab-treino svg { width: 26px; height: 26px; }
+.fab-treino.is-ativo::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 2px solid var(--bg);
+}
+
 /* ---------- Bottom sheet ---------- */
 
 .sheet { position: fixed; inset: 0; z-index: 40; }

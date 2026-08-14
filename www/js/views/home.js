@@ -3,8 +3,8 @@
 import * as db from '../db.js';
 import { workoutSummary, weekMuscleGroupSummary } from '../models.js';
 import {
-  setTop, html, raw, node, ICON, ICON_GRUPO, toast, confirmSheet, refresh,
-  fmtNum, fmtRelativeDay, fmtWeekday, fmtDuration, fmtDateRange, isIOS, isStandalone,
+  setTop, html, raw, node, ICON, ICON_GRUPO, refresh,
+  fmtNum, fmtRelativeDay, fmtDateRange, isIOS, isStandalone,
 } from '../ui.js';
 
 export async function render(view) {
@@ -31,9 +31,7 @@ export async function render(view) {
   const aviso = cardInstalacao();
   if (aviso) container.append(aviso);
 
-  container.append(ativo
-    ? cardTreinoAtivo(ativo, seriesPorTreino.get(ativo.id) || [])
-    : cardIniciar(treinos.length === 0));
+  if (!ativo && treinos.length === 0) container.append(cardPrimeiraVez());
 
   container.append(cardSemana(weekMuscleGroupSummary(series, treinosPorId, exerciciosPorId), unidade));
 
@@ -81,60 +79,15 @@ function cardInstalacao() {
 
 /* ---------- Treino ---------- */
 
-function cardIniciar(primeiraVez) {
-  const el = node(html`
+function cardPrimeiraVez() {
+  return node(html`
     <div class="card card__pad" style="text-align:center">
-      ${raw(primeiraVez
-        ? '<p class="muted small">Cada série que você registrar vira um ponto no gráfico de evolução.</p>'
-        : '')}
-      <button class="btn btn--primary btn--lg btn--block" data-iniciar>
-        ${raw(ICON.plus)} Iniciar treino
-      </button>
+      <p class="muted small" style="margin:0">
+        Toque no + na barra de baixo pra começar. Cada série que você registrar
+        vira um ponto no gráfico de evolução.
+      </p>
     </div>
   `);
-
-  el.querySelector('[data-iniciar]').onclick = async (e) => {
-    e.currentTarget.disabled = true;
-    await db.startWorkout();
-    location.hash = '#/sessao';
-  };
-  return el;
-}
-
-function cardTreinoAtivo(treino, series) {
-  const resumo = workoutSummary(series);
-  const el = node(html`
-    <div class="card">
-      <div class="card__pad">
-        <span class="badge badge--accent">Em andamento</span>
-        <h2 style="margin-top:8px">Treino de ${fmtWeekday(treino.iniciadoEm)}</h2>
-        <p class="muted small" style="margin-bottom:12px">
-          Começou há ${fmtDuration(treino.iniciadoEm, new Date().toISOString()) || 'pouco'} ·
-          ${resumo.series} ${resumo.series === 1 ? 'série' : 'séries'} em
-          ${resumo.exercicios} ${resumo.exercicios === 1 ? 'exercício' : 'exercícios'}
-        </p>
-        <button class="btn btn--primary btn--lg btn--block" data-retomar>Retomar treino</button>
-        <button class="btn btn--block btn--ghost btn--sm" style="margin-top:8px" data-descartar>
-          Descartar treino
-        </button>
-      </div>
-    </div>
-  `);
-
-  el.querySelector('[data-retomar]').onclick = () => { location.hash = '#/sessao'; };
-  el.querySelector('[data-descartar]').onclick = async () => {
-    const ok = await confirmSheet({
-      title: 'Descartar este treino?',
-      message: 'As séries registradas nele serão apagadas.',
-      confirmLabel: 'Descartar',
-      danger: true,
-    });
-    if (!ok) return;
-    await db.deleteWorkout(treino.id);
-    toast('Treino descartado.');
-    refresh();
-  };
-  return el;
 }
 
 /* ---------- Resumo da semana ---------- */

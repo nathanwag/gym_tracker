@@ -47,6 +47,26 @@ function highlightTab(path) {
   }
 }
 
+async function atualizarFab() {
+  const fab = $('#fab-treino');
+  const ativo = await db.getActiveWorkout();
+  fab.disabled = false;
+  fab.classList.toggle('is-ativo', !!ativo);
+  fab.setAttribute('aria-label', ativo ? 'Retomar treino em andamento' : 'Iniciar treino');
+}
+
+function initFab() {
+  const fab = $('#fab-treino');
+  fab.onclick = async () => {
+    const ativo = await db.getActiveWorkout();
+    if (!ativo) {
+      fab.disabled = true;
+      await db.startWorkout();
+    }
+    location.hash = '#/sessao';
+  };
+}
+
 let renderToken = 0;
 
 async function router() {
@@ -58,6 +78,7 @@ async function router() {
   const token = ++renderToken;
   closeSheet();
   highlightTab(path);
+  atualizarFab();
 
   const view = $('#view');
   const [, handler] = rota;
@@ -145,6 +166,7 @@ async function requestPersistence() {
 
 async function boot() {
   initSheet();
+  initFab();
   window.addEventListener('hashchange', router);
   window.addEventListener('app:refresh', router);
 

@@ -45,11 +45,27 @@ export async function render(view) {
     editando: new Map(),
   };
 
-  setTop({
+  const top = setTop({
     title: 'Treino em andamento',
     back: '#/',
-    actions: '<button class="btn btn--sm btn--primary" data-finalizar>Finalizar</button>',
-  }).querySelector('[data-finalizar]').onclick = finalizar;
+    actions: `
+      <button class="icon-btn" data-descartar aria-label="Descartar treino">${ICON.trash}</button>
+      <button class="btn btn--sm btn--primary" data-finalizar>Finalizar</button>
+    `,
+  });
+  top.querySelector('[data-finalizar]').onclick = finalizar;
+  top.querySelector('[data-descartar]').onclick = async () => {
+    const ok = await confirmSheet({
+      title: 'Descartar este treino?',
+      message: 'As séries registradas nele serão apagadas.',
+      confirmLabel: 'Descartar',
+      danger: true,
+    });
+    if (!ok) return;
+    await db.deleteWorkout(ctx.workout.id);
+    toast('Treino descartado.');
+    location.hash = '#/';
+  };
 
   const root = node('<div class="stack"></div>');
   root.append(resumoEl());
