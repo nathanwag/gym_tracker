@@ -157,7 +157,7 @@ function cardSemana(resumoSemana, unidade) {
 
   return node(html`
     <div class="card">
-      <div class="card__pad" style="padding-bottom:${porGrupo.length ? '10px' : '14px'}">
+      <div class="card__pad" style="${porGrupo.length ? 'padding-bottom:10px' : ''}">
         <h2 style="font-size:1rem">Essa semana</h2>
         <p class="muted small" style="margin:2px 0 0">${fmtDateRange(inicio, fim)}</p>
       </div>

@@ -394,6 +394,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .mgrupo { display: flex; flex-direction: column; gap: 10px; }
 .mgrupo__linha { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 8px; }
 .mgrupo__icone { display: flex; color: var(--muted); }
+.mgrupo__icone svg { width: 20px; height: 20px; }
 .mgrupo__nome { font-size: .84rem; white-space: nowrap; }
 .mgrupo__track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .mgrupo__fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }

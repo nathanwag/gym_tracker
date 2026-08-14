@@ -162,7 +162,7 @@ export const fmtWeekday = (iso) => WEEKDAY.format(new Date(iso));
 
 const DAY_MONTH = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
 
-/** Ex: "11 ago – 17 ago". Aceita Date ou string ISO. */
+/** Ex: "10 de ago. – 16 de ago.". Aceita Date ou string ISO. */
 export const fmtDateRange = (inicio, fim) => `${DAY_MONTH.format(new Date(inicio))} – ${DAY_MONTH.format(new Date(fim))}`;
 
 /** "Hoje", "Ontem", "ha 3 dias" ou a data cheia. */
