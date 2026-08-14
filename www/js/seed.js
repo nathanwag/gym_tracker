@@ -1,6 +1,7 @@
-/* Biblioteca inicial de exercicios, criada na primeira abertura do app.
- * O usuario pode adicionar os proprios em Ajustes; estes ficam marcados como
- * personalizado: true e podem ser apagados.
+/* SEED_EXERCISES nao popula mais a biblioteca sozinho — ela comeca vazia, e o
+ * usuario adiciona do catalogo de 873 (#/catalogo) ou a mao (botao "Novo").
+ * O que sobra de uso real aqui e slugPorNome(): da figura a exercicios de quem
+ * ja usava o app antes do `slug` existir, casando pelo nome.
  *
  * O `slug` liga o exercicio a suas figuras em www/img/ex/ e a entrada do
  * catalogo em www/data/catalogo.json. Precisa ser estavel: o `id` do banco e

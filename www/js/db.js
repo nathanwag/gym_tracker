@@ -10,7 +10,7 @@
  * fora. Nunca coloque um `await` de outra coisa no meio de uma transacao.
  */
 
-import { SEED_EXERCISES, slugPorNome } from './seed.js';
+import { slugPorNome } from './seed.js';
 import { normalizarNome } from './text.js';
 
 const DB_NAME = 'treino';
@@ -132,24 +132,11 @@ async function tx(names, mode, fn) {
   });
 }
 
-/** Abre o banco, semeia a biblioteca de exercicios na primeira execucao. */
+/** Abre o banco. A biblioteca de exercicios comeca vazia — o usuario adiciona
+ *  do catalogo de 873 (#/catalogo) ou a mao (botao "Novo"). */
 export async function init() {
   await open();
-  const count = await tx('exercises', 'readonly', (s) => req(s.count()));
-  if (count === 0) await seedExercises();
   return true;
-}
-
-async function seedExercises() {
-  const criadoEm = new Date().toISOString();
-  await tx('exercises', 'readwrite', (store) => {
-    for (const [grupoMuscular, itens] of Object.entries(SEED_EXERCISES)) {
-      for (const { nome, slug } of itens) {
-        store.add({ nome, grupoMuscular, slug: slug ?? null, personalizado: false, criadoEm });
-      }
-    }
-  });
-  exerciseCache = null;
 }
 
 /* ---------- Ajustes ---------- */
@@ -393,11 +380,10 @@ export async function replaceAll({ exercises = [], workouts = [], sets = [], set
   exerciseCache = null;
 }
 
-/** Apaga tudo e volta a biblioteca de exercicios de fabrica. */
+/** Apaga tudo, incluindo a biblioteca de exercicios. */
 export async function resetAll() {
   await tx(['exercises', 'workouts', 'sets', 'settings'], 'readwrite', (ex, wo, se, st) => {
     ex.clear(); wo.clear(); se.clear(); st.clear();
   });
   exerciseCache = null;
-  await seedExercises();
 }
