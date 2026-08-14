@@ -9,6 +9,7 @@ import * as home from './views/home.js';
 import * as session from './views/session.js';
 import * as history from './views/history.js';
 import * as exercise from './views/exercise.js';
+import * as catalog from './views/catalog.js';
 import * as settings from './views/settings.js';
 
 const ROUTES = [
@@ -18,13 +19,19 @@ const ROUTES = [
   [/^\/historico\/(\d+)$/, (view, id) => history.renderWorkout(view, Number(id))],
   [/^\/exercicios$/, (view) => exercise.renderList(view)],
   [/^\/exercicios\/(\d+)$/, (view, id) => exercise.renderDetail(view, Number(id))],
+  // Sem ambiguidade com /exercicios/(\d+): la o parametro e o id numerico do
+  // banco, aqui e o slug do catalogo.
+  [/^\/catalogo$/, (view) => catalog.renderList(view)],
+  [/^\/catalogo\/([a-z0-9-]+)$/, (view, slug) => catalog.renderDetail(view, slug)],
   [/^\/ajustes$/, (view) => settings.render(view)],
 ];
 
 const TABS = [
   [/^\/(sessao)?$/, 'treino'],
   [/^\/historico/, 'historico'],
-  [/^\/exercicios/, 'exercicios'],
+  // O catalogo nao tem aba propria: a tabbar de 4 ja esta no limite confortavel
+  // de toque. Ele vive dentro de Exercicios e mantem essa aba acesa.
+  [/^\/(exercicios|catalogo)/, 'exercicios'],
   [/^\/ajustes/, 'ajustes'],
 ];
 
@@ -100,6 +107,35 @@ async function registerServiceWorker() {
   }
 }
 
+/** Pede ao service worker que baixe as miniaturas do catalogo.
+ *
+ *  Roda so uma vez por versao do catalogo, e so quando a conexao permite: sao
+ *  ~2 MB, o que e barato no wi-fi e caro no celular. Quem quiser forcar tem o
+ *  botao em Ajustes. */
+export async function precacheMidia({ forcar = false } = {}) {
+  const reg = await navigator.serviceWorker?.ready?.catch(() => null);
+  if (!reg?.active) return false;
+
+  const conexao = navigator.connection;
+  if (!forcar && (conexao?.saveData || conexao?.type === 'cellular')) return false;
+
+  let manifesto;
+  try {
+    manifesto = await (await fetch('./img/ex/manifest.json')).json();
+  } catch {
+    return false;
+  }
+
+  if (!forcar && db.settings().midiaPrecacheVersao === manifesto.versao) return false;
+
+  reg.active.postMessage({
+    tipo: 'precache-midia',
+    urls: manifesto.slugs.map((slug) => `./img/ex/thumb/${slug}.webp`),
+  });
+  await db.setSetting('midiaPrecacheVersao', manifesto.versao);
+  return true;
+}
+
 async function requestPersistence() {
   // O Safari nao implementa storage.persist(); a chamada e defensiva e o app
   // nao depende do resultado. No iOS o que de fato protege os dados da limpeza
@@ -129,8 +165,10 @@ async function boot() {
 
   applyTheme(db.settings().tema);
   await router();
-  registerServiceWorker();
+  await registerServiceWorker();
   requestPersistence();
+  // Depois da tela pronta: baixar figuras nunca deve atrasar o primeiro render.
+  precacheMidia().catch(() => {});
 }
 
 boot();

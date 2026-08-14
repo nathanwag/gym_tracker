@@ -13,8 +13,13 @@
  */
 
 import * as db from './db.js';
+import { slugPorNome } from './seed.js';
+import { normalizarNome } from './text.js';
 
 const FORMATO = 'treino-backup';
+// Continua 1 mesmo com o `slug` novo: o campo e aditivo e opcional, e bumpar
+// faria um aparelho ainda nao atualizado recusar o arquivo (ver validar()) —
+// justo no cenario em que o backup mais importa, o da troca de celular.
 const VERSAO = 1;
 
 /**
@@ -117,10 +122,14 @@ export function validar(payload) {
   const numero = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
   return {
+    // A restauracao chama db.replaceAll(), que grava direto e NAO passa pela
+    // migracao do banco. Sem o backfill abaixo, importar um backup gerado antes
+    // do catalogo apagaria as figuras de todos os exercicios, sem erro nenhum.
     exercises: exercises.map((e) => ({
       id: numero(e.id),
       nome: String(e.nome || 'Exercício'),
       grupoMuscular: String(e.grupoMuscular || 'Outros'),
+      slug: e.slug ?? slugPorNome().get(normalizarNome(e.nome || '')) ?? null,
       personalizado: Boolean(e.personalizado),
       criadoEm: e.criadoEm || new Date().toISOString(),
     })),

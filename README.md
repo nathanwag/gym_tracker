@@ -107,17 +107,46 @@ www/                     o app (e o webDir do Capacitor)
 ├─ sw.js                 service worker (offline)
 ├─ manifest.webmanifest
 ├─ css/styles.css
+├─ data/                 catálogo de 873 exercícios + passo a passo (gerados)
+├─ img/ex/               873 miniaturas e 1746 fotos em WebP (geradas)
 └─ js/
    ├─ app.js             bootstrap + roteador por hash
    ├─ ui.js              helpers de DOM, toast, bottom sheet, formatação
+   ├─ text.js            normalização de texto, sem DOM (db.js também usa)
    ├─ db.js              única camada que fala com o IndexedDB
+   ├─ catalog.js         única camada que lê www/data/
+   ├─ media.js           figuras: URL, miniatura, animação de 2 frames
    ├─ models.js          1RM, volume, detecção de recordes
    ├─ seed.js            biblioteca inicial de exercícios
    ├─ backup.js          exportar/importar JSON
    ├─ charts.js          gráfico de linha em SVG puro
    └─ views/             uma tela por arquivo
-tools/                   servidor de dev e gerador de ícones (Python, sem deps)
+tools/                   servidor de dev e geradores (Python)
 ```
+
+### Figuras dos exercícios
+
+Cada exercício tem duas fotos — posição inicial e final — e alterná-las em loop mostra o movimento.
+Não existe fonte gratuita de vídeo que possa ser embutida (MuscleWiki é paga e proíbe salvar em
+disco; o wger tem 78 vídeos no acervo inteiro), e duas fotos resolvem o problema real de conferir a
+execução, offline e sem requisição externa.
+
+A fonte é o [free-exercise-db](https://github.com/yuhonas/free-exercise-db) — domínio público
+(Unlicense), 873 exercícios. O commit usado fica fixado em `UPSTREAM_REF` no gerador.
+
+```bash
+pip install "pillow>=12"          # só para gerar; o app não usa nenhuma dependência
+python tools/build_catalog.py     # baixa, converte para WebP e gera os .json
+python tools/traduzir_nomes.py    # gera tools/data/nomes_pt.json
+```
+
+O resultado é commitado, então quem só mexe no app nunca precisa rodar isso. Reexecutar sem
+`--forcar` tem de deixar o `git status` limpo: cada arquivo é comparado byte a byte antes de ser
+escrito, o que impede o repositório de dobrar de tamanho a cada regeração.
+
+`tools/data/nomes_pt.json` é **entrada**, não saída: corrigir um nome ali é definitivo, porque o
+gerador preserva o que já existe. Os nomes de `seed.js` têm prioridade sobre a tradução automática.
+Quem não tem tradução aparece em inglês com um selo `EN` — estado suportado, não quebrado.
 
 ### Regras que mantêm o projeto empacotável
 
@@ -126,11 +155,16 @@ Estas não são estilo — cada uma quebra o app dentro do WebView nativo ou no 
 1. **Caminhos sempre relativos** (`./js/app.js`). O Pages serve de `/repo/` e o Capacitor de uma
    origem local; caminho absoluto quebra nos dois.
 2. **Roteamento por hash** (`#/exercicios/12`) — dispensa configuração de servidor.
-3. **Zero requisição externa.** Nenhum CDN, fonte remota ou analytics.
-4. **Storage isolado em `db.js`**, backup isolado em `backup.js`. Trocar para SQLite nativo depois
-   não encosta nas telas.
-5. **Safe areas** (`env(safe-area-inset-*)`) para Dynamic Island e barra de gestos.
-6. **`font-size: 16px` nos inputs**, senão o Safari dá zoom ao focar o campo.
+3. **Zero requisição externa.** Nenhum CDN, fonte remota ou analytics. As figuras dos exercícios são
+   arquivos locais em `www/img/` pelo mesmo motivo.
+4. **Storage isolado em `db.js`**, backup isolado em `backup.js`, dados estáticos em `catalog.js`.
+   Trocar para SQLite nativo depois não encosta nas telas.
+5. **Dois caches no service worker.** O do app é versionado e descartável; o de figuras
+   (`treino-midia`) **não** é versionado e nunca é apagado no `activate` — senão cada deploy jogaria
+   fora dezenas de MB que o usuário baixou aos poucos. O ramo de mídia no `fetch` precisa vir antes
+   do genérico, ou as fotos acabam no cache versionado e somem na atualização seguinte.
+6. **Safe areas** (`env(safe-area-inset-*)`) para Dynamic Island e barra de gestos.
+7. **`font-size: 16px` nos inputs**, senão o Safari dá zoom ao focar o campo.
 
 ---
 

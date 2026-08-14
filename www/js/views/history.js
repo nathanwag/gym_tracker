@@ -2,6 +2,7 @@
 
 import * as db from '../db.js';
 import { workoutSummary, prSetIds, setE1rm } from '../models.js';
+import { thumbHtml } from '../media.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet,
   fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration,
@@ -177,6 +178,7 @@ export async function renderWorkout(view, workoutId) {
     root.append(node(html`
       <div class="card">
         <div class="exercise__head">
+          ${ex ? raw(thumbHtml(ex)) : ''}
           <div class="grow">
             <h2 class="exercise__name">${ex?.nome || 'Exercício removido'}</h2>
             <div class="exercise__meta">

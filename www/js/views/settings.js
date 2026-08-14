@@ -22,6 +22,7 @@ export async function render(view) {
   root.append(await cardBackup(backupPronto, () => backup));
   root.append(cardPreferencias(cfg));
   root.append(cardExercicios());
+  root.append(cardFiguras());
   root.append(cardSobre());
   root.append(cardApagarTudo());
 
@@ -194,6 +195,86 @@ function cardExercicios() {
   `);
 }
 
+/* ---------- Figuras ---------- */
+
+/* As fotos podem chegar a dezenas de MB no aparelho. Um cache desse tamanho
+ * precisa ser visivel e reversivel — e este e o plano B para quando o download
+ * automatico decidir nao rodar (conexao celular, economia de dados). */
+function cardFiguras() {
+  const card = node(html`
+    <div>
+      <h2 class="section-title">Figuras dos exercícios</h2>
+      <div class="card card__pad">
+        <p class="muted small">
+          Cada exercício tem duas fotos — posição inicial e final — que alternam para mostrar
+          o movimento. As miniaturas vêm junto com o app; as fotos grandes são baixadas na
+          primeira vez que você abre cada exercício e ficam salvas.
+        </p>
+        <p class="small tnum" data-uso style="margin:10px 0 12px">Calculando…</p>
+        <button class="btn btn--block" data-baixar>Baixar figuras para uso offline</button>
+        <button class="btn btn--block btn--ghost" style="margin-top:8px" data-apagar>
+          Apagar figuras baixadas
+        </button>
+      </div>
+    </div>
+  `);
+
+  const uso = card.querySelector('[data-uso]');
+  const baixar = card.querySelector('[data-baixar]');
+
+  const atualizarUso = async () => {
+    try {
+      const cache = await caches.open('treino-midia');
+      const total = (await cache.keys()).length;
+      const est = await navigator.storage?.estimate?.().catch(() => null);
+      const mb = est?.usage ? ` · ${(est.usage / 1024 / 1024).toFixed(1)} MB no aparelho` : '';
+      uso.textContent = total ? `${total} figuras salvas${mb}` : 'Nenhuma figura salva ainda.';
+    } catch {
+      uso.textContent = 'Cache de figuras indisponível neste navegador.';
+    }
+  };
+
+  navigator.serviceWorker?.addEventListener('message', (e) => {
+    if (e.data?.tipo === 'precache-midia:progresso') {
+      baixar.textContent = `Baixando… ${e.data.feitos}/${e.data.total}`;
+    } else if (e.data?.tipo === 'precache-midia:fim') {
+      baixar.textContent = 'Baixar figuras para uso offline';
+      baixar.disabled = false;
+      toast(e.data.total ? `${e.data.total} figuras baixadas.` : 'Já estava tudo salvo.');
+      atualizarUso();
+    }
+  });
+
+  baixar.onclick = async () => {
+    baixar.disabled = true;
+    baixar.textContent = 'Preparando…';
+    const { precacheMidia } = await import('../app.js');
+    const iniciou = await precacheMidia({ forcar: true });
+    if (!iniciou) {
+      baixar.textContent = 'Baixar figuras para uso offline';
+      baixar.disabled = false;
+      toast('Não foi possível iniciar o download.');
+    }
+  };
+
+  card.querySelector('[data-apagar]').onclick = async () => {
+    const ok = await confirmSheet({
+      title: 'Apagar figuras baixadas?',
+      message: 'Elas voltam a ser baixadas conforme você abrir cada exercício.',
+      confirmLabel: 'Apagar',
+      danger: true,
+    });
+    if (!ok) return;
+    await caches.delete('treino-midia');
+    await db.setSetting('midiaPrecacheVersao', '');
+    toast('Figuras apagadas.');
+    atualizarUso();
+  };
+
+  atualizarUso();
+  return card;
+}
+
 /* ---------- Sobre ---------- */
 
 function cardSobre() {
@@ -214,6 +295,9 @@ function cardSobre() {
         <p class="small" style="margin-bottom:10px">
           <b>Volume</b> é peso × repetições somado. Séries marcadas como aquecimento ficam fora
           dos recordes e dos gráficos.
+        </p>
+        <p class="muted small" style="margin-bottom:10px">
+          Fotos e instruções dos exercícios vêm do free-exercise-db, de domínio público.
         </p>
         <p class="muted small" style="margin-bottom:0">
           ${instalado

@@ -10,6 +10,8 @@
 import * as db from '../db.js';
 import { evaluatePR, prSetIds, setE1rm, workoutSummary } from '../models.js';
 import { GRUPOS } from '../seed.js';
+import * as catalogo from '../catalog.js';
+import { thumbHtml, prefetchFotos } from '../media.js';
 import {
   setTop, html, raw, node, ICON, createStepper, toast, openSheet, closeSheet,
   confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, buzz, semAcento,
@@ -145,6 +147,7 @@ function cardExercicio(exId) {
 
   const cabecalho = node(html`
     <div class="exercise__head">
+      ${raw(thumbHtml(ex))}
       <div class="grow">
         <h2 class="exercise__name">${ex.nome}</h2>
         <div class="exercise__meta">${raw(textoAnterior(anterior))}</div>
@@ -398,6 +401,13 @@ function abrirSeletor() {
 
     const nomeNovo = busca.value.trim();
     if (nomeNovo && !ctx.lista.some((e) => semAcento(e.nome) === q)) {
+      // Do catalogo: e aqui que o app deixa de ter uma lista fixa. Quem esta em
+      // pe no meio do treino precisa de um exercicio que nao tem — antes a
+      // unica saida era digitar tudo a mao.
+      const doCatalogo = node('<div data-catalogo></div>');
+      resultados.append(doCatalogo);
+      mostrarCatalogo(doCatalogo, nomeNovo);
+
       const btn = node(html`
         <button class="btn btn--block" style="margin-top:12px" data-criar>
           ${raw(ICON.plus)} Criar &laquo;${nomeNovo}&raquo;
@@ -412,6 +422,59 @@ function abrirSeletor() {
   desenhar();
 }
 
+/** Sugestoes do catalogo dentro do seletor.
+ *
+ *  O catalogo so e carregado quando o usuario ja digitou algo, para o sheet
+ *  abrir instantaneo. O arquivo esta em cache do service worker, entao mesmo
+ *  offline isto e leitura local. */
+async function mostrarCatalogo(alvo, termo) {
+  let itens;
+  try {
+    ({ itens } = await catalogo.buscar(termo, { limite: 6 }));
+  } catch {
+    return; // sem catalogo o seletor segue funcionando como antes
+  }
+
+  // Ja na biblioteca? Entao ja apareceu na lista de cima.
+  const meus = new Set(ctx.lista.map((e) => e.slug).filter(Boolean));
+  const novos = itens.filter((i) => !meus.has(i.slug));
+  if (!novos.length || !alvo.isConnected) return;
+
+  alvo.append(node('<h3 class="section-title">Do catálogo</h3>'));
+
+  const card = node(html`<div class="card"><ul class="list">${raw(novos.map((item) => html`
+    <li class="list__item">
+      <button class="list__link" data-slug="${item.slug}">
+        ${raw(thumbHtml(item))}
+        <div class="grow">
+          <div style="font-weight:600">${item.nome}</div>
+          <div class="muted small">${item.grupo} · ${item.equipamento}</div>
+        </div>
+        ${raw(ICON.plus)}
+      </button>
+    </li>
+  `).join(''))}</ul></div>`);
+
+  for (const botao of card.querySelectorAll('[data-slug]')) {
+    botao.onclick = async () => {
+      const item = novos.find((i) => i.slug === botao.dataset.slug);
+      // Um toque faz tudo: entra na biblioteca, entra no treino e ja busca as
+      // fotos com a rede que houver agora.
+      const criado = await db.addExercise({
+        nome: item.nome,
+        grupoMuscular: item.grupo,
+        slug: item.slug,
+        personalizado: false,
+      });
+      prefetchFotos(item.slug);
+      ctx.lista = await db.listExercises();
+      ctx.exercicios = new Map(ctx.lista.map((e) => [e.id, e]));
+      await adicionarExercicio(criado.id);
+    };
+  }
+  alvo.append(card);
+}
+
 function listaSelecao(exercicios, jaNoTreino) {
   const card = node('<div class="card"><ul class="list"></ul></div>');
   const ul = card.querySelector('ul');
@@ -421,6 +484,7 @@ function listaSelecao(exercicios, jaNoTreino) {
     const li = node(html`
       <li class="list__item">
         <button class="list__link" data-id="${ex.id}" ${raw(dentro ? 'disabled' : '')}>
+          ${raw(thumbHtml(ex))}
           <div class="grow">
             <div style="font-weight:600">${ex.nome}</div>
             <div class="muted small">${ex.grupoMuscular}</div>

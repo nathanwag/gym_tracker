@@ -201,14 +201,41 @@ export const ICON = {
   dumbbell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/></svg>',
 };
 
+/* Icone por grupo muscular: aparece no cabecalho das secoes e no lugar da foto
+ * quando o exercicio nao tem figura.
+ *
+ * Sao pictogramas de regiao do corpo, nao desenhos anatomicos: a 22px um
+ * desenho de dorsal vira borrao. Todos partem da mesma silhueta (cabeca, tronco,
+ * membros) e marcam a regiao com um traco mais curto por cima — o que muda de
+ * um para o outro e so a marca, entao a familia fica coerente.
+ *
+ * Sem fill/stroke inline: a regra global de styles.css cuida disso. */
+const CORPO = 'M12 2.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2M12 6.4v7M8.4 8.2L12 7l3.6 1.2M8.4 8.2L7 12.4M15.6 8.2L17 12.4M12 13.4l-1.9 8M12 13.4l1.9 8';
+const corpo = (marca) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CORPO}" opacity=".35"/><path d="${marca}"/></svg>`;
+
+export const ICON_GRUPO = {
+  'Peito': corpo('M9.2 9.1h5.6'),
+  'Costas': corpo('M9.4 10.6h5.2M12 8.6v4'),
+  'Ombros': corpo('M8.4 8.2L12 7l3.6 1.2'),
+  'Bíceps': corpo('M6.6 9.4L7 12.4'),
+  'Tríceps': corpo('M17 12.4l.4-3'),
+  'Pernas': corpo('M10.1 21.4l1-4M13.9 21.4l-1-4'),
+  'Glúteos': corpo('M9.8 13.9h4.4'),
+  'Panturrilha': corpo('M10.3 20.2l-.2 1.2M13.7 20.2l.2 1.2'),
+  'Abdômen': corpo('M10.4 11.2h3.2M10.4 12.8h3.2'),
+  'Antebraço': corpo('M7 12.4l-.6 2.6M17 12.4l.6 2.6'),
+  'Outros': ICON.dumbbell,
+};
+
 /** Vibracao curta ao registrar. Ignorado no iOS, que nao expoe a API. */
 export function buzz(ms = 12) {
   try { navigator.vibrate?.(ms); } catch { /* sem suporte */ }
 }
 
-/** Normaliza para busca: quem digita "biceps" no celular precisa achar "Bíceps". */
-export const semAcento = (s) =>
-  String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+// Mora em text.js (sem DOM) porque db.js tambem precisa dela na migracao;
+// reexportada aqui para nao mexer em quem ja importava de ui.js.
+export { semAcento, normalizarNome } from './text.js';
 
 /* ---------- Plataforma ---------- */
 

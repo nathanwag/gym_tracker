@@ -7,8 +7,10 @@ import {
 } from '../models.js';
 import { GRUPOS } from '../seed.js';
 import { lineChart } from '../charts.js';
+import * as catalogo from '../catalog.js';
+import { thumbHtml, criarAnimacao, prefetchFotos } from '../media.js';
 import {
-  setTop, html, raw, node, ICON, toast, openSheet, closeSheet, confirmSheet,
+  setTop, html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, confirmSheet,
   fmtNum, fmtRelativeDay, fmtDate, semAcento, refresh,
 } from '../ui.js';
 
@@ -46,6 +48,9 @@ export async function renderList(view) {
         <button class="segmented__btn" data-modo="meus" aria-pressed="true">Com registro</button>
         <button class="segmented__btn" data-modo="todos" aria-pressed="false">Todos</button>
       </div>
+      <a class="btn btn--block btn--ghost" href="#/catalogo">
+        ${raw(ICON.plus)} Buscar no catálogo (873 exercícios)
+      </a>
       <div data-lista></div>
     </div>
   `);
@@ -83,7 +88,12 @@ export async function renderList(view) {
       const doGrupo = porGrupo.get(grupo);
       if (!doGrupo?.length) continue;
 
-      lista.append(node(html`<h2 class="section-title">${grupo}</h2>`));
+      lista.append(node(html`
+        <h2 class="section-title section-title--icone">
+          <span class="section-title__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
+          ${grupo}
+        </h2>
+      `));
       const itensHtml = doGrupo.map((ex) => {
         const r = resumos.get(ex.id);
         const detalhe = r
@@ -92,6 +102,7 @@ export async function renderList(view) {
         return html`
           <li class="list__item">
             <a class="list__link" href="#/exercicios/${ex.id}">
+              ${raw(thumbHtml(ex))}
               <div class="grow">
                 <div style="font-weight:600">${ex.nome}</div>
                 <div class="muted small">${detalhe}</div>
@@ -165,6 +176,10 @@ export async function renderDetail(view, exId) {
 
   const root = node('<div class="stack"></div>');
 
+  // As duas fotos alternando mostram o movimento. Fica antes dos numeros: quem
+  // abre esta tela no meio da serie quer conferir a execucao primeiro.
+  if (exercicio.slug) root.append(criarAnimacao(exercicio.slug, { nome: exercicio.nome }));
+
   root.append(node(html`
     <div class="card">
       <div class="stats">
@@ -200,6 +215,27 @@ export async function renderDetail(view, exId) {
   root.append(secaoHistorico(resumos, prIds, unidade));
 
   view.append(root);
+
+  // Depois do append: o passo a passo vem de um arquivo separado e nao deve
+  // atrasar o resto da tela, que e o motivo principal de estar aqui.
+  if (exercicio.slug) {
+    catalogo.comoFazer(exercicio.slug)
+      .then((info) => {
+        if (!info?.passos?.length || !root.isConnected) return;
+        root.append(node(html`
+          <div class="card card__pad">
+            <h2 class="section-title" style="margin-top:0">
+              Como fazer
+              ${info.idioma === 'en'
+                ? raw('<span class="badge badge--en" title="ainda sem tradução">EN</span>')
+                : ''}
+            </h2>
+            <ol class="passos">${raw(info.passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
+          </div>
+        `));
+      })
+      .catch(() => { /* offline e sem o arquivo em cache: a tela segue util */ });
+  }
 }
 
 function secaoGrafico(resumos, unidade) {
@@ -310,6 +346,9 @@ function menuExercicio(exercicio, totalSeries) {
   const corpo = node(html`
     <div class="stack">
       <button class="btn btn--block" data-renomear>Renomear / mudar grupo</button>
+      <button class="btn btn--block" data-figura>
+        ${exercicio.slug ? 'Trocar figura' : 'Escolher figura do catálogo'}
+      </button>
       <button class="btn btn--block btn--danger" data-apagar>Apagar exercício</button>
       <p class="muted small" style="margin:0">
         ${totalSeries
@@ -321,6 +360,7 @@ function menuExercicio(exercicio, totalSeries) {
   openSheet(exercicio.nome, corpo);
 
   corpo.querySelector('[data-renomear]').onclick = () => formularioExercicio(exercicio);
+  corpo.querySelector('[data-figura]').onclick = () => escolherFigura(exercicio);
   corpo.querySelector('[data-apagar]').onclick = async () => {
     closeSheet();
     const ok = await confirmSheet({
@@ -337,6 +377,68 @@ function menuExercicio(exercicio, totalSeries) {
       toast(err.message);
     }
   };
+}
+
+/** Liga um exercicio a uma figura do catalogo.
+ *
+ *  Saida para os dois casos que a migracao automatica nao cobre: exercicio
+ *  renomeado (o nome deixou de casar) e exercicio criado a mao. */
+function escolherFigura(exercicio) {
+  const corpo = node(html`
+    <div class="stack">
+      <input class="input" data-busca type="search" value="${exercicio.nome}"
+             placeholder="Buscar figura" autocomplete="off" autocapitalize="none" autocorrect="off">
+      <div data-resultados><p class="muted small">Carregando catálogo…</p></div>
+      ${exercicio.slug ? raw('<button class="btn btn--block btn--ghost" data-limpar>Remover figura</button>') : ''}
+    </div>
+  `);
+  openSheet('Figura do exercício', corpo);
+
+  const busca = corpo.querySelector('[data-busca]');
+  const resultados = corpo.querySelector('[data-resultados]');
+
+  const aplicar = async (slug) => {
+    await db.updateExercise(exercicio.id, { slug });
+    if (slug) prefetchFotos(slug);
+    closeSheet();
+    toast(slug ? 'Figura atualizada.' : 'Figura removida.');
+    refresh();
+  };
+
+  corpo.querySelector('[data-limpar]')?.addEventListener('click', () => aplicar(null));
+
+  const desenhar = async () => {
+    const { itens } = await catalogo.buscar(busca.value, { limite: 12 });
+    resultados.innerHTML = '';
+
+    if (!itens.length) {
+      resultados.append(node('<p class="muted small">Nenhum exercício encontrado.</p>'));
+      return;
+    }
+
+    const card = node(html`<div class="card"><ul class="list">${raw(itens.map((item) => html`
+      <li class="list__item">
+        <button class="list__link" data-slug="${item.slug}">
+          ${raw(thumbHtml(item))}
+          <div class="grow">
+            <div style="font-weight:600">${item.nome}</div>
+            <div class="muted small">${item.nomeEn}</div>
+          </div>
+          ${item.slug === exercicio.slug ? raw(`<span class="badge">atual</span>`) : ''}
+        </button>
+      </li>
+    `).join(''))}</ul></div>`);
+
+    for (const botao of card.querySelectorAll('[data-slug]')) {
+      botao.onclick = () => aplicar(botao.dataset.slug);
+    }
+    resultados.append(card);
+  };
+
+  busca.addEventListener('input', () => { desenhar().catch(() => {}); });
+  desenhar().catch(() => {
+    resultados.innerHTML = '<p class="muted small">Não consegui carregar o catálogo.</p>';
+  });
 }
 
 function formularioExercicio(exercicio = null) {

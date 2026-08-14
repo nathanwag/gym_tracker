@@ -199,6 +199,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   color: var(--text);
   font: inherit;
   font-weight: 600;
+  /* Sem isto um <a class="btn"> sai sublinhado. */
+  text-decoration: none;
   cursor: pointer;
   user-select: none;
 }
@@ -506,6 +508,168 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
 
+/* ---------- Figuras dos exercicios ---------- */
+
+/* O icone do grupo fica atras da foto: serve de placeholder enquanto ela
+   carrega e continua visivel se ela falhar (offline, foto ainda nao baixada). */
+.thumb {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.thumb svg { width: 22px; height: 22px; }
+.thumb__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.thumb--lg { width: 56px; height: 56px; border-radius: 12px; }
+
+.section-title--icone { display: flex; align-items: center; gap: 7px; }
+.section-title__icone { display: inline-flex; }
+.section-title__icone svg { width: 17px; height: 17px; }
+
+/* ---------- Animacao de duas fotos ----------
+   As duas fotos do free-exercise-db sao a posicao inicial e a final; alternar
+   entre elas mostra o movimento. E CSS puro de proposito: sem setInterval o
+   navegador ja pausa sozinho quando o elemento sai da tela, e nao ha timer para
+   vazar quando a view troca. */
+.flip {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.flip__q {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* So anima depois que as duas decodificaram: comecar antes faz o primeiro
+   ciclo piscar em branco. */
+.flip.is-pronto .flip__q { animation: flip-a 1.4s steps(1, end) infinite; }
+.flip.is-pronto .flip__q--b { animation-name: flip-b; }
+.flip.is-pausado .flip__q { animation-play-state: paused; }
+
+@keyframes flip-a { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+@keyframes flip-b { 0%, 50% { opacity: 0; } 50.01%, 100% { opacity: 1; } }
+
+.flip__toggle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  color: var(--fg);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+/* Duas barras = pausar. Bordas em vez de clip-path: menos formas para errar. */
+.flip__toggle::before {
+  content: '';
+  display: block;
+  box-sizing: border-box;
+  width: 11px;
+  height: 12px;
+  margin: 0 auto;
+  border-left: 3.5px solid currentColor;
+  border-right: 3.5px solid currentColor;
+}
+/* Triangulo = retomar. `is-pausado` marca "parado" nos dois modos, inclusive
+   sob prefers-reduced-motion, onde parado e o estado inicial. */
+.flip.is-pausado .flip__toggle::before {
+  width: 0;
+  height: 0;
+  margin-left: 13px;
+  border: 6px solid transparent;
+  border-left: 10px solid currentColor;
+  border-right: 0;
+}
+
+/* As fotos tem fundo claro; no tema escuro um retangulo branco no meio da tela
+   e agressivo demais. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .flip__q,
+  :root:not([data-theme="light"]) .thumb__img { filter: brightness(.88); }
+}
+:root[data-theme="dark"] .flip__q,
+:root[data-theme="dark"] .thumb__img { filter: brightness(.88); }
+
+/* ---------- Catalogo ---------- */
+
+.cat__cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cat__cabecalho:active { background: var(--surface-2); }
+.cat__icone { display: inline-flex; color: var(--muted); }
+.cat__icone svg { width: 20px; height: 20px; }
+.cat__seta { transition: transform .15s ease; }
+.cat__cabecalho[aria-expanded="true"] .cat__seta { transform: rotate(90deg); }
+.cat__grupo > .list { border-top: 1px solid var(--border); }
+
+.cat__nome { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+/* Icone em vez de "na biblioteca" escrito: o texto roubava largura do nome do
+   exercicio e o jogava para duas linhas. */
+.cat__tem { flex: 0 0 auto; display: inline-flex; color: var(--accent); }
+.cat__tem svg { width: 19px; height: 19px; }
+.cat__titulo { font-size: 1.15rem; }
+
+.badge--en {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: .62rem;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: .76rem;
+}
+
+.passos { margin: 0; padding-left: 1.15em; }
+.passos li { margin-top: 8px; font-size: .92rem; line-height: 1.5; }
+.passos li:first-child { margin-top: 0; }
+
+.stack--sm > * + * { margin-top: 10px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+
+  /* A regra acima transformaria a alternancia das fotos num estroboscopio de
+     ~100Hz — pior do que ignorar a preferencia, e conteudo piscante e risco de
+     saude. Aqui a animacao para de verdade e mostra so a posicao inicial; o
+     botao continua disponivel para quem quiser ver o movimento. */
+  .flip .flip__q { animation: none !important; }
+  .flip .flip__q--b { opacity: 0; }
+  .flip.is-forcado .flip__q { animation: flip-a 1.4s steps(1, end) infinite !important; }
+  .flip.is-forcado .flip__q--b { animation-name: flip-b !important; }
 }

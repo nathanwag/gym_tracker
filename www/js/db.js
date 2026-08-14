@@ -10,16 +10,21 @@
  * fora. Nunca coloque um `await` de outra coisa no meio de uma transacao.
  */
 
-import { SEED_EXERCISES } from './seed.js';
+import { SEED_EXERCISES, slugPorNome } from './seed.js';
+import { normalizarNome } from './text.js';
 
 const DB_NAME = 'treino';
-const DB_VERSION = 1;
+// v2: campo `slug` no exercicio, ligando-o as figuras de www/img/ex/.
+const DB_VERSION = 2;
 
 export const DEFAULT_SETTINGS = {
   unidade: 'kg',
   tema: 'auto',
   incrementoPeso: 2.5,
   incrementoReps: 1,
+  // Versao do catalogo cujas miniaturas ja foram baixadas; evita repetir o
+  // precache a cada abertura. Vazio = nunca baixou.
+  midiaPrecacheVersao: '',
 };
 
 let dbPromise = null;
@@ -57,9 +62,47 @@ export function open() {
 
         db.createObjectStore('settings', { keyPath: 'key' });
       }
+
+      if (event.oldVersion < 2) {
+        // Quem ja usava o app tem exercicios sem slug, e eles nao podem ser
+        // recriados: `sets.exerciseId` e `workouts.exerciseIds` apontam para o
+        // id atual. Entao o preenchimento e feito no lugar, por cursor.
+        //
+        // Tudo aqui e sincrono de proposito (ver o aviso no topo do arquivo):
+        // `slugPorNome()` e `normalizarNome()` sao funcoes puras sobre imports
+        // estaticos, e o encadeamento acontece dentro do onsuccess do cursor.
+        // Se a transacao abortar, o banco continua em v1 e a migracao roda de
+        // novo na proxima abertura.
+        const store = request.transaction.objectStore('exercises');
+        if (!store.indexNames.contains('by_slug')) store.createIndex('by_slug', 'slug');
+
+        const porNome = slugPorNome();
+        const cursor = store.openCursor();
+        cursor.onsuccess = () => {
+          const atual = cursor.result;
+          if (!atual) return;
+          const registro = atual.value;
+          // `undefined` = nunca migrado. `null` e escolha deliberada (exercicio
+          // sem figura) e nao deve ser reprocessado.
+          if (registro.slug === undefined) {
+            atual.update({ ...registro, slug: porNome.get(normalizarNome(registro.nome)) ?? null });
+          }
+          atual.continue();
+        };
+      }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      // Sem isto, uma aba antiga presa na versao anterior bloquearia a
+      // atualizacao das outras para sempre. Alem de fechar, e preciso soltar a
+      // promessa memoizada: ela guardaria uma conexao morta e toda transacao
+      // seguinte falharia com "The database connection is closing".
+      db.onversionchange = () => { db.close(); dbPromise = null; };
+      // Mesmo motivo, para quando o proprio navegador encerra a conexao.
+      db.onclose = () => { dbPromise = null; };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error);
     request.onblocked = () => reject(new Error('Banco de dados bloqueado por outra aba aberta.'));
   });
@@ -100,9 +143,9 @@ export async function init() {
 async function seedExercises() {
   const criadoEm = new Date().toISOString();
   await tx('exercises', 'readwrite', (store) => {
-    for (const [grupoMuscular, nomes] of Object.entries(SEED_EXERCISES)) {
-      for (const nome of nomes) {
-        store.add({ nome, grupoMuscular, personalizado: false, criadoEm });
+    for (const [grupoMuscular, itens] of Object.entries(SEED_EXERCISES)) {
+      for (const { nome, slug } of itens) {
+        store.add({ nome, grupoMuscular, slug: slug ?? null, personalizado: false, criadoEm });
       }
     }
   });
@@ -147,16 +190,34 @@ export async function getExercise(id) {
   return all.find((e) => e.id === Number(id)) || null;
 }
 
-export async function addExercise({ nome, grupoMuscular }) {
+/** Adiciona um exercicio. Vindo do catalogo, `slug` preenchido e
+ *  `personalizado: false`; criado a mao, sem slug e `personalizado: true`.
+ *
+ *  Devolve `jaExistia` quando o slug ja estava na biblioteca: sem essa guarda,
+ *  adicionar o mesmo exercicio pelo catalogo e pelo seletor criaria duas linhas
+ *  e o historico de carga ficaria dividido entre elas. */
+export async function addExercise({ nome, grupoMuscular, slug = null, personalizado = true }) {
   const registro = {
     nome: String(nome).trim(),
     grupoMuscular: grupoMuscular || 'Outros',
-    personalizado: true,
+    slug: slug || null,
+    personalizado,
     criadoEm: new Date().toISOString(),
   };
-  const id = await tx('exercises', 'readwrite', (s) => req(s.add(registro)));
+
+  const resultado = await tx('exercises', 'readwrite', (store) => {
+    if (!registro.slug) {
+      return req(store.add(registro)).then((id) => ({ ...registro, id, jaExistia: false }));
+    }
+    return req(store.index('by_slug').get(registro.slug)).then((existente) => (
+      existente
+        ? { ...existente, jaExistia: true }
+        : req(store.add(registro)).then((id) => ({ ...registro, id, jaExistia: false }))
+    ));
+  });
+
   exerciseCache = null;
-  return { ...registro, id };
+  return resultado;
 }
 
 export async function updateExercise(id, patch) {
