@@ -155,6 +155,29 @@ gerador preserva o que já está lá:
 O que não tem versão em português aparece em inglês com um selo `EN` — estado suportado, não
 quebrado.
 
+#### Traduzir o que falta
+
+O volume é grande demais para uma sessão só, então a tradução é feita em lotes por agentes e
+`tools/traduzir_lotes.py` é o portão de qualidade — nenhum lote entra sem passar por ele:
+
+```bash
+python tools/traduzir_lotes.py criar      # gera os lotes do que ainda falta
+                                          # (agentes escrevem em lotes/saida/)
+python tools/traduzir_lotes.py validar    # aprova ou reprova, por exercício
+python tools/traduzir_lotes.py merge      # junta os aprovados nos arquivos acima
+python tools/traduzir_lotes.py refazer    # novos lotes só com o que foi reprovado
+python tools/traduzir_lotes.py amostra    # lê uma amostra do resultado
+```
+
+`criar` calcula o que falta a partir de `www/data/`, então **retomar em outra máquina é só clonar e
+rodar `criar`** — a pasta `tools/data/lotes/` não é versionada de propósito.
+
+A validação é por exercício, não por lote: um agente que erra 1 de 50 não faz os outros 49 serem
+descartados. Ela existe porque modelos truncam a saída e dizem que terminaram — na primeira rodada
+um lote entregou 53 de 98 nomes e relatou sucesso. Ela também barra resíduo de inglês, enchimento do
+texto original e **nome duplicado**, que é o pior defeito possível aqui: dois exercícios com o mesmo
+nome viram duas linhas idênticas na busca.
+
 ### Regras que mantêm o projeto empacotável
 
 Estas não são estilo — cada uma quebra o app dentro do WebView nativo ou no GitHub Pages:
