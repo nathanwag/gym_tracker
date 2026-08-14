@@ -1,0 +1,15 @@
+node_modules/
+
+# Saidas de build dos projetos nativos. As pastas android/ e ios/ em si devem
+# ser commitadas: sao os projetos nativos que o Capacitor gera uma unica vez.
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+ios/App/build/
+ios/App/Pods/
+ios/DerivedData/
+
+.DS_Store
+Thumbs.db
+*.log

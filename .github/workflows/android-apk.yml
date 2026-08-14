@@ -1,0 +1,59 @@
+# Gera um APK de debug de graca, sem precisar de Android SDK na sua maquina.
+#
+# Este fluxo NAO serve para iPhone (iOS nao instala APK) — esta aqui para o caso
+# de voce querer o app num Android, seu ou de outra pessoa.
+#
+# Pre-requisitos, feitos uma unica vez na sua maquina:
+#   1. winget install OpenJS.NodeJS
+#   2. npm install
+#   3. npx cap add android      (cria a pasta android/)
+#   4. commitar a pasta android/ — o CI compila a partir dela
+#
+# Depois disso, rode este workflow pela aba Actions e baixe o APK em Artifacts.
+# O APK e de debug, assinado com a chave de debug: serve para instalar no seu
+# aparelho, nao para publicar na Play Store.
+
+name: Gerar APK (Android)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir se a pasta android/ existe
+        run: |
+          if [ ! -d android ]; then
+            echo "A pasta android/ nao existe. Rode 'npx cap add android' e commite o resultado."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm install
+
+      - name: Copiar www/ para o projeto nativo
+        run: npx cap sync android
+
+      - name: Compilar
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: treino-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

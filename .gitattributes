@@ -1,0 +1,9 @@
+# Normaliza fim de linha. Sem isto, arquivos gerados no Windows entram com CRLF
+# e scripts como o gradlew quebram quando o GitHub Actions os roda no Linux.
+* text=auto
+
+*.sh    text eol=lf
+gradlew text eol=lf
+*.yml   text eol=lf
+
+*.png binary

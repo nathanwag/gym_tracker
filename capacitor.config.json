@@ -1,0 +1,14 @@
+{
+  "appId": "com.nwkau.treino",
+  "appName": "Treino",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "backgroundColor": "#0f1115"
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0f1115",
+    "limitsNavigationsToAppBoundDomains": true
+  }
+}

@@ -1,0 +1,42 @@
+# Publica a pasta www/ no GitHub Pages.
+#
+# Este e o caminho principal do projeto: o Pages da a URL HTTPS que o iPhone
+# precisa para registrar o service worker e permitir "Adicionar a Tela de
+# Inicio". Sem HTTPS o iOS nao instala o app nem guarda nada offline.
+#
+# Antes do primeiro uso: Settings > Pages > Source: GitHub Actions.
+
+name: Publicar no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # Nao ha build: o app e estatico de proposito, entao www/ sobe como esta.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

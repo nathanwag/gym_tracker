@@ -1,0 +1,22 @@
+{
+  "name": "treino",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Registro de cargas e repeticoes com graficos de progressao e recordes.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "python tools/dev_server.py 8000",
+    "icons": "python tools/make_icons.py",
+    "cap:ios": "cap add ios",
+    "cap:android": "cap add android",
+    "cap:sync": "cap sync"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}
