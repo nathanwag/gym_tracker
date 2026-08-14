@@ -160,6 +160,11 @@ export const fmtDate = (iso) => DATE_FULL.format(new Date(iso));
 export const fmtDateShort = (iso) => DATE_SHORT.format(new Date(iso));
 export const fmtWeekday = (iso) => WEEKDAY.format(new Date(iso));
 
+const DAY_MONTH = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
+
+/** Ex: "11 ago – 17 ago". Aceita Date ou string ISO. */
+export const fmtDateRange = (inicio, fim) => `${DAY_MONTH.format(new Date(inicio))} – ${DAY_MONTH.format(new Date(fim))}`;
+
 /** "Hoje", "Ontem", "ha 3 dias" ou a data cheia. */
 export function fmtRelativeDay(iso) {
   const days = daysBetween(new Date(iso), new Date());

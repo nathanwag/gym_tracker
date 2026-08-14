@@ -1,19 +1,20 @@
 /* Tela inicial: comecar ou retomar um treino, resumo da semana e ultimos treinos. */
 
 import * as db from '../db.js';
-import { workoutSummary } from '../models.js';
+import { workoutSummary, weekMuscleGroupSummary } from '../models.js';
 import {
-  setTop, html, raw, node, ICON, toast, confirmSheet, refresh,
-  fmtNum, fmtRelativeDay, fmtWeekday, fmtDuration, isIOS, isStandalone,
+  setTop, html, raw, node, ICON, ICON_GRUPO, toast, confirmSheet, refresh,
+  fmtNum, fmtRelativeDay, fmtWeekday, fmtDuration, fmtDateRange, isIOS, isStandalone,
 } from '../ui.js';
 
 export async function render(view) {
   setTop({ title: 'Treino' });
 
-  const [ativo, treinos, series] = await Promise.all([
+  const [ativo, treinos, series, exercicios] = await Promise.all([
     db.getActiveWorkout(),
     db.listWorkouts(),
     db.listAllSets(),
+    db.listExercises(),
   ]);
 
   const unidade = db.settings().unidade;
@@ -22,6 +23,8 @@ export async function render(view) {
     if (!seriesPorTreino.has(s.workoutId)) seriesPorTreino.set(s.workoutId, []);
     seriesPorTreino.get(s.workoutId).push(s);
   }
+  const treinosPorId = new Map(treinos.map((t) => [t.id, t]));
+  const exerciciosPorId = new Map(exercicios.map((e) => [e.id, e]));
 
   const container = node('<div class="stack"></div>');
 
@@ -32,7 +35,7 @@ export async function render(view) {
     ? cardTreinoAtivo(ativo, seriesPorTreino.get(ativo.id) || [])
     : cardIniciar(treinos.length === 0));
 
-  container.append(cardSemana(treinos, seriesPorTreino, unidade));
+  container.append(cardSemana(weekMuscleGroupSummary(series, treinosPorId, exerciciosPorId), unidade));
 
   const finalizados = treinos.filter((t) => t.finalizadoEm);
   if (finalizados.length) {
@@ -134,26 +137,34 @@ function cardTreinoAtivo(treino, series) {
   return el;
 }
 
-/* ---------- Resumo dos ultimos 7 dias ---------- */
+/* ---------- Resumo da semana ---------- */
 
-function cardSemana(treinos, seriesPorTreino, unidade) {
-  const limite = Date.now() - 7 * 86400000;
-  const daSemana = treinos.filter((t) => new Date(t.iniciadoEm).getTime() >= limite);
+// Series por grupo muscular, nao so volume total: e a metrica que a
+// literatura de dose-resposta usa (Schoenfeld/Baz-Valle), e o app ja tinha
+// o dado (grupoMuscular por exercicio) sem expor essa leitura.
+function cardSemana(resumoSemana, unidade) {
+  const { inicio, fim, treinos, series, volume, porGrupo } = resumoSemana;
+  const maxSeries = porGrupo.reduce((m, g) => Math.max(m, g.series), 0);
 
-  let series = 0;
-  let volume = 0;
-  for (const t of daSemana) {
-    const resumo = workoutSummary(seriesPorTreino.get(t.id) || []);
-    series += resumo.series;
-    volume += resumo.volume;
-  }
+  const linhasGrupo = porGrupo.map((g) => html`
+    <div class="mgrupo__linha">
+      <span class="mgrupo__icone" aria-hidden="true">${raw(ICON_GRUPO[g.grupo] || '')}</span>
+      <span class="mgrupo__nome">${g.grupo}</span>
+      <span class="mgrupo__track"><span class="mgrupo__fill" style="width:${maxSeries ? (g.series / maxSeries) * 100 : 0}%"></span></span>
+      <span class="mgrupo__series">${g.series}</span>
+    </div>
+  `).join('');
 
   return node(html`
     <div class="card">
+      <div class="card__pad" style="padding-bottom:${porGrupo.length ? '10px' : '14px'}">
+        <h2 style="font-size:1rem">Essa semana</h2>
+        <p class="muted small" style="margin:2px 0 0">${fmtDateRange(inicio, fim)}</p>
+      </div>
       <div class="stats">
         <div class="stat">
-          <div class="stat__val">${daSemana.length}</div>
-          <div class="stat__label">treinos · 7 dias</div>
+          <div class="stat__val">${treinos}</div>
+          <div class="stat__label">treinos</div>
         </div>
         <div class="stat">
           <div class="stat__val">${series}</div>
@@ -164,6 +175,7 @@ function cardSemana(treinos, seriesPorTreino, unidade) {
           <div class="stat__label">volume (${unidade})</div>
         </div>
       </div>
+      ${porGrupo.length ? raw(`<div class="mgrupo card__pad">${linhasGrupo}</div>`) : ''}
     </div>
   `);
 }
