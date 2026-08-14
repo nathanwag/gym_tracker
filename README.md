@@ -144,9 +144,16 @@ O resultado é commitado, então quem só mexe no app nunca precisa rodar isso. 
 `--forcar` tem de deixar o `git status` limpo: cada arquivo é comparado byte a byte antes de ser
 escrito, o que impede o repositório de dobrar de tamanho a cada regeração.
 
-`tools/data/nomes_pt.json` é **entrada**, não saída: corrigir um nome ali é definitivo, porque o
-gerador preserva o que já existe. Os nomes de `seed.js` têm prioridade sobre a tradução automática.
-Quem não tem tradução aparece em inglês com um selo `EN` — estado suportado, não quebrado.
+Os dois arquivos em `tools/data/` são **entrada**, não saída — editá-los é definitivo, porque o
+gerador preserva o que já está lá:
+
+- `nomes_pt.json` — nomes em português. Os de `seed.js` têm prioridade sobre a tradução automática.
+- `comofazer_pt.json` — passo a passo escrito à mão, dos 74 exercícios da biblioteca inicial. Não é
+  tradução literal: o texto original é prolixo e cheio de detalhe que não ajuda quem está em pé com
+  a barra na mão. A regra é 3 a 5 passos, do setup ao movimento, com o erro mais comum no fim.
+
+O que não tem versão em português aparece em inglês com um selo `EN` — estado suportado, não
+quebrado.
 
 ### Regras que mantêm o projeto empacotável
 

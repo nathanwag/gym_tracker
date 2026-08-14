@@ -1,0 +1,454 @@
+{
+ "_comentario": "Passo a passo em portugues dos exercicios da biblioteca inicial. Escrito a mao, nao traduzido literalmente: o texto original do free-exercise-db e prolixo e cheio de detalhe que nao ajuda quem esta em pe com a barra na mao. Aqui a regra e 3 a 5 passos, do setup ao movimento, com o erro mais comum no fim quando ele muda o exercicio. Editar este arquivo e rodar `python tools/build_catalog.py --dados`.",
+
+ "barbell-bench-press-medium-grip": [
+  "Deite no banco com os pés firmes no chão e os olhos embaixo da barra. Pegada um pouco mais aberta que os ombros.",
+  "Tire a barra do suporte e leve até a linha do meio do peito, com os braços estendidos.",
+  "Desça controlado até a barra tocar o peito, mantendo os cotovelos a cerca de 45° do tronco.",
+  "Empurre de volta até estender os cotovelos, sem travá-los com força.",
+  "Mantenha as escápulas apertadas uma contra a outra o tempo todo: é o que protege o ombro."
+ ],
+ "dumbbell-bench-press": [
+  "Sente no banco com os halteres apoiados nas coxas e deite empurrando-os com os joelhos.",
+  "Comece com os halteres na altura do peito, palmas para a frente.",
+  "Empurre para cima até quase encostar um no outro, sem bater.",
+  "Desça controlado até sentir o alongamento no peito, com os cotovelos pouco abaixo da linha dos ombros."
+ ],
+ "barbell-incline-bench-press-medium-grip": [
+  "Ajuste o banco entre 30° e 45°. Acima disso o ombro assume o trabalho no lugar do peito.",
+  "Deite com os pés firmes e tire a barra do suporte.",
+  "Desça até a parte alta do peito, logo abaixo da clavícula.",
+  "Empurre de volta até estender os braços, mantendo as escápulas apoiadas no banco."
+ ],
+ "incline-dumbbell-press": [
+  "Banco entre 30° e 45°, halteres apoiados nas coxas antes de deitar.",
+  "Comece com os halteres na altura da parte alta do peito, palmas para a frente.",
+  "Empurre para cima e levemente para dentro, até quase encostar um no outro.",
+  "Desça controlado até sentir o peito alongar."
+ ],
+ "decline-barbell-bench-press": [
+  "Ajuste o banco declinado e prenda bem as pernas no apoio antes de deitar.",
+  "Tire a barra do suporte com pegada pouco mais aberta que os ombros.",
+  "Desça até a parte baixa do peito.",
+  "Empurre de volta até estender os braços. Peça ajuda para devolver a barra ao suporte: nessa posição é difícil sozinho."
+ ],
+ "machine-bench-press": [
+  "Ajuste o banco para que as manoplas fiquem na altura do meio do peito.",
+  "Sente com as costas apoiadas e os pés firmes no chão.",
+  "Empurre até estender os braços, sem travar os cotovelos.",
+  "Volte controlado até sentir o peito alongar, sem deixar o peso bater na pilha."
+ ],
+ "dumbbell-flyes": [
+  "Deite no banco com um halter em cada mão, braços estendidos acima do peito e palmas viradas uma para a outra.",
+  "Com os cotovelos levemente flexionados e travados nesse ângulo, abra os braços em arco até a altura do peito.",
+  "Feche o arco trazendo os halteres de volta ao centro, como se abraçasse alguém.",
+  "O cotovelo não dobra durante o movimento: se dobrar, virou supino e o peito sai de cena."
+ ],
+ "butterfly": [
+  "Ajuste o banco para que as manoplas fiquem na altura do peito e sente com as costas apoiadas.",
+  "Segure as manoplas com os cotovelos levemente flexionados.",
+  "Feche os braços à frente do peito, apertando no fim do movimento.",
+  "Volte controlado até sentir o alongamento, sem deixar os braços passarem muito atrás da linha do tronco."
+ ],
+ "cable-crossover": [
+  "Coloque as polias na posição alta e segure uma manopla em cada mão.",
+  "Dê um passo à frente com o tronco levemente inclinado e os cotovelos pouco flexionados.",
+  "Puxe as manoplas para baixo e para dentro, cruzando à frente do quadril.",
+  "Volte controlado até sentir o peito alongar, mantendo o ângulo do cotovelo fixo."
+ ],
+ "dips-chest-version": [
+  "Apoie-se nas paralelas com os braços estendidos, tronco inclinado à frente e joelhos dobrados atrás.",
+  "Desça flexionando os cotovelos até sentir o peito alongar, mantendo a inclinação do tronco.",
+  "Empurre de volta até estender os braços.",
+  "Quanto mais inclinado o tronco, mais peito; quanto mais ereto, mais tríceps."
+ ],
+ "pushups": [
+  "Apoie as mãos no chão pouco mais abertas que os ombros, corpo em linha reta da cabeça aos calcanhares.",
+  "Desça o peito até quase tocar o chão, cotovelos a cerca de 45° do tronco.",
+  "Empurre de volta até estender os braços.",
+  "Mantenha o abdômen contraído: se o quadril cair, a lombar paga a conta."
+ ],
+ "pullups": [
+  "Segure a barra com pegada pronada, um pouco mais aberta que os ombros.",
+  "Parta com os braços estendidos e as escápulas soltas, depois deprima as escápulas para iniciar.",
+  "Puxe até o queixo passar da barra, levando o peito em direção a ela.",
+  "Desça controlado até estender os braços. Evite balançar o corpo para ganhar impulso."
+ ],
+ "wide-grip-lat-pulldown": [
+  "Ajuste o apoio das coxas para que os pés fiquem firmes no chão.",
+  "Segure a barra com pegada pronada bem aberta e incline o tronco levemente para trás.",
+  "Puxe a barra até a parte alta do peito, levando os cotovelos para baixo e para trás.",
+  "Volte controlado até estender os braços, sem deixar o tronco ser puxado para a frente."
+ ],
+ "underhand-cable-pulldowns": [
+  "Segure a barra com pegada supinada na largura dos ombros.",
+  "Prenda as coxas no apoio e mantenha o tronco quase ereto.",
+  "Puxe a barra até o peito, com os cotovelos rentes ao corpo.",
+  "Volte controlado. A pegada supinada coloca mais bíceps no movimento — use carga um pouco menor que na puxada pronada."
+ ],
+ "bent-over-barbell-row": [
+  "Em pé, incline o tronco para a frente até cerca de 45° com os joelhos levemente flexionados e a lombar reta.",
+  "Segure a barra com pegada pronada, braços estendidos.",
+  "Puxe a barra em direção ao umbigo, levando os cotovelos para trás.",
+  "Desça controlado até estender os braços. Não use o tronco como alavanca: se precisar jogar o corpo, o peso está alto demais."
+ ],
+ "one-arm-dumbbell-row": [
+  "Apoie um joelho e a mão do mesmo lado no banco, com as costas paralelas ao chão.",
+  "Segure o halter com o braço livre estendido.",
+  "Puxe o halter em direção ao quadril, com o cotovelo rente ao corpo.",
+  "Desça controlado até alongar. Evite girar o tronco para levantar mais peso."
+ ],
+ "seated-cable-rows": [
+  "Sente com os pés apoiados na plataforma e os joelhos levemente flexionados.",
+  "Segure o triângulo com o tronco ereto e os braços estendidos.",
+  "Puxe até o abdômen, levando os cotovelos para trás e juntando as escápulas.",
+  "Volte controlado, deixando os braços estenderem sem que o tronco seja puxado para a frente."
+ ],
+ "t-bar-row-with-handle": [
+  "Fique sobre a barra com os joelhos flexionados e o tronco inclinado, lombar reta.",
+  "Segure as manoplas com os braços estendidos.",
+  "Puxe em direção ao abdômen, juntando as escápulas no fim.",
+  "Desça controlado, mantendo a inclinação do tronco constante."
+ ],
+ "leverage-iso-row": [
+  "Ajuste o banco para que as manoplas fiquem na altura do meio do tronco.",
+  "Sente com o peito apoiado e segure as manoplas com os braços estendidos.",
+  "Puxe para trás levando os cotovelos rentes ao corpo e juntando as escápulas.",
+  "Volte controlado até estender os braços."
+ ],
+ "straight-arm-pulldown": [
+  "Em pé de frente para a polia alta, segure a barra com pegada pronada na largura dos ombros.",
+  "Incline o tronco levemente à frente e mantenha os braços quase estendidos.",
+  "Puxe a barra em arco até as coxas, sem dobrar os cotovelos.",
+  "Volte controlado até a barra ficar na altura do rosto. É um isolador de dorsal: carga alta faz virar tríceps."
+ ],
+ "barbell-deadlift": [
+  "Pés na largura do quadril, barra sobre o meio do pé, quase encostando na canela.",
+  "Flexione quadril e joelhos para pegar a barra com os braços estendidos por fora das pernas, lombar reta e peito aberto.",
+  "Levante empurrando o chão com os pés, subindo quadril e ombros juntos, mantendo a barra rente ao corpo.",
+  "Termine ereto sem hiperestender a lombar, e desça pelo mesmo caminho.",
+  "A lombar reta é inegociável: no primeiro sinal de arredondamento, pare a série."
+ ],
+ "standing-military-press": [
+  "Em pé, pés na largura dos ombros, barra apoiada na parte alta do peito com pegada pouco mais aberta que os ombros.",
+  "Contraia abdômen e glúteos para travar o tronco.",
+  "Empurre a barra acima da cabeça até estender os braços, passando o rosto para trás e voltando a cabeça à posição.",
+  "Desça controlado até o peito. Evite arquear a lombar para compensar falta de mobilidade de ombro."
+ ],
+ "seated-dumbbell-press": [
+  "Sente no banco com encosto e apoie as costas. Halteres na altura das orelhas, palmas para a frente.",
+  "Empurre para cima até quase encostar os halteres, sem travar os cotovelos.",
+  "Desça controlado até os cotovelos ficarem pouco abaixo da linha dos ombros.",
+  "Mantenha o abdômen contraído para não jogar a lombar contra o encosto."
+ ],
+ "machine-shoulder-military-press": [
+  "Ajuste o banco para que as manoplas fiquem na altura dos ombros.",
+  "Sente com as costas apoiadas e segure as manoplas com palmas para a frente.",
+  "Empurre para cima até estender os braços.",
+  "Volte controlado até os cotovelos ficarem na altura dos ombros."
+ ],
+ "arnold-dumbbell-press": [
+  "Sentado, comece com os halteres à frente do rosto, palmas viradas para você e cotovelos juntos.",
+  "Suba girando os punhos para fora, terminando com as palmas para a frente e os braços estendidos.",
+  "Desça fazendo o caminho inverso, voltando as palmas para você.",
+  "A rotação é o exercício: fazer sem girar é só um desenvolvimento comum."
+ ],
+ "side-lateral-raise": [
+  "Em pé, halteres ao lado do corpo, cotovelos levemente flexionados.",
+  "Eleve os braços pelos lados até a altura dos ombros, guiando o movimento pelos cotovelos.",
+  "Desça controlado até o lado do corpo.",
+  "Não passe da linha dos ombros nem use impulso de tronco: com carga certa, este é um exercício de peso leve."
+ ],
+ "front-dumbbell-raise": [
+  "Em pé, halteres à frente das coxas com palmas voltadas para o corpo.",
+  "Eleve um braço à frente até a altura do ombro, cotovelo quase estendido.",
+  "Desça controlado e repita com o outro braço.",
+  "Mantenha o tronco parado: balançar transfere o trabalho para a lombar."
+ ],
+ "reverse-machine-flyes": [
+  "Sente de frente para o encosto do voador, peito apoiado, e segure as manoplas com os braços à frente.",
+  "Abra os braços para trás em arco, com os cotovelos levemente flexionados.",
+  "Aperte as escápulas no fim do movimento.",
+  "Volte controlado. Trabalha a parte posterior do ombro, que costuma ficar de fora do resto do treino."
+ ],
+ "upright-barbell-row": [
+  "Em pé, segure a barra com pegada pronada na largura dos ombros, braços estendidos à frente das coxas.",
+  "Puxe a barra rente ao corpo até a altura do peito, com os cotovelos subindo mais alto que os punhos.",
+  "Desça controlado.",
+  "Se sentir incômodo no ombro, abra a pegada e não suba além da linha do peito."
+ ],
+ "barbell-shrug": [
+  "Em pé, segure a barra à frente das coxas com pegada pronada e braços estendidos.",
+  "Eleve os ombros em direção às orelhas, o mais alto que conseguir.",
+  "Segure um instante no topo e desça controlado.",
+  "Os braços ficam estendidos o tempo todo: dobrar o cotovelo transfere o trabalho para o bíceps."
+ ],
+ "barbell-curl": [
+  "Em pé, pés na largura dos ombros, barra com pegada supinada na largura dos ombros.",
+  "Cotovelos junto ao tronco e fixos, flexione os braços levando a barra até a altura do peito.",
+  "Desça controlado até estender os braços.",
+  "O cotovelo não vai para a frente e o tronco não balança — os dois roubam o trabalho do bíceps."
+ ],
+ "dumbbell-bicep-curl": [
+  "Em pé, um halter em cada mão com palmas voltadas para a frente.",
+  "Flexione os dois braços ao mesmo tempo, com os cotovelos junto ao tronco.",
+  "Desça controlado até estender os braços.",
+  "Evite jogar o tronco para trás para iniciar o movimento."
+ ],
+ "dumbbell-alternate-bicep-curl": [
+  "Em pé, halteres ao lado do corpo com palmas voltadas para dentro.",
+  "Flexione um braço girando o punho até a palma ficar para cima na subida.",
+  "Desça controlado e repita com o outro braço.",
+  "Alternar permite mais carga por braço e ajuda a corrigir diferença entre os lados."
+ ],
+ "hammer-curls": [
+  "Em pé, halteres ao lado do corpo com as palmas viradas uma para a outra.",
+  "Flexione o braço mantendo essa pegada neutra o tempo todo.",
+  "Desça controlado até estender.",
+  "A pegada neutra coloca braquial e antebraço no trabalho, além do bíceps."
+ ],
+ "preacher-curl": [
+  "Ajuste o banco scott para que a axila fique apoiada no topo do encosto.",
+  "Segure a barra W com pegada supinada e os braços quase estendidos.",
+  "Flexione até a altura do queixo, sem tirar os braços do apoio.",
+  "Desça controlado, sem estender totalmente o cotovelo no fim — nessa posição o alongamento é grande e a articulação fica exposta."
+ ],
+ "concentration-curls": [
+  "Sente no banco com as pernas abertas e apoie o cotovelo na parte interna da coxa.",
+  "Segure o halter com o braço estendido e a palma para a frente.",
+  "Flexione até a altura do ombro, mantendo o cotovelo colado na coxa.",
+  "Desça controlado até estender. É o exercício mais isolado de bíceps que existe: use carga baixa."
+ ],
+ "standing-biceps-cable-curl": [
+  "Em pé de frente para a polia baixa, segure a barra com pegada supinada.",
+  "Cotovelos junto ao tronco, flexione os braços até a altura do peito.",
+  "Desça controlado até estender.",
+  "A polia mantém tensão constante do começo ao fim, diferente da barra."
+ ],
+ "reverse-barbell-curl": [
+  "Em pé, segure a barra com pegada pronada na largura dos ombros.",
+  "Cotovelos junto ao tronco, flexione até a altura do peito.",
+  "Desça controlado até estender.",
+  "Use bem menos carga que na rosca direta: a pegada pronada é bem mais fraca."
+ ],
+ "triceps-pushdown-rope-attachment": [
+  "Em pé de frente para a polia alta, segure a corda com pegada neutra.",
+  "Cotovelos junto ao tronco e fixos, estenda os braços para baixo.",
+  "No fim do movimento, abra as pontas da corda para fora.",
+  "Volte controlado até os antebraços ficarem paralelos ao chão, sem deixar o cotovelo sair do lugar."
+ ],
+ "triceps-pushdown": [
+  "Em pé de frente para a polia alta, segure a barra com pegada pronada na largura dos ombros.",
+  "Cotovelos junto ao tronco, estenda os braços para baixo até travar.",
+  "Volte controlado até os antebraços ficarem paralelos ao chão.",
+  "Só o antebraço se move: se o cotovelo abrir ou o tronco inclinar, o peito entra no lugar do tríceps."
+ ],
+ "lying-close-grip-barbell-triceps-extension-behind-the-head": [
+  "Deite no banco e segure a barra W com pegada pronada fechada, braços estendidos acima do peito.",
+  "Mantendo os cotovelos apontados para cima, flexione os braços levando a barra até a testa.",
+  "Estenda de volta até a posição inicial.",
+  "O braço não se move — só o antebraço. Comece leve: é o exercício onde mais se sente o cotovelo."
+ ],
+ "standing-overhead-barbell-triceps-extension": [
+  "Em pé, segure a barra acima da cabeça com pegada fechada e braços estendidos.",
+  "Flexione os cotovelos levando a barra atrás da cabeça.",
+  "Estenda de volta até o topo.",
+  "Mantenha os cotovelos apontados para a frente e o abdômen contraído para não arquear a lombar."
+ ],
+ "tricep-dumbbell-kickback": [
+  "Incline o tronco à frente com apoio no banco, braço colado ao corpo e cotovelo a 90°.",
+  "Estenda o antebraço para trás até o braço ficar reto.",
+  "Segure um instante e volte controlado até 90°.",
+  "O braço fica parado e paralelo ao chão o tempo todo."
+ ],
+ "close-grip-barbell-bench-press": [
+  "Deite no banco e segure a barra com as mãos na largura dos ombros — nem mais fechado que isso.",
+  "Tire do suporte e desça até a parte baixa do peito, com os cotovelos rentes ao tronco.",
+  "Empurre de volta até estender os braços.",
+  "Pegada fechada demais não aumenta o tríceps e sobrecarrega o punho."
+ ],
+ "bench-dips": [
+  "Apoie as mãos na borda do banco atrás de você, na largura do quadril, e estenda as pernas à frente.",
+  "Desça flexionando os cotovelos até formarem cerca de 90°.",
+  "Empurre de volta até estender os braços.",
+  "Mantenha o quadril rente ao banco: quanto mais longe, maior o estresse no ombro."
+ ],
+ "barbell-squat": [
+  "Ajuste a barra no rack pouco abaixo da altura dos ombros e apoie-a sobre o trapézio.",
+  "Saia do rack e posicione os pés na largura dos ombros, pontas levemente para fora.",
+  "Desça flexionando quadril e joelhos ao mesmo tempo, com o peito aberto e os joelhos acompanhando a direção dos pés.",
+  "Desça até a coxa ficar ao menos paralela ao chão e suba empurrando o chão com o meio do pé.",
+  "Se o calcanhar sair do chão ou a lombar arredondar no fundo, reduza a amplitude até ganhar mobilidade."
+ ],
+ "smith-machine-squat": [
+  "Posicione a barra sobre o trapézio e os pés um pouco à frente da linha do corpo.",
+  "Destrave a barra e desça flexionando quadril e joelhos até a coxa ficar paralela ao chão.",
+  "Suba empurrando o chão até estender as pernas.",
+  "A barra guiada tira o trabalho de equilíbrio: bom para focar a perna, mas não substitui o agachamento livre."
+ ],
+ "front-barbell-squat": [
+  "Apoie a barra sobre a frente dos ombros, cotovelos bem altos e apontados para a frente.",
+  "Pés na largura dos ombros, pontas levemente para fora.",
+  "Desça mantendo o tronco o mais ereto possível, até a coxa ficar paralela ao chão.",
+  "Suba empurrando o chão. Se o cotovelo cair, a barra rola para a frente — manter os cotovelos altos é o ponto do exercício."
+ ],
+ "leg-press": [
+  "Sente no aparelho com as costas e o quadril bem apoiados e os pés na plataforma, na largura dos ombros.",
+  "Destrave e desça flexionando os joelhos até formarem cerca de 90°.",
+  "Empurre de volta sem travar os joelhos no fim.",
+  "Não deixe o quadril descolar do apoio no fundo: é aí que a lombar arredonda."
+ ],
+ "hack-squat": [
+  "Posicione os ombros sob os apoios e as costas contra o encosto, pés na largura dos ombros.",
+  "Destrave e desça flexionando os joelhos até a coxa ficar paralela à plataforma.",
+  "Suba empurrando a plataforma até quase estender as pernas.",
+  "Mantenha as costas coladas no encosto durante todo o movimento."
+ ],
+ "leg-extensions": [
+  "Sente no aparelho com as costas apoiadas e o rolo sobre a parte baixa da canela.",
+  "Estenda os joelhos até as pernas ficarem retas.",
+  "Segure um instante no topo e desça controlado.",
+  "Ajuste o encosto para que o eixo do aparelho fique alinhado com o joelho."
+ ],
+ "lying-leg-curls": [
+  "Deite de bruços com o rolo sobre a parte de trás do tornozelo.",
+  "Flexione os joelhos trazendo os calcanhares em direção aos glúteos.",
+  "Segure um instante e desça controlado.",
+  "Mantenha o quadril apoiado: levantá-lo transfere o esforço para a lombar."
+ ],
+ "seated-leg-curl": [
+  "Sente com as costas apoiadas, o rolo sobre a parte de trás do tornozelo e o apoio travando as coxas.",
+  "Flexione os joelhos empurrando o rolo para baixo e para trás.",
+  "Segure um instante e volte controlado.",
+  "Mantenha as costas coladas no encosto."
+ ],
+ "stiff-legged-barbell-deadlift": [
+  "Em pé, segure a barra à frente das coxas com pegada pronada e os joelhos levemente flexionados.",
+  "Empurre o quadril para trás e desça a barra rente às pernas, mantendo a lombar reta.",
+  "Desça até sentir o alongamento na parte de trás da coxa, sem arredondar as costas.",
+  "Volte estendendo o quadril e contraindo o glúteo no topo.",
+  "A amplitude é definida pela sua flexibilidade, não pelo chão."
+ ],
+ "romanian-deadlift": [
+  "Comece em pé com a barra à frente das coxas, joelhos levemente flexionados e travados nesse ângulo.",
+  "Empurre o quadril para trás deixando a barra descer rente às pernas.",
+  "Pare quando a lombar começar a querer arredondar — normalmente pouco abaixo do joelho.",
+  "Volte empurrando o quadril à frente e contraindo o glúteo.",
+  "Diferente do stiff, aqui o movimento é do quadril e a barra nunca chega ao chão."
+ ],
+ "dumbbell-lunges": [
+  "Em pé com um halter em cada mão, dê um passo à frente.",
+  "Desça flexionando os dois joelhos até o de trás quase tocar o chão.",
+  "Empurre com o calcanhar da perna da frente para voltar à posição inicial.",
+  "Mantenha o tronco ereto e o joelho da frente alinhado com o pé."
+ ],
+ "split-squat-with-dumbbells": [
+  "Apoie o peito do pé de trás num banco e dê um passo à frente com a outra perna, um halter em cada mão.",
+  "Desça flexionando o joelho da frente até a coxa ficar paralela ao chão.",
+  "Suba empurrando o calcanhar da perna da frente.",
+  "Ajuste a distância do banco: perto demais castiga o joelho, longe demais vira alongamento de quadril."
+ ],
+ "thigh-adductor": [
+  "Sente no aparelho com as pernas abertas apoiadas nos suportes.",
+  "Feche as pernas contra a resistência até quase encostar os joelhos.",
+  "Volte controlado até sentir o alongamento na parte interna da coxa.",
+  "Ajuste a abertura inicial: começar aberto demais força o adutor num ponto frágil."
+ ],
+ "thigh-abductor": [
+  "Sente no aparelho com as pernas juntas e os joelhos apoiados nos suportes.",
+  "Abra as pernas contra a resistência o máximo confortável.",
+  "Segure um instante e volte controlado.",
+  "Mantenha as costas apoiadas no encosto e evite empurrar com as mãos."
+ ],
+ "barbell-hip-thrust": [
+  "Sente no chão com as costas apoiadas na lateral de um banco e a barra sobre o quadril, com proteção.",
+  "Pés na largura do quadril, joelhos flexionados e calcanhares alinhados com os joelhos no topo.",
+  "Empurre o chão com os calcanhares e suba o quadril até o tronco ficar paralelo ao chão.",
+  "Contraia o glúteo no topo e desça controlado.",
+  "Mantenha o queixo para baixo: olhar para cima faz a lombar arquear no lugar do glúteo trabalhar."
+ ],
+ "one-legged-cable-kickback": [
+  "Prenda a caneleira no tornozelo e fique de frente para a polia baixa, segurando o aparelho para se equilibrar.",
+  "Com o tronco levemente inclinado à frente, leve a perna para trás com o joelho quase estendido.",
+  "Contraia o glúteo no fim do movimento.",
+  "Volte controlado. Não arqueie a lombar para ganhar amplitude."
+ ],
+ "glute-kickback": [
+  "Posicione-se no aparelho com o apoio na parte de trás da coxa e o tronco apoiado.",
+  "Empurre a perna para trás até estender o quadril.",
+  "Contraia o glúteo no fim e volte controlado.",
+  "Mantenha o abdômen contraído para o movimento sair do quadril e não da lombar."
+ ],
+ "standing-calf-raises": [
+  "Posicione os ombros sob os apoios e a ponta dos pés na plataforma, calcanhares livres.",
+  "Desça os calcanhares até sentir o alongamento na panturrilha.",
+  "Suba na ponta dos pés o mais alto que conseguir.",
+  "Segure um instante no topo. Panturrilha responde à amplitude completa, não a peso jogado."
+ ],
+ "seated-calf-raise": [
+  "Sente com a ponta dos pés na plataforma e o apoio sobre a parte baixa das coxas.",
+  "Desça os calcanhares até alongar.",
+  "Suba na ponta dos pés até o máximo.",
+  "Com o joelho flexionado, o trabalho vai para o sóleo, a parte profunda da panturrilha."
+ ],
+ "calf-press-on-the-leg-press-machine": [
+  "Sente no leg press e apoie só a ponta dos pés na parte baixa da plataforma.",
+  "Destrave e deixe os calcanhares descerem até alongar.",
+  "Empurre com a ponta dos pés até estender o tornozelo.",
+  "Mantenha os joelhos quase estendidos e fixos: aqui só o tornozelo se move."
+ ],
+ "crunches": [
+  "Deite com os joelhos flexionados e os pés apoiados no chão, mãos ao lado da cabeça.",
+  "Enrole a coluna levantando os ombros do chão, levando as costelas em direção ao quadril.",
+  "Segure um instante no topo e desça controlado.",
+  "A lombar não sai do chão. Não puxe a cabeça com as mãos."
+ ],
+ "reverse-crunch": [
+  "Deite com os braços ao lado do corpo e os joelhos flexionados a 90°.",
+  "Leve os joelhos em direção ao peito tirando o quadril do chão.",
+  "Desça controlado até os pés quase tocarem o chão.",
+  "O movimento é do quadril enrolando, não das pernas balançando."
+ ],
+ "cable-crunch": [
+  "Ajoelhe de costas para a polia alta e segure a corda ao lado da cabeça.",
+  "Enrole a coluna levando os cotovelos em direção aos joelhos.",
+  "Segure um instante na contração e volte controlado.",
+  "O quadril fica parado: se ele se mover, virou exercício de dobradiça e o abdômen sai."
+ ],
+ "ab-crunch-machine": [
+  "Sente no aparelho e ajuste o apoio na altura do peito.",
+  "Enrole o tronco à frente contraindo o abdômen.",
+  "Segure um instante e volte controlado.",
+  "Puxe com o abdômen, não com os braços."
+ ],
+ "hanging-leg-raise": [
+  "Pendure-se na barra com os braços estendidos e o corpo parado.",
+  "Eleve as pernas à frente até a altura do quadril ou mais, enrolando a pelve no fim.",
+  "Desça controlado sem balançar.",
+  "Se ainda não conseguir com as pernas estendidas, faça com os joelhos flexionados."
+ ],
+ "plank": [
+  "Apoie os antebraços no chão sob os ombros e as pontas dos pés, corpo em linha reta.",
+  "Contraia abdômen e glúteos para manter o quadril na linha do tronco.",
+  "Respire normalmente e sustente pelo tempo definido.",
+  "Quadril caído sobrecarrega a lombar; quadril alto tira o abdômen do trabalho."
+ ],
+ "seated-palm-up-barbell-wrist-curl": [
+  "Sente no banco e apoie os antebraços nas coxas, com os punhos para fora do joelho e as palmas para cima.",
+  "Deixe a barra descer soltando um pouco os dedos.",
+  "Feche a mão e flexione o punho para cima o máximo possível.",
+  "Só o punho se move — o antebraço fica colado na coxa."
+ ],
+ "seated-palms-down-barbell-wrist-curl": [
+  "Sente e apoie os antebraços nas coxas com os punhos para fora do joelho e as palmas para baixo.",
+  "Deixe o punho descer até alongar.",
+  "Estenda o punho para cima o máximo possível.",
+  "Use bem menos carga que na versão com palmas para cima."
+ ],
+ "farmers-walk": [
+  "Pegue um halter ou kettlebell pesado em cada mão, ao lado do corpo.",
+  "Fique ereto com o peito aberto, ombros para trás e abdômen contraído.",
+  "Caminhe em linha reta com passos curtos e firmes pela distância ou tempo definidos.",
+  "Não deixe os ombros caírem à frente. Termine a série antes de perder a postura, não quando a pegada falhar."
+ ]
+}
