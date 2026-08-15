@@ -465,6 +465,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   text-decoration: none;
 }
 .tabbar__item[aria-current="page"] { color: var(--accent); }
+.tabbar__spacer { flex: 0 0 64px; }
 
 .fab-treino {
   position: absolute;
