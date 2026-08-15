@@ -43,6 +43,7 @@ export async function render(view) {
     // historico de cada exercicio sao derivados daqui por filtro.
     todasSeries,
     editando: new Map(),
+    colapsados: new Set(),
   };
 
   const top = setTop({
@@ -158,6 +159,7 @@ function cardExercicio(exId) {
   const anterior = sessaoAnterior(exId);
   const editandoId = ctx.editando.get(exId) ?? null;
   const emEdicao = aqui.find((s) => s.id === editandoId) || null;
+  const colapsado = ctx.colapsados.has(exId);
 
   const card = node(html`<section class="card" data-ex="${exId}"></section>`);
 
@@ -166,23 +168,30 @@ function cardExercicio(exId) {
       ${raw(thumbHtml(ex))}
       <div class="grow">
         <h2 class="exercise__name">${ex.nome}</h2>
-        <div class="exercise__meta">${raw(textoAnterior(anterior))}</div>
+        <div class="exercise__meta">${raw(colapsado ? textoResumoSessao(aqui) : textoAnterior(anterior))}</div>
       </div>
+      <button class="icon-btn" data-colapsar aria-pressed="${colapsado}" aria-label="${colapsado ? `Reabrir ${ex.nome}` : `Concluir ${ex.nome}`}">${raw(ICON.check)}</button>
       <button class="icon-btn" data-detalhe aria-label="Ver evolução de ${ex.nome}">${raw(ICON.chevron)}</button>
       <button class="icon-btn" data-remover aria-label="Remover ${ex.nome} do treino">${raw(ICON.trash)}</button>
     </div>
   `);
+  cabecalho.querySelector('[data-colapsar]').onclick = () => {
+    if (colapsado) ctx.colapsados.delete(exId);
+    else ctx.colapsados.add(exId);
+    rebuildCard(exId);
+  };
   cabecalho.querySelector('[data-detalhe]').onclick = () => { location.hash = `#/exercicios/${exId}`; };
   cabecalho.querySelector('[data-remover]').onclick = () => removerExercicio(exId, ex.nome);
   card.append(cabecalho);
 
-  if (aqui.length) {
-    const ul = node('<ul class="setlist"></ul>');
-    aqui.forEach((s, i) => ul.append(itemSerie(s, i + 1, prIds.has(s.id), s.id === editandoId)));
-    card.append(ul);
+  if (!colapsado) {
+    if (aqui.length) {
+      const ul = node('<ul class="setlist"></ul>');
+      aqui.forEach((s, i) => ul.append(itemSerie(s, i + 1, prIds.has(s.id), s.id === editandoId)));
+      card.append(ul);
+    }
+    card.append(compositor(exId, emEdicao, aqui, anterior));
   }
-
-  card.append(compositor(exId, emEdicao, aqui, anterior));
   return card;
 }
 
@@ -192,6 +201,16 @@ function textoAnterior(anterior) {
     .map((s) => `${fmtNum(s.peso, 2)}×${s.reps}${s.aquecimento ? '*' : ''}`)
     .join('   ');
   return html`Última vez (${fmtRelativeDay(anterior.quando)}): <b class="tnum">${resumo}</b>`;
+}
+
+/** Resumo do que ja foi feito aqui, usado no cabecalho quando o exercicio
+ *  esta colapsado — nesse ponto o que importa e o que a pessoa acabou de
+ *  registrar, nao mais a comparacao com o treino anterior. */
+function textoResumoSessao(aqui) {
+  if (!aqui.length) return html`<span class="muted">Nenhuma série registrada</span>`;
+  const n = aqui.length;
+  const resumo = aqui.map((s) => `${fmtNum(s.peso, 2)}×${s.reps}${s.aquecimento ? '*' : ''}`).join('   ');
+  return html`${n} ${n === 1 ? 'série' : 'séries'}: <b class="tnum">${resumo}</b>`;
 }
 
 function itemSerie(serie, numero, isPR, ativo) {
