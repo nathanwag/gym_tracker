@@ -70,10 +70,7 @@ export async function render(view) {
 
   const root = node('<div class="stack"></div>');
   root.append(resumoEl());
-
-  const lista = node('<div class="stack" data-lista></div>');
-  for (const id of workout.exerciseIds || []) lista.append(cardExercicio(id));
-  root.append(lista);
+  root.append(node('<div class="stack" data-lista></div>'));
 
   const add = node(html`
     <button class="btn btn--block" data-add-ex style="margin-top:12px">
@@ -83,7 +80,36 @@ export async function render(view) {
   add.onclick = abrirSeletor;
   root.append(add);
 
+  root.append(node('<div data-concluidos-wrap></div>'));
+
   view.append(root);
+  renderLista();
+}
+
+/** Redesenha as duas listas (ativos e concluidos) a partir do zero — chamada
+ *  sempre que um exercicio muda de lado (colapsa/reabre) ou e adicionado/
+ *  removido, porque isso move o item entre dois containers diferentes, e nao
+ *  da pra fazer isso com um replaceWith pontual como o rebuildCard faz. */
+function renderLista() {
+  const listaEl = document.querySelector('[data-lista]');
+  const concluidosWrap = document.querySelector('[data-concluidos-wrap]');
+  if (!listaEl || !concluidosWrap) return;
+
+  const ids = ctx.workout.exerciseIds || [];
+  const ativos = ids.filter((id) => !ctx.colapsados.has(id));
+  const concluidos = ids.filter((id) => ctx.colapsados.has(id));
+
+  listaEl.innerHTML = '';
+  for (const id of ativos) listaEl.append(cardExercicio(id));
+
+  concluidosWrap.innerHTML = '';
+  if (concluidos.length) {
+    concluidosWrap.append(node('<h2 class="section-title">Concluídos</h2>'));
+    const card = node('<div class="card"><ul class="list" data-concluidos></ul></div>');
+    const ul = card.querySelector('ul');
+    for (const id of concluidos) ul.append(itemConcluido(id));
+    concluidosWrap.append(card);
+  }
 }
 
 /* ---------- Consultas derivadas ---------- */
@@ -159,7 +185,6 @@ function cardExercicio(exId) {
   const anterior = sessaoAnterior(exId);
   const editandoId = ctx.editando.get(exId) ?? null;
   const emEdicao = aqui.find((s) => s.id === editandoId) || null;
-  const colapsado = ctx.colapsados.has(exId);
 
   const card = node(html`<section class="card" data-ex="${exId}"></section>`);
 
@@ -168,31 +193,54 @@ function cardExercicio(exId) {
       ${raw(thumbHtml(ex))}
       <div class="grow">
         <h2 class="exercise__name">${ex.nome}</h2>
-        <div class="exercise__meta">${raw(colapsado ? textoResumoSessao(aqui) : textoAnterior(anterior))}</div>
+        <div class="exercise__meta">${raw(textoAnterior(anterior))}</div>
       </div>
-      <button class="icon-btn" data-colapsar aria-pressed="${colapsado}" aria-label="${colapsado ? `Reabrir ${ex.nome}` : `Concluir ${ex.nome}`}">${raw(ICON.check)}</button>
+      <button class="icon-btn" data-colapsar aria-label="Concluir ${ex.nome}">${raw(ICON.check)}</button>
       <button class="icon-btn" data-detalhe aria-label="Ver evolução de ${ex.nome}">${raw(ICON.chevron)}</button>
       <button class="icon-btn" data-remover aria-label="Remover ${ex.nome} do treino">${raw(ICON.trash)}</button>
     </div>
   `);
   cabecalho.querySelector('[data-colapsar]').onclick = () => {
-    if (colapsado) ctx.colapsados.delete(exId);
-    else ctx.colapsados.add(exId);
-    rebuildCard(exId);
+    ctx.colapsados.add(exId);
+    renderLista();
   };
   cabecalho.querySelector('[data-detalhe]').onclick = () => { location.hash = `#/exercicios/${exId}`; };
   cabecalho.querySelector('[data-remover]').onclick = () => removerExercicio(exId, ex.nome);
   card.append(cabecalho);
 
-  if (!colapsado) {
-    if (aqui.length) {
-      const ul = node('<ul class="setlist"></ul>');
-      aqui.forEach((s, i) => ul.append(itemSerie(s, i + 1, prIds.has(s.id), s.id === editandoId)));
-      card.append(ul);
-    }
-    card.append(compositor(exId, emEdicao, aqui, anterior));
+  if (aqui.length) {
+    const ul = node('<ul class="setlist"></ul>');
+    aqui.forEach((s, i) => ul.append(itemSerie(s, i + 1, prIds.has(s.id), s.id === editandoId)));
+    card.append(ul);
   }
+  card.append(compositor(exId, emEdicao, aqui, anterior));
   return card;
+}
+
+/** Linha compacta pra um exercicio marcado como concluido — sem thumb e sem
+ *  os tres botoes de acao grandes do cabecalho ativo, so nome + resumo do
+ *  que foi feito. Reabrir (e so entao excluir/ver evolucao) e um toque. */
+function itemConcluido(exId) {
+  const ex = ctx.exercicios.get(exId);
+  if (!ex) return node('<li hidden></li>');
+
+  const aqui = seriesAqui(exId);
+  const li = node(html`
+    <li class="list__item">
+      <button class="list__link" data-reabrir aria-label="Reabrir ${ex.nome}">
+        <div class="grow">
+          <div style="font-weight:600">${ex.nome}</div>
+          <div class="muted small">${raw(textoResumoSessao(aqui))}</div>
+        </div>
+        <span class="list__done">${raw(ICON.check)}</span>
+      </button>
+    </li>
+  `);
+  li.querySelector('[data-reabrir]').onclick = () => {
+    ctx.colapsados.delete(exId);
+    renderLista();
+  };
+  return li;
 }
 
 function textoAnterior(anterior) {
@@ -351,7 +399,8 @@ async function removerExercicio(exId, nome) {
   await db.removeExerciseFromWorkout(ctx.workout.id, exId);
   ctx.workout.exerciseIds = (ctx.workout.exerciseIds || []).filter((id) => id !== exId);
   ctx.todasSeries = ctx.todasSeries.filter((s) => !(s.workoutId === ctx.workout.id && s.exerciseId === exId));
-  document.querySelector(`[data-ex="${exId}"]`)?.remove();
+  ctx.colapsados.delete(exId);
+  renderLista();
   atualizarResumo();
 }
 
@@ -540,9 +589,8 @@ async function adicionarExercicio(exId) {
   ctx.workout.exerciseIds = [...(ctx.workout.exerciseIds || []), exId];
   closeSheet();
 
-  const card = cardExercicio(exId);
-  document.querySelector('[data-lista]').append(card);
-  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  renderLista();
+  document.querySelector(`[data-ex="${exId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function formularioNovoExercicio(nomeSugerido) {
