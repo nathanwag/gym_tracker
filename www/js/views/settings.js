@@ -3,7 +3,7 @@
 import * as db from '../db.js';
 import { prepararBackup, exportar, lerArquivo, restaurar } from '../backup.js';
 import {
-  setTop, html, raw, node, toast, openSheet, confirmSheet, isIOS, isStandalone,
+  setTop, html, raw, node, toast, openSheet, confirmSheet, isIOS, isStandalone, ICON,
 } from '../ui.js';
 
 const INCREMENTOS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
@@ -19,41 +19,56 @@ export async function render(view) {
   let backup = null;
   const backupPronto = prepararBackup().then((b) => { backup = b; return b; });
 
-  root.append(await cardBackup(backupPronto, () => backup));
   root.append(cardPreferencias(cfg));
-  root.append(cardExercicios());
-  root.append(cardFiguras());
-  root.append(cardSobre());
+  root.append(atalhos(backupPronto, () => backup));
   root.append(cardApagarTudo());
 
   view.append(root);
 }
 
+/* ---------- Atalhos: Backup e Figuras abrem num sheet em vez de ocupar
+ * espaco fixo na tela — sao acoes ocasionais, ao contrario das preferencias
+ * logo acima, que se mexe toda vez que se abre Ajustes. ---------- */
+
+function atalhos(backupPronto, obterBackup) {
+  const el = node(html`
+    <div class="atalhos">
+      <button class="atalho" type="button" data-abrir-backup>${raw(ICON.download)}<span>Backup</span></button>
+      <button class="atalho" type="button" data-abrir-figuras>${raw(ICON.image)}<span>Figuras</span></button>
+    </div>
+  `);
+  // Montados uma unica vez e reaproveitados a cada abertura do sheet: o de
+  // Figuras registra um listener de mensagem do service worker que nao pode
+  // se acumular a cada toque.
+  const backupNode = backupBody(backupPronto, obterBackup);
+  const figurasNode = figurasBody();
+  el.querySelector('[data-abrir-backup]').onclick = () => openSheet('Backup', backupNode);
+  el.querySelector('[data-abrir-figuras]').onclick = () => openSheet('Figuras dos exercícios', figurasNode);
+  return el;
+}
+
 /* ---------- Backup ---------- */
 
-async function cardBackup(backupPronto, obterBackup) {
-  const card = node(html`
-    <div>
-      <h2 class="section-title" style="margin-top:4px">Backup</h2>
-      <div class="card card__pad">
-        <p class="muted small">
-          Seus treinos ficam salvos só neste aparelho. Exporte um arquivo de vez em quando —
-          é o que permite trocar de celular ou recuperar tudo se os dados do navegador forem limpos.
-        </p>
-        <p class="small tnum" data-resumo style="margin-bottom:12px">Preparando…</p>
-        <button class="btn btn--primary btn--block" data-exportar>Exportar treinos</button>
-        <button class="btn btn--block" style="margin-top:8px" data-importar>Importar backup</button>
-        <input type="file" accept="application/json,.json" data-arquivo hidden>
-      </div>
+function backupBody(backupPronto, obterBackup) {
+  const corpo = node(html`
+    <div class="stack">
+      <p class="muted small" style="margin:0">
+        Seus treinos ficam salvos só neste aparelho. Exporte um arquivo de vez em quando —
+        é o que permite trocar de celular ou recuperar tudo se os dados do navegador forem limpos.
+      </p>
+      <p class="small tnum" data-resumo style="margin:0">Preparando…</p>
+      <button class="btn btn--primary btn--block" data-exportar>Exportar treinos</button>
+      <button class="btn btn--block" data-importar>Importar backup</button>
+      <input type="file" accept="application/json,.json" data-arquivo hidden>
     </div>
   `);
 
   backupPronto.then((b) => {
-    card.querySelector('[data-resumo]').textContent =
+    corpo.querySelector('[data-resumo]').textContent =
       `${b.resumo.treinos} treinos · ${b.resumo.series} séries · ${b.resumo.exercicios} exercícios`;
   });
 
-  card.querySelector('[data-exportar]').onclick = async () => {
+  corpo.querySelector('[data-exportar]').onclick = async () => {
     const b = obterBackup() || await backupPronto;
     // Num PWA instalado no iOS o <a download> nao faz nada; melhor cair direto
     // na area de transferencia do que dar a impressao de que salvou.
@@ -67,8 +82,8 @@ async function cardBackup(backupPronto, obterBackup) {
     else mostrarJson(b);
   };
 
-  const input = card.querySelector('[data-arquivo]');
-  card.querySelector('[data-importar]').onclick = () => input.click();
+  const input = corpo.querySelector('[data-arquivo]');
+  corpo.querySelector('[data-importar]').onclick = () => input.click();
 
   input.onchange = async () => {
     const file = input.files?.[0];
@@ -97,7 +112,7 @@ async function cardBackup(backupPronto, obterBackup) {
     location.hash = '#/';
   };
 
-  return card;
+  return corpo;
 }
 
 function mostrarJson(backup) {
@@ -131,7 +146,7 @@ function mostrarJson(backup) {
 function cardPreferencias(cfg) {
   const card = node(html`
     <div>
-      <h2 class="section-title">Preferências</h2>
+      <h2 class="section-title" style="margin-top:4px">Configurações</h2>
       <div class="card card__pad stack">
         <label class="field">
           <span class="field__label">Unidade de peso</span>
@@ -175,52 +190,27 @@ function cardPreferencias(cfg) {
   return card;
 }
 
-function cardExercicios() {
-  return node(html`
-    <div>
-      <h2 class="section-title">Exercícios</h2>
-      <div class="card">
-        <ul class="list">
-          <li class="list__item">
-            <a class="list__link" href="#/exercicios">
-              <div class="grow">
-                <div style="font-weight:600">Gerenciar exercícios</div>
-                <div class="muted small">Criar, renomear ou apagar exercícios da biblioteca</div>
-              </div>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  `);
-}
-
 /* ---------- Figuras ---------- */
 
 /* As fotos podem chegar a dezenas de MB no aparelho. Um cache desse tamanho
  * precisa ser visivel e reversivel — e este e o plano B para quando o download
  * automatico decidir nao rodar (conexao celular, economia de dados). */
-function cardFiguras() {
-  const card = node(html`
-    <div>
-      <h2 class="section-title">Figuras dos exercícios</h2>
-      <div class="card card__pad">
-        <p class="muted small">
-          Cada exercício tem duas fotos — posição inicial e final — que alternam para mostrar
-          o movimento. As miniaturas vêm junto com o app; as fotos grandes são baixadas na
-          primeira vez que você abre cada exercício e ficam salvas.
-        </p>
-        <p class="small tnum" data-uso style="margin:10px 0 12px">Calculando…</p>
-        <button class="btn btn--block" data-baixar>Baixar figuras para uso offline</button>
-        <button class="btn btn--block btn--ghost" style="margin-top:8px" data-apagar>
-          Apagar figuras baixadas
-        </button>
-      </div>
+function figurasBody() {
+  const corpo = node(html`
+    <div class="stack">
+      <p class="muted small" style="margin:0">
+        Cada exercício tem duas fotos — posição inicial e final — que alternam para mostrar
+        o movimento. As miniaturas vêm junto com o app; as fotos grandes são baixadas na
+        primeira vez que você abre cada exercício e ficam salvas.
+      </p>
+      <p class="small tnum" data-uso style="margin:0">Calculando…</p>
+      <button class="btn btn--block" data-baixar>Baixar figuras para uso offline</button>
+      <button class="btn btn--block btn--ghost" data-apagar>Apagar figuras baixadas</button>
     </div>
   `);
 
-  const uso = card.querySelector('[data-uso]');
-  const baixar = card.querySelector('[data-baixar]');
+  const uso = corpo.querySelector('[data-uso]');
+  const baixar = corpo.querySelector('[data-baixar]');
 
   const atualizarUso = async () => {
     try {
@@ -257,7 +247,7 @@ function cardFiguras() {
     }
   };
 
-  card.querySelector('[data-apagar]').onclick = async () => {
+  corpo.querySelector('[data-apagar]').onclick = async () => {
     const ok = await confirmSheet({
       title: 'Apagar figuras baixadas?',
       message: 'Elas voltam a ser baixadas conforme você abrir cada exercício.',
@@ -272,41 +262,7 @@ function cardFiguras() {
   };
 
   atualizarUso();
-  return card;
-}
-
-/* ---------- Sobre ---------- */
-
-function cardSobre() {
-  const instalado = isStandalone();
-  const dicaInstalacao = isIOS()
-    ? 'No Safari: Compartilhar → Adicionar à Tela de Início.'
-    : 'No menu do navegador: Instalar app.';
-
-  return node(html`
-    <div>
-      <h2 class="section-title">Sobre</h2>
-      <div class="card card__pad">
-        <p class="small" style="margin-bottom:10px">
-          <b>1RM estimado</b> é a carga que você levantaria uma única vez, calculada pela fórmula de
-          Epley: <span class="tnum">peso × (1 + reps ÷ 30)</span>. É o número que permite comparar
-          8×60 ${db.settings().unidade} com 5×70 ${db.settings().unidade} e saber se você evoluiu.
-        </p>
-        <p class="small" style="margin-bottom:10px">
-          <b>Volume</b> é peso × repetições somado. Séries marcadas como aquecimento ficam fora
-          dos recordes e dos gráficos.
-        </p>
-        <p class="muted small" style="margin-bottom:10px">
-          Fotos e instruções dos exercícios vêm do free-exercise-db, de domínio público.
-        </p>
-        <p class="muted small" style="margin-bottom:0">
-          ${instalado
-            ? 'App instalado na tela de início. Os dados ficam protegidos da limpeza automática do navegador.'
-            : `Ainda não instalado. ${dicaInstalacao}`}
-        </p>
-      </div>
-    </div>
-  `);
+  return corpo;
 }
 
 /* ---------- Apagar tudo ---------- */
