@@ -11,8 +11,8 @@
   --border: #dde2ea;
   --text: #14171d;
   --muted: #5f6875;
-  --accent: #d24a00;
-  --accent-soft: #fdeee5;
+  --accent: #0e7c8c;
+  --accent-soft: #e1f5f7;
   --on-accent: #ffffff;
   --pr: #a35a00;
   --pr-soft: #fdf0d8;
@@ -41,9 +41,9 @@
     --border: #2b313d;
     --text: #e8eaef;
     --muted: #98a1b0;
-    --accent: #ff7a1a;
-    --accent-soft: #2a1c11;
-    --on-accent: #14171d;
+    --accent: #2dd4e0;
+    --accent-soft: #0f2a2d;
+    --on-accent: #06282c;
     --pr: #f5b942;
     --pr-soft: #2a2211;
     --danger: #ff6b6b;
@@ -59,9 +59,9 @@
   --border: #2b313d;
   --text: #e8eaef;
   --muted: #98a1b0;
-  --accent: #ff7a1a;
-  --accent-soft: #2a1c11;
-  --on-accent: #14171d;
+  --accent: #2dd4e0;
+  --accent-soft: #0f2a2d;
+  --on-accent: #06282c;
   --pr: #f5b942;
   --pr-soft: #2a2211;
   --danger: #ff6b6b;
@@ -489,16 +489,13 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .fab-treino:active { transform: translateX(-50%) translateY(1px); }
 .fab-treino[disabled] { opacity: .6; pointer-events: none; }
 .fab-treino svg { width: 26px; height: 26px; }
-.fab-treino.is-ativo::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--success);
-  border: 2px solid var(--bg);
+.fab-treino__icone--ativo { display: none; }
+.fab-treino.is-ativo .fab-treino__icone--iniciar { display: none; }
+.fab-treino.is-ativo .fab-treino__icone--ativo { display: block; }
+.fab-treino.is-ativo { background: var(--success); animation: fab-pulso 1.8s ease-in-out infinite; }
+@keyframes fab-pulso {
+  0%, 100% { box-shadow: var(--shadow), 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); }
+  50% { box-shadow: var(--shadow), 0 0 0 9px color-mix(in srgb, var(--success) 0%, transparent); }
 }
 
 /* ---------- Bottom sheet ---------- */

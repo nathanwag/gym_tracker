@@ -17,7 +17,7 @@ import zlib
 # Cores alinhadas ao tema escuro do app (css/styles.css).
 BG_TOP = (0x1D, 0x22, 0x2C)
 BG_BOTTOM = (0x0D, 0x0F, 0x14)
-GLYPH = (0xFF, 0x7A, 0x1A)
+GLYPH = (0x2D, 0xD4, 0xE0)
 
 # Halteres, em fracoes do lado do icone: (cx, cy, meia-largura, meia-altura, raio).
 # O conjunto ocupa 65% da largura, cabendo na zona segura de 80% exigida pelos
