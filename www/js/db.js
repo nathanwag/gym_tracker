@@ -242,6 +242,7 @@ export async function startWorkout() {
     finalizadoEm: null,
     notas: '',
     exerciseIds: [],
+    concluidoIds: [],
   };
   const id = await tx('workouts', 'readwrite', (s) => req(s.add(registro)));
   return { ...registro, id };

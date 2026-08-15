@@ -43,7 +43,9 @@ export async function render(view) {
     // historico de cada exercicio sao derivados daqui por filtro.
     todasSeries,
     editando: new Map(),
-    colapsados: new Set(),
+    // Persistido no treino (concluidoIds) pra sobreviver a sair e voltar pra
+    // sessao — sem isso todo exercicio reabria ao trocar de tela.
+    colapsados: new Set(workout.concluidoIds || []),
   };
 
   const top = setTop({
@@ -90,6 +92,14 @@ export async function render(view) {
  *  sempre que um exercicio muda de lado (colapsa/reabre) ou e adicionado/
  *  removido, porque isso move o item entre dois containers diferentes, e nao
  *  da pra fazer isso com um replaceWith pontual como o rebuildCard faz. */
+/** Grava quais exercicios estao concluidos no proprio treino, em segundo
+ *  plano — a lista na tela ja foi redesenhada, isto so garante que sair e
+ *  voltar pra sessao (ou reabrir o app) preserva o estado. */
+function persistColapsados() {
+  ctx.workout.concluidoIds = [...ctx.colapsados];
+  db.updateWorkout(ctx.workout.id, { concluidoIds: ctx.workout.concluidoIds });
+}
+
 function renderLista() {
   const listaEl = document.querySelector('[data-lista]');
   const concluidosWrap = document.querySelector('[data-concluidos-wrap]');
@@ -203,6 +213,7 @@ function cardExercicio(exId) {
   cabecalho.querySelector('[data-colapsar]').onclick = () => {
     ctx.colapsados.add(exId);
     renderLista();
+    persistColapsados();
   };
   cabecalho.querySelector('[data-detalhe]').onclick = () => { location.hash = `#/exercicios/${exId}`; };
   cabecalho.querySelector('[data-remover]').onclick = () => removerExercicio(exId, ex.nome);
@@ -239,6 +250,7 @@ function itemConcluido(exId) {
   li.querySelector('[data-reabrir]').onclick = () => {
     ctx.colapsados.delete(exId);
     renderLista();
+    persistColapsados();
   };
   return li;
 }
@@ -401,6 +413,7 @@ async function removerExercicio(exId, nome) {
   ctx.todasSeries = ctx.todasSeries.filter((s) => !(s.workoutId === ctx.workout.id && s.exerciseId === exId));
   ctx.colapsados.delete(exId);
   renderLista();
+  persistColapsados();
   atualizarResumo();
 }
 
