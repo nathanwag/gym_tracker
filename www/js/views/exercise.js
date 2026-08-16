@@ -36,9 +36,7 @@ export async function renderList(view) {
   let modo = temHistorico ? 'meus' : 'todos';
   let busca = '';
 
-  const botaoNovo = '<button class="btn btn--sm" data-novo>Novo</button>';
-  setTop({ title: 'Exercícios', actions: botaoNovo });
-  document.querySelector('[data-novo]').onclick = () => formularioExercicio();
+  setTop({ title: 'Exercícios', barra: false });
 
   const root = node(html`
     <div class="stack">
@@ -51,9 +49,13 @@ export async function renderList(view) {
       <a class="btn btn--block btn--ghost" href="#/catalogo">
         ${raw(ICON.plus)} Buscar no catálogo (646 exercícios)
       </a>
+      <button class="btn btn--block btn--ghost" data-novo>
+        ${raw(ICON.plus)} Criar exercício
+      </button>
       <div data-lista></div>
     </div>
   `);
+  root.querySelector('[data-novo]').onclick = () => formularioExercicio();
 
   const lista = root.querySelector('[data-lista]');
 

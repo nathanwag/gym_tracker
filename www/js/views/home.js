@@ -8,7 +8,7 @@ import {
 } from '../ui.js';
 
 export async function render(view) {
-  setTop({ title: 'Treino' });
+  setTop({ title: 'Treino', barra: false });
 
   const [ativo, treinos, series, exercicios] = await Promise.all([
     db.getActiveWorkout(),

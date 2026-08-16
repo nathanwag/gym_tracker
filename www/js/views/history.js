@@ -15,7 +15,7 @@ const MES_ANO = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric
    ========================================================================== */
 
 export async function render(view) {
-  setTop({ title: 'Histórico' });
+  setTop({ title: 'Histórico', barra: false });
 
   const [treinos, series] = await Promise.all([db.listWorkouts(), db.listAllSets()]);
   const unidade = db.settings().unidade;

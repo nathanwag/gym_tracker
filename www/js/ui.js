@@ -50,10 +50,14 @@ export function node(markup) {
 /* ---------- Topbar ---------- */
 
 /**
- * @param {{title: string, back?: string|null, actions?: string}} opts
+ * @param {{title: string, back?: string|null, actions?: string, barra?: boolean}} opts
  *   back = rota (hash) do botao voltar; ausente esconde o botao.
+ *   barra = false esconde a barra inteira (usado nas 4 abas raiz, onde ela so
+ *   repetiria o nome que a tabbar ja mostra); o titulo da aba do navegador
+ *   continua sendo definido normalmente.
  */
-export function setTop({ title, back = null, actions = '' }) {
+export function setTop({ title, back = null, actions = '', barra = true }) {
+  const topbarEl = $('#topbar');
   const titleEl = $('#topbar-title');
   const backEl = $('#topbar-back');
   const actionsEl = $('#topbar-actions');
@@ -63,6 +67,10 @@ export function setTop({ title, back = null, actions = '' }) {
   backEl.hidden = !back;
   backEl.onclick = back ? () => { location.hash = back; } : null;
   actionsEl.innerHTML = actions;
+
+  topbarEl.hidden = !barra;
+  $('#view').classList.toggle('view--sem-topbar', !barra);
+
   return actionsEl;
 }
 

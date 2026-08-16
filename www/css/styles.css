@@ -163,6 +163,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
     calc(var(--tabbar-h) + var(--safe-bottom) + 24px);
   outline: none;
 }
+.view--sem-topbar { padding-top: calc(var(--safe-top) + 12px); }
 
 .stack > * + * { margin-top: 12px; }
 
