@@ -112,6 +112,22 @@ CATEGORIA_PT = {
     "olympic weightlifting": "levantamento olímpico",
 }
 
+# Variantes redundantes: mesma articulacao/postura, equipamento e so o que se
+# segura (o app ja registra peso livre, entao nao muda nada manter mais de
+# uma entrada por movimento). Decisao editorial item a item, nao um filtro de
+# campo como os de cima.
+SLUGS_REDUNDANTES = {
+    "rocking-standing-calf-raise",  # Panturrilha em pé com balanço
+    "standing-barbell-calf-raise",  # Panturrilha em pé com barra
+    "standing-dumbbell-calf-raise",  # Panturrilha em pé com halteres
+    "cable-shrugs",  # Encolhimento de ombros na polia
+    "dumbbell-shrug",  # Encolhimento de ombros com halteres
+    "smith-machine-behind-the-back-shrug",  # Encolhimento de ombros por trás no Smith
+    "cable-wrist-curl",  # Rosca de punho na polia
+    "palms-down-dumbbell-wrist-curl-over-a-bench",  # Rosca de punho palmas p/ baixo com halteres
+    "palms-up-dumbbell-wrist-curl-over-a-bench",  # Rosca de punho palmas p/ cima com halteres
+}
+
 
 # --------------------------------------------------------------------------
 # Utilidades
@@ -204,6 +220,8 @@ def indexar(upstream: list) -> dict:
         # a chave real (images[0] = "<Id>/0.jpg").
         src_id = ex["images"][0].split("/")[0]
         slug = criar_slug(src_id)
+        if slug in SLUGS_REDUNDANTES:
+            continue
         if slug in por_slug:
             sys.exit(
                 f"Colisao de slug: '{src_id}' e '{por_slug[slug]['srcId']}' viram '{slug}'.\n"
