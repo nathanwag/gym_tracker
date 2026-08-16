@@ -1,6 +1,6 @@
-/* Catalogo de exercicios: 675 entradas vindas do free-exercise-db (alongamento,
- * cardio e pliometria ficam fora — o app registra carga, e essas categorias
- * nao tem carga pra registrar).
+/* Catalogo de exercicios: 655 entradas vindas do free-exercise-db (alongamento,
+ * cardio, pliometria e elastico ficam fora — o app registra carga, e essas
+ * categorias nao tem carga pra registrar).
  *
  * Unica camada que le www/data/. Assim como db.js isola o IndexedDB, este
  * modulo isola os dados estaticos — nenhuma view abre um .json direto.

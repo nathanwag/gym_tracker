@@ -195,6 +195,10 @@ def indexar(upstream: list) -> dict:
         # halteres/bola medicinal sai junto por simplicidade.
         if ex.get("category") in ("stretching", "cardio", "plyometrics"):
             continue
+        # Elastico nao tem peso fixo pra registrar (resistencia varia por cor/
+        # estiramento, nao por kg).
+        if ex.get("equipment") == "bands":
+            continue
 
         # O upstream nao traz `id` no dist/; o nome do diretorio das imagens e
         # a chave real (images[0] = "<Id>/0.jpg").
