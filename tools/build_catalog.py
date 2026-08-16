@@ -188,10 +188,12 @@ def indexar(upstream: list) -> dict:
     """Slug -> registro do upstream, abortando em colisao."""
     por_slug = {}
     for ex in upstream:
-        # O app registra carga (peso x repeticoes); alongamento nao tem carga
-        # pra registrar, entao fica fora do catalogo. Filtrado aqui (nao so em
-        # etapa_dados) pra download/conversao de imagem tambem pularem.
-        if ex.get("category") == "stretching":
+        # O app registra carga (peso x repeticoes); estas categorias nao tem
+        # carga pra registrar, entao ficam fora do catalogo. Filtrado aqui
+        # (nao so em etapa_dados) pra download/conversao de imagem tambem
+        # pularem. Pliometria e maioria peso do corpo; a minoria com
+        # halteres/bola medicinal sai junto por simplicidade.
+        if ex.get("category") in ("stretching", "cardio", "plyometrics"):
             continue
 
         # O upstream nao traz `id` no dist/; o nome do diretorio das imagens e
