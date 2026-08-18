@@ -11,7 +11,7 @@ import * as db from '../db.js';
 import { evaluatePR, prSetIds, setE1rm, workoutSummary } from '../models.js';
 import { GRUPOS } from '../seed.js';
 import * as catalogo from '../catalog.js';
-import { thumbHtml, prefetchFotos } from '../media.js';
+import { thumbHtml } from '../media.js';
 import {
   setTop, html, raw, node, ICON, createStepper, toast, openSheet, closeSheet,
   confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, buzz, semAcento,
@@ -557,13 +557,7 @@ async function mostrarCatalogo(alvo, termo) {
       const item = novos.find((i) => i.slug === botao.dataset.slug);
       // Um toque faz tudo: entra na biblioteca, entra no treino e ja busca as
       // fotos com a rede que houver agora.
-      const criado = await db.addExercise({
-        nome: item.nome,
-        grupoMuscular: item.grupo,
-        slug: item.slug,
-        personalizado: false,
-      });
-      prefetchFotos(item.slug);
+      const criado = await db.addExercicioDoCatalogo(item);
       ctx.lista = await db.listExercises();
       ctx.exercicios = new Map(ctx.lista.map((e) => [e.id, e]));
       await adicionarExercicio(criado.id);

@@ -27,3 +27,7 @@ Thumbs.db
 # Workspace de scratch do Superpowers (ledger, briefs, reports de review) —
 # nunca faz parte do codigo, so existe durante a execucao de um plano.
 .superpowers/
+
+# Specs/plans gerados pelo skill Superpowers durante sessoes de trabalho —
+# rascunho de processo, nao documentacao do produto.
+docs/superpowers/

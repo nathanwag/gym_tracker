@@ -2,6 +2,7 @@
 
 import * as db from '../db.js';
 import { prepararBackup, exportar, lerArquivo, restaurar } from '../backup.js';
+import { MEDIA_CACHE } from '../media.js';
 import {
   setTop, html, raw, node, toast, openSheet, confirmSheet, isIOS, isStandalone, ICON,
 } from '../ui.js';
@@ -214,7 +215,7 @@ function figurasBody() {
 
   const atualizarUso = async () => {
     try {
-      const cache = await caches.open('treino-midia');
+      const cache = await caches.open(MEDIA_CACHE);
       const total = (await cache.keys()).length;
       const est = await navigator.storage?.estimate?.().catch(() => null);
       const mb = est?.usage ? ` · ${(est.usage / 1024 / 1024).toFixed(1)} MB no aparelho` : '';
@@ -255,7 +256,7 @@ function figurasBody() {
       danger: true,
     });
     if (!ok) return;
-    await caches.delete('treino-midia');
+    await caches.delete(MEDIA_CACHE);
     await db.setSetting('midiaPrecacheVersao', '');
     toast('Figuras apagadas.');
     atualizarUso();

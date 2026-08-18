@@ -11,7 +11,7 @@ import * as catalogo from '../catalog.js';
 import { thumbHtml, criarAnimacao, prefetchFotos } from '../media.js';
 import {
   setTop, html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, confirmSheet,
-  fmtNum, fmtRelativeDay, fmtDate, semAcento, refresh,
+  fmtNum, fmtRelativeDay, fmtDate, semAcento, refresh, wireSegmented,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -123,15 +123,10 @@ export async function renderList(view) {
     desenhar();
   });
 
-  for (const botao of root.querySelectorAll('[data-modo]')) {
-    botao.onclick = () => {
-      modo = botao.dataset.modo;
-      for (const b of root.querySelectorAll('[data-modo]')) {
-        b.setAttribute('aria-pressed', String(b.dataset.modo === modo));
-      }
-      desenhar();
-    };
-  }
+  wireSegmented(root, (botao) => {
+    modo = botao.dataset.modo;
+    desenhar();
+  });
 
   desenhar();
   view.append(root);
@@ -298,14 +293,7 @@ function secaoGrafico(resumos, unidade) {
     }
   };
 
-  for (const botao of card.querySelectorAll('[data-m]')) {
-    botao.onclick = () => {
-      for (const b of card.querySelectorAll('[data-m]')) {
-        b.setAttribute('aria-pressed', String(b === botao));
-      }
-      desenhar(botao.dataset.m);
-    };
-  }
+  wireSegmented(card, (botao) => desenhar(botao.dataset.m));
 
   desenhar('e1rm');
   return card;

@@ -21,6 +21,9 @@ const VERSION = 'treino-v4';
 // permanente: filtrar por duas constantes soltas e o tipo de linha que alguem
 // "simplifica" e volta a apagar as fotos.
 const APP_CACHE = VERSION;
+// js/media.js guarda uma copia desta constante para o lado da pagina (service
+// worker classico, sem `type: 'module'`, nao pode importar daqui) — as duas
+// strings precisam continuar iguais.
 const MEDIA_CACHE = 'treino-midia';
 const PERMANENTES = new Set([MEDIA_CACHE]);
 

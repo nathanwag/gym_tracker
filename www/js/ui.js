@@ -313,3 +313,17 @@ export function createStepper({ label, value = 0, step = 1, min = 0, max = 9999,
 
   return { el: wrap, get, set, focus: () => input.focus() };
 }
+
+/** Liga um grupo `.segmented` (N botoes, um ativo): clique troca o
+ *  `aria-pressed` de todos e chama `onChange(botao)` com o botao escolhido —
+ *  o dataset de cada botao (`data-modo`, `data-m`, ...) fica por conta de
+ *  quem chama, cada grupo usa o atributo que faz sentido pra ele. */
+export function wireSegmented(container, onChange) {
+  const botoes = container.querySelectorAll('.segmented__btn');
+  for (const botao of botoes) {
+    botao.onclick = () => {
+      for (const b of botoes) b.setAttribute('aria-pressed', String(b === botao));
+      onChange(botao);
+    };
+  }
+}

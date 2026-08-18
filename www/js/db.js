@@ -12,6 +12,7 @@
 
 import { slugPorNome } from './seed.js';
 import { normalizarNome } from './text.js';
+import { prefetchFotos } from './media.js';
 
 const DB_NAME = 'treino';
 // v2: campo `slug` no exercicio, ligando-o as figuras de www/img/ex/.
@@ -205,6 +206,16 @@ export async function addExercise({ nome, grupoMuscular, slug = null, personaliz
 
   exerciseCache = null;
   return resultado;
+}
+
+/** Cria (ou reaproveita, se o slug ja existir) um exercicio a partir de um
+ *  item do catalogo, e ja aquece o cache das fotos dele. */
+export async function addExercicioDoCatalogo(item, grupoMuscular = item.grupo) {
+  const criado = await addExercise({
+    nome: item.nome, grupoMuscular, slug: item.slug, personalizado: false,
+  });
+  prefetchFotos(item.slug);
+  return criado;
 }
 
 export async function updateExercise(id, patch) {

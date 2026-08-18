@@ -7,7 +7,7 @@
 import * as catalogo from '../catalog.js';
 import * as db from '../db.js';
 import { GRUPOS } from '../seed.js';
-import { prefetchFotos, thumbHtml, criarAnimacao } from '../media.js';
+import { thumbHtml, criarAnimacao } from '../media.js';
 import {
   ICON, ICON_GRUPO, html, node, raw, setTop, toast, refresh,
 } from '../ui.js';
@@ -206,15 +206,9 @@ export async function renderDetail(view, slug) {
 
     acao.querySelector('[data-adicionar]').onclick = async () => {
       const grupoMuscular = acao.querySelector('[data-grupo]').value;
-      const criado = await db.addExercise({
-        nome: item.nome,
-        grupoMuscular,
-        slug: item.slug,
-        personalizado: false,
-      });
       // Baixa as fotos grandes agora, com a rede que houver: na academia pode
       // nao haver.
-      prefetchFotos(item.slug);
+      const criado = await db.addExercicioDoCatalogo(item, grupoMuscular);
       toast(criado.jaExistia ? 'Já estava na sua biblioteca.' : `${item.nome} adicionado.`);
       refresh();
     };

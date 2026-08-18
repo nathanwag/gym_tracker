@@ -12,6 +12,11 @@
 
 import { ICON_GRUPO, html, raw } from './ui.js';
 
+// Precisa bater com MEDIA_CACHE em sw.js — o service worker e classico
+// (sem `type: 'module'`) e nao pode importar daqui, entao a constante existe
+// duplicada nos dois lugares de proposito.
+export const MEDIA_CACHE = 'treino-midia';
+
 // Caminho relativo ao documento, nao a rota: o `#/catalogo/x` da URL nao
 // participa da resolucao, entao isto funciona igual no GitHub Pages
 // (/usuario/repo/) e na origem local do WebView nativo.
