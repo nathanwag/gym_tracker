@@ -28,7 +28,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 CATALOGO = RAIZ / "www" / "data" / "catalogo.json"
-COMOFAZER = RAIZ / "www" / "data" / "comofazer.json"
+INSTRUCOES = RAIZ / "www" / "data" / "instrucoes.json"
 DADOS = RAIZ / "tools" / "data"
 LOTES = DADOS / "lotes"
 ENTRADA = LOTES / "entrada"
@@ -195,15 +195,15 @@ def validar_nomes(dados: dict, esperados: set, ja_usados: dict, avisos: list = N
 
 def pendentes():
     catalogo = json.loads(CATALOGO.read_text(encoding="utf-8"))
-    comofazer = json.loads(COMOFAZER.read_text(encoding="utf-8"))
+    instrucoes = json.loads(INSTRUCOES.read_text(encoding="utf-8"))
     nomes = [c for c in catalogo if not c["traduzido"]]
     passos = [c for c in catalogo
-              if comofazer.get(c["slug"], {}).get("idioma") == "en"]
-    return catalogo, comofazer, nomes, passos
+              if instrucoes.get(c["slug"], {}).get("idioma") == "en"]
+    return catalogo, instrucoes, nomes, passos
 
 
 def cmd_criar(_args):
-    catalogo, comofazer, nomes, passos = pendentes()
+    catalogo, instrucoes, nomes, passos = pendentes()
     ENTRADA.mkdir(parents=True, exist_ok=True)
     SAIDA.mkdir(parents=True, exist_ok=True)
 
@@ -232,7 +232,7 @@ def cmd_criar(_args):
         (ENTRADA / f"passos_{n:02d}.json").write_text(json.dumps(
             [{"slug": c["slug"], "nomeEn": c["nomeEn"], "grupo": c["grupo"],
               "equipamento": c["equipamento"],
-              "instrucoesEn": comofazer[c["slug"]]["passos"]} for c in lote],
+              "instrucoesEn": instrucoes[c["slug"]]["passos"]} for c in lote],
             ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     n_nomes = -(-len(nomes) // TAM_NOMES)
@@ -319,7 +319,7 @@ def cmd_merge(args):
     # Merge preservando o que ja existe: os 74 escritos a mao sao a referencia
     # de estilo e nao podem ser sobrescritos.
     for caminho, novos in ((DADOS / "nomes_pt.json", bons["nomes"]),
-                           (DADOS / "comofazer_pt.json", bons["passos"])):
+                           (DADOS / "instrucoes_pt.json", bons["passos"])):
         if not novos:
             continue
         atual = json.loads(caminho.read_text(encoding="utf-8")) if caminho.exists() else {}
@@ -341,7 +341,7 @@ def cmd_refazer(args):
 
     Substitui a entrada e apaga a saída correspondente, para o ciclo
     criar -> agente -> validar -> merge poder recomecar limpo."""
-    catalogo, comofazer, _, _ = pendentes()
+    catalogo, instrucoes, _, _ = pendentes()
     porslug = {c["slug"]: c for c in catalogo}
     _, ruins, _ = _avaliar()
 
@@ -368,7 +368,7 @@ def cmd_refazer(args):
                 item = {"slug": s, "nomeEn": c["nomeEn"], "grupo": c["grupo"],
                         "equipamento": c["equipamento"]}
                 if tipo == "passos":
-                    item["instrucoesEn"] = comofazer[s]["passos"]
+                    item["instrucoesEn"] = instrucoes[s]["passos"]
                 itens.append(item)
             (ENTRADA / nome).write_text(
                 json.dumps(itens, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
@@ -384,14 +384,14 @@ def cmd_refazer(args):
 
 
 def cmd_amostra(args):
-    catalogo, comofazer, _, _ = pendentes()
+    catalogo, instrucoes, _, _ = pendentes()
     porslug = {c["slug"]: c for c in catalogo}
-    pt = [s for s, v in comofazer.items() if v["idioma"] == "pt"]
+    pt = [s for s, v in instrucoes.items() if v["idioma"] == "pt"]
     random.seed(args.semente)
     for slug in random.sample(pt, min(args.n, len(pt))):
         c = porslug[slug]
         print(f"\n{c['nome']}   ({c['nomeEn']})")
-        for p in comofazer[slug]["passos"]:
+        for p in instrucoes[slug]["passos"]:
             print(f"   • {p}")
 
 

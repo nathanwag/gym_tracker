@@ -304,11 +304,11 @@ def carregar_traducoes() -> dict:
     return json.loads(caminho.read_text(encoding="utf-8"))
 
 
-def carregar_comofazer_pt() -> dict:
+def carregar_instrucoes_pt() -> dict:
     """Passo a passo escrito a mao em portugues, por slug.
 
     Chaves comecadas com _ sao comentarios do proprio arquivo."""
-    caminho = DADOS / "comofazer_pt.json"
+    caminho = DADOS / "instrucoes_pt.json"
     if not caminho.exists():
         return {}
     bruto = json.loads(caminho.read_text(encoding="utf-8"))
@@ -317,8 +317,8 @@ def carregar_comofazer_pt() -> dict:
 
 def etapa_dados(por_slug: dict, forcar: bool):
     traducoes = carregar_traducoes()
-    passos_pt = carregar_comofazer_pt()
-    catalogo, comofazer, faltando = [], {}, []
+    passos_pt = carregar_instrucoes_pt()
+    catalogo, instrucoes, faltando = [], {}, []
 
     for slug in sorted(por_slug):
         ex = por_slug[slug]["ex"]
@@ -352,9 +352,9 @@ def etapa_dados(por_slug: dict, forcar: bool):
         # O portugues escrito a mao ganha do texto original. Quem nao tem
         # versao em PT fica em ingles e a tela mostra o selo EN.
         if slug in passos_pt:
-            comofazer[slug] = {"idioma": "pt", "passos": passos_pt[slug]}
+            instrucoes[slug] = {"idioma": "pt", "passos": passos_pt[slug]}
         elif ex.get("instructions"):
-            comofazer[slug] = {"idioma": "en", "passos": ex["instructions"]}
+            instrucoes[slug] = {"idioma": "en", "passos": ex["instructions"]}
 
     # O manifesto e o que o app compara para decidir se precisa pre-baixar as
     # figuras; a versao muda sozinha quando o conjunto de slugs muda.
@@ -365,13 +365,13 @@ def etapa_dados(por_slug: dict, forcar: bool):
 
     mudou = sum([
         escrever_json(SAIDA_DADOS / "catalogo.json", catalogo, forcar),
-        escrever_json(SAIDA_DADOS / "comofazer.json", comofazer, forcar),
+        escrever_json(SAIDA_DADOS / "instrucoes.json", instrucoes, forcar),
         escrever_json(SAIDA_IMG / "manifest.json", manifesto, forcar),
     ])
 
-    em_pt = sum(1 for v in comofazer.values() if v["idioma"] == "pt")
+    em_pt = sum(1 for v in instrucoes.values() if v["idioma"] == "pt")
     print(f"dados: {len(catalogo)} exercicios, {mudou} de 3 arquivos atualizados")
-    print(f"  passo a passo: {em_pt} em portugues, {len(comofazer) - em_pt} em ingles")
+    print(f"  passo a passo: {em_pt} em portugues, {len(instrucoes) - em_pt} em ingles")
 
     if faltando:
         print(f"  {len(faltando)} nomes sem traducao (mostrados em ingles com selo EN)")

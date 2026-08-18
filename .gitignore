@@ -7,7 +7,7 @@ tools/.cache/
 __pycache__/
 
 # Entrada e saida bruta dos lotes de traducao. O que vale fica em
-# tools/data/nomes_pt.json e tools/data/comofazer_pt.json, depois do merge.
+# tools/data/nomes_pt.json e tools/data/instrucoes_pt.json, depois do merge.
 tools/data/lotes/
 
 # Saidas de build dos projetos nativos. As pastas android/ e ios/ em si devem

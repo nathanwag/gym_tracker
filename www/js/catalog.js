@@ -18,7 +18,7 @@
 import { normalizarNome } from './text.js';
 
 let catalogoPromise = null;
-let comofazerPromise = null;
+let instrucoesPromise = null;
 let porSlug = null;
 
 async function carregarJson(caminho) {
@@ -66,13 +66,13 @@ export async function get(slug) {
 
 /** Passo a passo. Fica em arquivo separado porque so o detalhe usa, e junta-lo
  *  ao catalogo faria toda busca pagar 600 KB a mais. */
-export async function comoFazer(slug) {
-  if (!comofazerPromise) {
-    comofazerPromise = carregarJson('./data/comofazer.json').catch((erro) => {
-      comofazerPromise = null;
+export async function instrucoes(slug) {
+  if (!instrucoesPromise) {
+    instrucoesPromise = carregarJson('./data/instrucoes.json').catch((erro) => {
+      instrucoesPromise = null;
       throw erro;
     });
   }
-  const todos = await comofazerPromise;
+  const todos = await instrucoesPromise;
   return todos[slug] || null;
 }

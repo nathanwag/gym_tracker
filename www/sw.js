@@ -56,7 +56,7 @@ const ASSETS = [
   // minutos, e se o install falhar o app perde o offline inteiro. Elas sao
   // baixadas depois, em lotes, a pedido da pagina (ver 'precache-midia').
   './data/catalogo.json',
-  './data/comofazer.json',
+  './data/instrucoes.json',
   './img/ex/manifest.json',
   './icons/icon-180.png',
   './icons/icon-192.png',

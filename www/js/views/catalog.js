@@ -222,17 +222,17 @@ export async function renderDetail(view, slug) {
   }
 
   // Passo a passo
-  const comofazer = await catalogo.comoFazer(slug).catch(() => null);
-  if (comofazer?.passos?.length) {
+  const instrucoes = await catalogo.instrucoes(slug).catch(() => null);
+  if (instrucoes?.passos?.length) {
     root.append(node(html`
       <div class="card card__pad">
         <h2 class="section-title" style="margin-top:0">
           Como fazer
-          ${comofazer.idioma === 'en'
+          ${instrucoes.idioma === 'en'
             ? raw('<span class="badge badge--en" title="ainda sem tradução">EN</span>')
             : ''}
         </h2>
-        <ol class="passos">${raw(comofazer.passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
+        <ol class="passos">${raw(instrucoes.passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
       </div>
     `));
   }

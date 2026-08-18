@@ -221,7 +221,7 @@ export async function renderDetail(view, exId) {
   // Depois do append: o passo a passo vem de um arquivo separado e nao deve
   // atrasar o resto da tela, que e o motivo principal de estar aqui.
   if (exercicio.slug) {
-    catalogo.comoFazer(exercicio.slug)
+    catalogo.instrucoes(exercicio.slug)
       .then((info) => {
         if (!info?.passos?.length || !root.isConnected) return;
         root.append(node(html`
