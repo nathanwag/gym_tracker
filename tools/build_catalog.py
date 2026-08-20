@@ -82,7 +82,7 @@ MUSCULO_GRUPO = {
     "glutes": "Glúteos",
     "calves": "Panturrilha",
     "abdominals": "Abdômen",
-    "neck": "Outros",
+    "neck": "Pescoço",
 }
 
 EQUIPAMENTO_PT = {

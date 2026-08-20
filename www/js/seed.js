@@ -20,6 +20,7 @@ export const GRUPOS = [
   'Peito',
   'Costas',
   'Ombros',
+  'Pescoço',
   'Bíceps',
   'Tríceps',
   'Pernas',
