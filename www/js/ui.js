@@ -233,6 +233,7 @@ export const ICON_GRUPO = {
   'Peito': corpo('M9.2 9.1h5.6'),
   'Costas': corpo('M9.4 10.6h5.2M12 8.6v4'),
   'Ombros': corpo('M8.4 8.2L12 7l3.6 1.2'),
+  'Pescoço': corpo('M12 4.2v2.2'),
   'Bíceps': corpo('M6.6 9.4L7 12.4'),
   'Tríceps': corpo('M17 12.4l.4-3'),
   'Pernas': corpo('M10.1 21.4l1-4M13.9 21.4l-1-4'),
