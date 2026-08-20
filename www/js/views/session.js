@@ -9,12 +9,11 @@
 
 import * as db from '../db.js';
 import { evaluatePR, prSetIds, setE1rm, workoutSummary } from '../models.js';
-import { GRUPOS } from '../seed.js';
-import * as catalogo from '../catalog.js';
 import { thumbHtml } from '../media.js';
+import { openExercisePicker } from './exercise-picker.js';
 import {
-  setTop, html, raw, node, ICON, createStepper, toast, openSheet, closeSheet,
-  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, buzz, semAcento,
+  setTop, html, raw, node, ICON, createStepper, toast,
+  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, buzz,
 } from '../ui.js';
 
 /** Estado da tela. Recriado a cada render; as telas nao compartilham estado. */
@@ -98,6 +97,16 @@ export async function render(view) {
 function persistColapsados() {
   ctx.workout.concluidoIds = [...ctx.colapsados];
   db.updateWorkout(ctx.workout.id, { concluidoIds: ctx.workout.concluidoIds });
+}
+
+/** Marca (ou desmarca) um exercicio como concluido: atualiza o set em
+ *  memoria, redesenha as duas listas e persiste — os tres passos que toda
+ *  mudanca de lado precisa, num lugar so. */
+function definirColapso(exId, colapsado) {
+  if (colapsado) ctx.colapsados.add(exId);
+  else ctx.colapsados.delete(exId);
+  renderLista();
+  persistColapsados();
 }
 
 function renderLista() {
@@ -210,11 +219,7 @@ function cardExercicio(exId) {
       <button class="icon-btn" data-remover aria-label="Remover ${ex.nome} do treino">${raw(ICON.trash)}</button>
     </div>
   `);
-  cabecalho.querySelector('[data-colapsar]').onclick = () => {
-    ctx.colapsados.add(exId);
-    renderLista();
-    persistColapsados();
-  };
+  cabecalho.querySelector('[data-colapsar]').onclick = () => definirColapso(exId, true);
   cabecalho.querySelector('[data-detalhe]').onclick = () => { location.hash = `#/exercicios/${exId}`; };
   cabecalho.querySelector('[data-remover]').onclick = () => removerExercicio(exId, ex.nome);
   card.append(cabecalho);
@@ -247,11 +252,7 @@ function itemConcluido(exId) {
       </button>
     </li>
   `);
-  li.querySelector('[data-reabrir]').onclick = () => {
-    ctx.colapsados.delete(exId);
-    renderLista();
-    persistColapsados();
-  };
+  li.querySelector('[data-reabrir]').onclick = () => definirColapso(exId, false);
   return li;
 }
 
@@ -411,9 +412,7 @@ async function removerExercicio(exId, nome) {
   await db.removeExerciseFromWorkout(ctx.workout.id, exId);
   ctx.workout.exerciseIds = (ctx.workout.exerciseIds || []).filter((id) => id !== exId);
   ctx.todasSeries = ctx.todasSeries.filter((s) => !(s.workoutId === ctx.workout.id && s.exerciseId === exId));
-  ctx.colapsados.delete(exId);
-  renderLista();
-  persistColapsados();
+  definirColapso(exId, false);
   atualizarResumo();
 }
 
@@ -452,180 +451,25 @@ async function finalizar() {
 /* ---------- Seletor de exercicios ---------- */
 
 function abrirSeletor() {
-  const jaNoTreino = new Set(ctx.workout.exerciseIds || []);
-
-  // Mais usados recentemente primeiro: na pratica sao sempre os mesmos 10-15
-  // exercicios, e rolar a lista inteira toda vez seria trabalhoso.
-  const usoRecente = new Map();
-  for (const s of ctx.todasSeries) usoRecente.set(s.exerciseId, Math.max(usoRecente.get(s.exerciseId) || 0, s.id));
-  const recentes = [...usoRecente.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([id]) => ctx.exercicios.get(id))
-    .filter((e) => e && !jaNoTreino.has(e.id))
-    .slice(0, 6);
-
-  const corpo = node(html`
-    <div>
-      <input class="input" data-busca type="search" placeholder="Buscar exercício"
-             autocomplete="off" autocapitalize="none" autocorrect="off">
-      <div data-resultados style="margin-top:12px"></div>
-    </div>
-  `);
-  openSheet('Adicionar exercício', corpo);
-
-  const busca = corpo.querySelector('[data-busca]');
-  const resultados = corpo.querySelector('[data-resultados]');
-
-  const desenhar = () => {
-    const q = semAcento(busca.value.trim());
-    resultados.innerHTML = '';
-
-    if (!q && recentes.length) {
-      resultados.append(node('<h3 class="section-title" style="margin-top:0">Recentes</h3>'));
-      resultados.append(listaSelecao(recentes, jaNoTreino));
-      resultados.append(node('<h3 class="section-title">Todos os exercícios</h3>'));
-    }
-
-    const filtrados = q
-      ? ctx.lista.filter((e) => semAcento(e.nome).includes(q) || semAcento(e.grupoMuscular).includes(q))
-      : ctx.lista;
-
-    if (!filtrados.length) {
-      resultados.append(node(html`<p class="muted small">Nenhum exercício encontrado.</p>`));
-    } else {
-      resultados.append(listaSelecao(filtrados, jaNoTreino));
-    }
-
-    const nomeNovo = busca.value.trim();
-    if (nomeNovo && !ctx.lista.some((e) => semAcento(e.nome) === q)) {
-      // Do catalogo: e aqui que o app deixa de ter uma lista fixa. Quem esta em
-      // pe no meio do treino precisa de um exercicio que nao tem — antes a
-      // unica saida era digitar tudo a mao.
-      const doCatalogo = node('<div data-catalogo></div>');
-      resultados.append(doCatalogo);
-      mostrarCatalogo(doCatalogo, nomeNovo);
-
-      const btn = node(html`
-        <button class="btn btn--block" style="margin-top:12px" data-criar>
-          ${raw(ICON.plus)} Criar &laquo;${nomeNovo}&raquo;
-        </button>
-      `);
-      btn.onclick = () => formularioNovoExercicio(nomeNovo);
-      resultados.append(btn);
-    }
-  };
-
-  busca.addEventListener('input', desenhar);
-  desenhar();
+  openExercisePicker({
+    exercicios: ctx.lista,
+    todasSeries: ctx.todasSeries,
+    jaEscolhidoIds: new Set(ctx.workout.exerciseIds || []),
+    aoEscolher: adicionarExercicio,
+  });
 }
 
-/** Sugestoes do catalogo dentro do seletor.
- *
- *  O catalogo so e carregado quando o usuario ja digitou algo, para o sheet
- *  abrir instantaneo. O arquivo esta em cache do service worker, entao mesmo
- *  offline isto e leitura local. */
-async function mostrarCatalogo(alvo, termo) {
-  let itens;
-  try {
-    ({ itens } = await catalogo.buscar(termo, { limite: 6 }));
-  } catch {
-    return; // sem catalogo o seletor segue funcionando como antes
-  }
+/** Chamado pelo seletor com o exercicio resolvido — existente, do catalogo, ou
+ *  recem-criado. A lista local e recarregada sempre: e barato (db.js cacheia
+ *  em memoria e so o invalida quando algo muda) e poupa o seletor de saber se
+ *  criou algo novo. */
+async function adicionarExercicio(exercicio) {
+  ctx.lista = await db.listExercises();
+  ctx.exercicios = new Map(ctx.lista.map((e) => [e.id, e]));
 
-  // Ja na biblioteca? Entao ja apareceu na lista de cima.
-  const meus = new Set(ctx.lista.map((e) => e.slug).filter(Boolean));
-  const novos = itens.filter((i) => !meus.has(i.slug));
-  if (!novos.length || !alvo.isConnected) return;
-
-  alvo.append(node('<h3 class="section-title">Do catálogo</h3>'));
-
-  const card = node(html`<div class="card"><ul class="list">${raw(novos.map((item) => html`
-    <li class="list__item">
-      <button class="list__link" data-slug="${item.slug}">
-        ${raw(thumbHtml(item))}
-        <div class="grow">
-          <div style="font-weight:600">${item.nome}</div>
-          <div class="muted small">${item.grupo} · ${item.equipamento}</div>
-        </div>
-        ${raw(ICON.plus)}
-      </button>
-    </li>
-  `).join(''))}</ul></div>`);
-
-  for (const botao of card.querySelectorAll('[data-slug]')) {
-    botao.onclick = async () => {
-      const item = novos.find((i) => i.slug === botao.dataset.slug);
-      // Um toque faz tudo: entra na biblioteca, entra no treino e ja busca as
-      // fotos com a rede que houver agora.
-      const criado = await db.addExercicioDoCatalogo(item);
-      ctx.lista = await db.listExercises();
-      ctx.exercicios = new Map(ctx.lista.map((e) => [e.id, e]));
-      await adicionarExercicio(criado.id);
-    };
-  }
-  alvo.append(card);
-}
-
-function listaSelecao(exercicios, jaNoTreino) {
-  const card = node('<div class="card"><ul class="list"></ul></div>');
-  const ul = card.querySelector('ul');
-
-  for (const ex of exercicios) {
-    const dentro = jaNoTreino.has(ex.id);
-    const li = node(html`
-      <li class="list__item">
-        <button class="list__link" data-id="${ex.id}" ${raw(dentro ? 'disabled' : '')}>
-          ${raw(thumbHtml(ex))}
-          <div class="grow">
-            <div style="font-weight:600">${ex.nome}</div>
-            <div class="muted small">${ex.grupoMuscular}</div>
-          </div>
-          ${dentro ? raw('<span class="badge">no treino</span>') : raw(ICON.plus)}
-        </button>
-      </li>
-    `);
-    if (!dentro) li.querySelector('button').onclick = () => adicionarExercicio(ex.id);
-    else li.querySelector('button').style.opacity = '.5';
-    ul.append(li);
-  }
-  return card;
-}
-
-async function adicionarExercicio(exId) {
-  await db.addExerciseToWorkout(ctx.workout.id, exId);
-  ctx.workout.exerciseIds = [...(ctx.workout.exerciseIds || []), exId];
-  closeSheet();
+  await db.addExerciseToWorkout(ctx.workout.id, exercicio.id);
+  ctx.workout.exerciseIds = [...(ctx.workout.exerciseIds || []), exercicio.id];
 
   renderLista();
-  document.querySelector(`[data-ex="${exId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function formularioNovoExercicio(nomeSugerido) {
-  const corpo = node(html`
-    <div class="stack">
-      <label class="field">
-        <span class="field__label">Nome</span>
-        <input class="input" data-nome value="${nomeSugerido}" autocapitalize="sentences">
-      </label>
-      <label class="field">
-        <span class="field__label">Grupo muscular</span>
-        <select class="select" data-grupo>
-          ${raw(GRUPOS.map((g) => `<option value="${g}">${g}</option>`).join(''))}
-        </select>
-      </label>
-      <button class="btn btn--primary btn--block" data-salvar>Criar e adicionar ao treino</button>
-    </div>
-  `);
-  openSheet('Novo exercício', corpo);
-
-  corpo.querySelector('[data-salvar]').onclick = async () => {
-    const nome = corpo.querySelector('[data-nome]').value.trim();
-    if (!nome) { toast('Dê um nome ao exercício.'); return; }
-
-    const novo = await db.addExercise({ nome, grupoMuscular: corpo.querySelector('[data-grupo]').value });
-    ctx.lista = await db.listExercises();
-    ctx.exercicios = new Map(ctx.lista.map((e) => [e.id, e]));
-    await adicionarExercicio(novo.id);
-    toast('Exercício criado.');
-  };
+  document.querySelector(`[data-ex="${exercicio.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }

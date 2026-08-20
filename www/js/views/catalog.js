@@ -6,7 +6,7 @@
 
 import * as catalogo from '../catalog.js';
 import * as db from '../db.js';
-import { GRUPOS } from '../seed.js';
+import { GRUPOS, agruparPorGrupo } from '../seed.js';
 import { thumbHtml, criarAnimacao } from '../media.js';
 import {
   ICON, ICON_GRUPO, html, node, raw, setTop, toast, refresh,
@@ -99,16 +99,7 @@ export async function renderList(view) {
 
     // Sem busca: secoes fechadas, so com a contagem. Abrir 873 linhas de uma
     // vez trava a rolagem no celular.
-    const porGrupo = new Map();
-    for (const item of itens) {
-      if (!porGrupo.has(item.grupo)) porGrupo.set(item.grupo, []);
-      porGrupo.get(item.grupo).push(item);
-    }
-
-    for (const grupo of GRUPOS) {
-      const doGrupo = porGrupo.get(grupo);
-      if (!doGrupo?.length) continue;
-
+    for (const { grupo, itens: doGrupo } of agruparPorGrupo(itens, (item) => item.grupo)) {
       const aberto = abertos.has(grupo);
       const secao = node(html`
         <div class="card cat__grupo">

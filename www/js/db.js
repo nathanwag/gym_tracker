@@ -227,6 +227,14 @@ export async function updateExercise(id, patch) {
   exerciseCache = null;
 }
 
+/** Liga (ou tira) a figura de um exercicio ja existente, e aquece o cache das
+ *  fotos quando ha uma nova — o mesmo par que addExercicioDoCatalogo faz na
+ *  criacao, aqui para o caminho de edicao (renomeado, ou criado a mao). */
+export async function definirFiguraExercicio(id, slug) {
+  await updateExercise(id, { slug: slug || null });
+  if (slug) prefetchFotos(slug);
+}
+
 /** Remove um exercicio. Falha se houver series registradas nele. */
 export async function deleteExercise(id) {
   const usos = await countSetsByExercise(id);

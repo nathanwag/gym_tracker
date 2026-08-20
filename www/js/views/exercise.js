@@ -5,10 +5,10 @@ import * as db from '../db.js';
 import {
   bests, prSetIds, sessionSummaries, bestSessionVolume, progressPct,
 } from '../models.js';
-import { GRUPOS } from '../seed.js';
+import { GRUPOS, agruparPorGrupo } from '../seed.js';
 import { lineChart } from '../charts.js';
 import * as catalogo from '../catalog.js';
-import { thumbHtml, criarAnimacao, prefetchFotos } from '../media.js';
+import { thumbHtml, criarAnimacao } from '../media.js';
 import {
   setTop, html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, confirmSheet,
   fmtNum, fmtRelativeDay, fmtDate, semAcento, refresh, wireSegmented,
@@ -79,17 +79,7 @@ export async function renderList(view) {
     }
 
     // Agrupado por musculo, na ordem anatomica de GRUPOS (nao alfabetica).
-    const porGrupo = new Map();
-    for (const ex of itens) {
-      if (!porGrupo.has(ex.grupoMuscular)) porGrupo.set(ex.grupoMuscular, []);
-      porGrupo.get(ex.grupoMuscular).push(ex);
-    }
-    const ordem = [...GRUPOS, ...[...porGrupo.keys()].filter((g) => !GRUPOS.includes(g))];
-
-    for (const grupo of ordem) {
-      const doGrupo = porGrupo.get(grupo);
-      if (!doGrupo?.length) continue;
-
+    for (const { grupo, itens: doGrupo } of agruparPorGrupo(itens, (ex) => ex.grupoMuscular)) {
       lista.append(node(html`
         <h2 class="section-title section-title--icone">
           <span class="section-title__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
@@ -388,8 +378,7 @@ function escolherFigura(exercicio) {
   const resultados = corpo.querySelector('[data-resultados]');
 
   const aplicar = async (slug) => {
-    await db.updateExercise(exercicio.id, { slug });
-    if (slug) prefetchFotos(slug);
+    await db.definirFiguraExercicio(exercicio.id, slug);
     closeSheet();
     toast(slug ? 'Figura atualizada.' : 'Figura removida.');
     refresh();

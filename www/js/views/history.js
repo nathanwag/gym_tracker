@@ -1,7 +1,7 @@
 /* Historico: lista de treinos e o detalhe de um treino. */
 
 import * as db from '../db.js';
-import { workoutSummary, prSetIds, setE1rm } from '../models.js';
+import { workoutSummary, prSetIds, setE1rm, totalVolume } from '../models.js';
 import { thumbHtml } from '../media.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet,
@@ -183,7 +183,7 @@ export async function renderWorkout(view, workoutId) {
             <h2 class="exercise__name">${ex?.nome || 'Exercício removido'}</h2>
             <div class="exercise__meta">
               ${doExercicio.length} ${doExercicio.length === 1 ? 'série' : 'séries'} ·
-              ${fmtNum(doExercicio.reduce((a, s) => a + (s.aquecimento ? 0 : s.peso * s.reps), 0), 0)} ${unidade}
+              ${fmtNum(totalVolume(doExercicio), 0)} ${unidade}
             </div>
           </div>
           ${ex ? raw(`<a class="icon-btn" href="#/exercicios/${ex.id}" aria-label="Ver evolução">${ICON.chevron}</a>`) : ''}
