@@ -128,6 +128,22 @@ export const SEED_EXERCISES = {
   ],
 };
 
+/** Agrupa `itens` pela chave que `pegarGrupo` devolve, na ordem anatomica de
+ *  GRUPOS; um grupo que nao esteja em GRUPOS (dado antigo, borda) sai no fim
+ *  em vez de sumir. Grupos sem nenhum item nao aparecem no resultado. */
+export function agruparPorGrupo(itens, pegarGrupo) {
+  const porGrupo = new Map();
+  for (const item of itens) {
+    const grupo = pegarGrupo(item);
+    if (!porGrupo.has(grupo)) porGrupo.set(grupo, []);
+    porGrupo.get(grupo).push(item);
+  }
+  const ordem = [...GRUPOS, ...[...porGrupo.keys()].filter((g) => !GRUPOS.includes(g))];
+  return ordem
+    .map((grupo) => ({ grupo, itens: porGrupo.get(grupo) }))
+    .filter((g) => g.itens?.length);
+}
+
 /** Nome normalizado -> slug, para dar figura a quem foi criado antes do catalogo.
  *  Memoizado: a migracao do banco chama isto de dentro de uma transacao, onde
  *  nao pode haver await nem trabalho pesado. */
