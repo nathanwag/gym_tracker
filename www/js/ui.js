@@ -233,30 +233,32 @@ export const ICON = {
 const CORPO = 'M12 2.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2M12 6.4v7M8.4 8.2L12 7l3.6 1.2M8.4 8.2L7 12.4M15.6 8.2L17 12.4M12 13.4l-1.9 8M12 13.4l1.9 8';
 const ponto = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--accent)"/>`;
 const corpo = (...pontos) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CORPO}" opacity=".3"/>${pontos.map((p) => ponto(...p)).join('')}</svg>`;
+  `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CORPO}" opacity=".2"/>${pontos.map((p) => ponto(...p)).join('')}</svg>`;
 
 export const ICON_GRUPO = {
-  'Peito': corpo([12, 9.1, 1.7]),
-  'Costas': corpo([12, 10.6, 1.7]),
+  'Peito': corpo([12, 9.1, 3.2]),
+  'Costas': corpo([12, 10.6, 3.2]),
   // Abaixo de Costas na silhueta, perto do quadril: hiperextensao/terra e
   // cadeia posterior, nao puxada -- por isso saiu de Costas.
-  'Lombar': corpo([12, 12.9, 1.3]),
-  'Deltoides': corpo([8.4, 8.2, 1.3], [15.6, 8.2, 1.3]),
+  'Lombar': corpo([12, 12.9, 2.6]),
+  'Deltoides': corpo([8.4, 8.2, 2.6], [15.6, 8.2, 2.6]),
   // Logo abaixo do pescoço, mais estreito que a mancha de Deltoides: e onde
   // o trapezio fica na silhueta (base do pescoço ate o topo do ombro).
-  'Trapézio': corpo([12, 7.5, 1.15]),
-  'Pescoço': corpo([12, 5.3, 1]),
-  'Bíceps': corpo([6.8, 10.9, 1.2]),
-  'Tríceps': corpo([17.2, 10.9, 1.2]),
+  'Trapézio': corpo([12, 7.3, 2.2]),
+  'Pescoço': corpo([12, 5.1, 1.8]),
+  'Bíceps': corpo([6.8, 10.9, 2.6]),
+  'Tríceps': corpo([17.2, 10.9, 2.6]),
   // Coxa e uma so regiao na silhueta (sem frente/costas pra distinguir
   // quadriceps de posterior); a mancha muda de altura — mais alta vs mais
-  // baixa na coxa — pra diferenciar os dois icones.
-  'Quadríceps': corpo([11.2, 16, 1.3], [12.8, 16, 1.3]),
-  'Posterior': corpo([10.6, 19, 1.05], [13.4, 19, 1.05]),
-  'Glúteos': corpo([12, 13.9, 1.5]),
-  'Panturrilha': corpo([10.2, 20.8, 0.9], [13.8, 20.8, 0.9]),
-  'Abdômen': corpo([12, 11.2, 1], [12, 12.8, 1]),
-  'Antebraço': corpo([6.7, 13.7, 1.1], [17.3, 13.7, 1.1]),
+  // baixa na coxa — pra diferenciar os dois icones. Um ponto so (nao dois):
+  // no raio que da pra enxergar de longe, dois pontos nessa largura de coxa
+  // se tocam e viram uma mancha so mesmo.
+  'Quadríceps': corpo([12, 16, 3.2]),
+  'Posterior': corpo([12, 19, 2.2]),
+  'Glúteos': corpo([12, 13.9, 3]),
+  'Panturrilha': corpo([12, 20.5, 1.8]),
+  'Abdômen': corpo([12, 12, 2.6]),
+  'Antebraço': corpo([6.7, 13.7, 2.2], [17.3, 13.7, 2.2]),
   // Cardio e alongamento nao sao regiao do corpo, entao fogem da familia
   // "silhueta com mancha" e usam glifo proprio na cor de destaque (igual
   // Outros usa o halter, so que sem cor — esses dois ganham cor por serem
