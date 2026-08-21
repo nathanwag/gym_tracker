@@ -19,7 +19,9 @@ import { normalizarNome } from './text.js';
 export const GRUPOS = [
   'Peito',
   'Costas',
-  'Ombros',
+  'Lombar',
+  'Deltoides',
+  'Trapézio',
   'Pescoço',
   'Bíceps',
   'Tríceps',
@@ -58,9 +60,11 @@ export const SEED_EXERCISES = {
     { nome: 'Remada cavalinho', slug: 't-bar-row-with-handle' },
     { nome: 'Remada na máquina', slug: 'leverage-iso-row' },
     { nome: 'Pulldown com braços estendidos', slug: 'straight-arm-pulldown' },
+  ],
+  'Lombar': [
     { nome: 'Levantamento terra', slug: 'barbell-deadlift' },
   ],
-  'Ombros': [
+  'Deltoides': [
     { nome: 'Desenvolvimento com barra', slug: 'standing-military-press' },
     { nome: 'Desenvolvimento com halteres', slug: 'seated-dumbbell-press' },
     { nome: 'Desenvolvimento na máquina', slug: 'machine-shoulder-military-press' },
@@ -69,6 +73,8 @@ export const SEED_EXERCISES = {
     { nome: 'Elevação frontal', slug: 'front-dumbbell-raise' },
     { nome: 'Crucifixo inverso (voador invertido)', slug: 'reverse-machine-flyes' },
     { nome: 'Remada alta', slug: 'upright-barbell-row' },
+  ],
+  'Trapézio': [
     { nome: 'Encolhimento de ombros', slug: 'barbell-shrug' },
   ],
   'Bíceps': [

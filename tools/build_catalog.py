@@ -63,7 +63,11 @@ FULL_LARGURA = 480
 FULL_QUALIDADE = 68
 
 # primaryMuscles[0] do upstream -> grupo do app (GRUPOS em www/js/seed.js).
-# traps->Ombros porque "Encolhimento de ombros" ja esta em Ombros no seed;
+# shoulders/traps separados: deltoide (press, elevacao) e trapezio
+# (encolhimento, remada alta) sao musculo e movimento diferentes, so ficavam
+# juntos porque o upstream chama os dois de "ombro" em linguagem comum.
+# lower back vira Lombar em vez de Costas pelo mesmo motivo: hiperextensao/
+# levantamento terra e cadeia posterior, nao puxada.
 # adductors/abductors->Gluteos porque cadeira adutora/abdutora trabalham
 # sobretudo estabilizador de quadril (gluteo medio/adutores), nao quadriceps
 # nem posterior de coxa.
@@ -71,9 +75,9 @@ MUSCULO_GRUPO = {
     "chest": "Peito",
     "lats": "Costas",
     "middle back": "Costas",
-    "lower back": "Costas",
-    "shoulders": "Ombros",
-    "traps": "Ombros",
+    "lower back": "Lombar",
+    "shoulders": "Deltoides",
+    "traps": "Trapézio",
     "biceps": "Bíceps",
     "triceps": "Tríceps",
     "forearms": "Antebraço",
@@ -323,7 +327,7 @@ def etapa_dados(por_slug: dict, forcar: bool):
             "nivel": NIVEL_PT.get(ex.get("level") or "", ""),
             "categoria": CATEGORIA_PT.get(ex.get("category") or "", ""),
             "primarios": sorted({MUSCULO_GRUPO.get(m, "Outros") for m in primarios}),
-            # Os 17 musculos do upstream colapsam em 12 grupos, entao um
+            # Os 17 musculos do upstream colapsam em 14 grupos, entao um
             # secundario costuma cair no mesmo grupo do principal. Repeti-lo em
             # "Também trabalha" so polui a tela.
             "secundarios": sorted({MUSCULO_GRUPO.get(m, "Outros")
