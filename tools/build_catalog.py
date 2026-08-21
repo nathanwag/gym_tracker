@@ -64,7 +64,9 @@ FULL_QUALIDADE = 68
 
 # primaryMuscles[0] do upstream -> grupo do app (GRUPOS em www/js/seed.js).
 # traps->Ombros porque "Encolhimento de ombros" ja esta em Ombros no seed;
-# adductors/abductors->Pernas porque as cadeiras adutora/abdutora ja estao la.
+# adductors/abductors->Gluteos porque cadeira adutora/abdutora trabalham
+# sobretudo estabilizador de quadril (gluteo medio/adutores), nao quadriceps
+# nem posterior de coxa.
 MUSCULO_GRUPO = {
     "chest": "Peito",
     "lats": "Costas",
@@ -75,10 +77,10 @@ MUSCULO_GRUPO = {
     "biceps": "Bíceps",
     "triceps": "Tríceps",
     "forearms": "Antebraço",
-    "quadriceps": "Pernas",
-    "hamstrings": "Pernas",
-    "adductors": "Pernas",
-    "abductors": "Pernas",
+    "quadriceps": "Quadríceps",
+    "hamstrings": "Posterior",
+    "adductors": "Glúteos",
+    "abductors": "Glúteos",
     "glutes": "Glúteos",
     "calves": "Panturrilha",
     "abdominals": "Abdômen",
@@ -110,22 +112,6 @@ CATEGORIA_PT = {
     "powerlifting": "powerlifting",
     "cardio": "cardio",
     "olympic weightlifting": "levantamento olímpico",
-}
-
-# Variantes redundantes: mesma articulacao/postura, equipamento e so o que se
-# segura (o app ja registra peso livre, entao nao muda nada manter mais de
-# uma entrada por movimento). Decisao editorial item a item, nao um filtro de
-# campo como os de cima.
-SLUGS_REDUNDANTES = {
-    "rocking-standing-calf-raise",  # Panturrilha em pé com balanço
-    "standing-barbell-calf-raise",  # Panturrilha em pé com barra
-    "standing-dumbbell-calf-raise",  # Panturrilha em pé com halteres
-    "cable-shrugs",  # Encolhimento de ombros na polia
-    "dumbbell-shrug",  # Encolhimento de ombros com halteres
-    "smith-machine-behind-the-back-shrug",  # Encolhimento de ombros por trás no Smith
-    "cable-wrist-curl",  # Rosca de punho na polia
-    "palms-down-dumbbell-wrist-curl-over-a-bench",  # Rosca de punho palmas p/ baixo com halteres
-    "palms-up-dumbbell-wrist-curl-over-a-bench",  # Rosca de punho palmas p/ cima com halteres
 }
 
 
@@ -204,24 +190,10 @@ def indexar(upstream: list) -> dict:
     """Slug -> registro do upstream, abortando em colisao."""
     por_slug = {}
     for ex in upstream:
-        # O app registra carga (peso x repeticoes); estas categorias nao tem
-        # carga pra registrar, entao ficam fora do catalogo. Filtrado aqui
-        # (nao so em etapa_dados) pra download/conversao de imagem tambem
-        # pularem. Pliometria e maioria peso do corpo; a minoria com
-        # halteres/bola medicinal sai junto por simplicidade.
-        if ex.get("category") in ("stretching", "cardio", "plyometrics"):
-            continue
-        # Elastico nao tem peso fixo pra registrar (resistencia varia por cor/
-        # estiramento, nao por kg).
-        if ex.get("equipment") == "bands":
-            continue
-
         # O upstream nao traz `id` no dist/; o nome do diretorio das imagens e
         # a chave real (images[0] = "<Id>/0.jpg").
         src_id = ex["images"][0].split("/")[0]
         slug = criar_slug(src_id)
-        if slug in SLUGS_REDUNDANTES:
-            continue
         if slug in por_slug:
             sys.exit(
                 f"Colisao de slug: '{src_id}' e '{por_slug[slug]['srcId']}' viram '{slug}'.\n"
@@ -323,7 +295,18 @@ def etapa_dados(por_slug: dict, forcar: bool):
     for slug in sorted(por_slug):
         ex = por_slug[slug]["ex"]
         primarios = ex.get("primaryMuscles") or []
-        grupo = MUSCULO_GRUPO.get(primarios[0], "Outros") if primarios else "Outros"
+        categoria_upstream = ex.get("category") or ""
+        # Cardio e alongamento nao encaixam num musculo especifico pra fins de
+        # navegacao/serie semanal (nao ha carga por grupo pra somar ali), entao
+        # viram grupo proprio em vez do musculo primario -- assim quem procura
+        # "cardio" ou "alongamento" no catalogo nao precisa adivinhar debaixo de
+        # qual musculo cada exercicio foi parar.
+        if categoria_upstream == "stretching":
+            grupo = "Alongamento"
+        elif categoria_upstream == "cardio":
+            grupo = "Cardio"
+        else:
+            grupo = MUSCULO_GRUPO.get(primarios[0], "Outros") if primarios else "Outros"
 
         nome_en = ex["name"]
         nome_pt = traducoes.get(slug)
@@ -340,7 +323,7 @@ def etapa_dados(por_slug: dict, forcar: bool):
             "nivel": NIVEL_PT.get(ex.get("level") or "", ""),
             "categoria": CATEGORIA_PT.get(ex.get("category") or "", ""),
             "primarios": sorted({MUSCULO_GRUPO.get(m, "Outros") for m in primarios}),
-            # Os 17 musculos do upstream colapsam em 11 grupos, entao um
+            # Os 17 musculos do upstream colapsam em 12 grupos, entao um
             # secundario costuma cair no mesmo grupo do principal. Repeti-lo em
             # "Também trabalha" so polui a tela.
             "secundarios": sorted({MUSCULO_GRUPO.get(m, "Outros")

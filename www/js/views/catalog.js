@@ -22,7 +22,7 @@ export async function renderList(view) {
 
   const root = node(html`
     <div class="stack">
-      <input class="input" data-busca type="search" placeholder="Buscar entre 646 exercícios"
+      <input class="input" data-busca type="search" placeholder="Buscar entre 873 exercícios"
              autocomplete="off" autocapitalize="none" autocorrect="off">
       <div data-lista><div class="card card__pad muted">Carregando…</div></div>
     </div>

@@ -47,7 +47,7 @@ export async function renderList(view) {
         <button class="segmented__btn" data-modo="todos" aria-pressed="false">Todos</button>
       </div>
       <a class="btn btn--block btn--ghost" href="#/catalogo">
-        ${raw(ICON.plus)} Buscar no catálogo (646 exercícios)
+        ${raw(ICON.plus)} Buscar no catálogo (873 exercícios)
       </a>
       <button class="btn btn--block btn--ghost" data-novo>
         ${raw(ICON.plus)} Criar exercício

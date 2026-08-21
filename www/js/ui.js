@@ -214,6 +214,8 @@ export const ICON = {
   dumbbell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/></svg>',
   download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 11l4 4 4-4M4.5 19.5h15"/></svg>',
   image: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15.5l-5.2-5.2a2 2 0 00-2.8 0L4.5 19"/></svg>',
+  heartbeat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>',
+  stretch: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="14.5" cy="4.2" r="1.6"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>',
 };
 
 /* Icone por grupo muscular: aparece no cabecalho das secoes e no lugar da foto
@@ -236,11 +238,19 @@ export const ICON_GRUPO = {
   'Pescoço': corpo('M12 4.2v2.2'),
   'Bíceps': corpo('M6.6 9.4L7 12.4'),
   'Tríceps': corpo('M17 12.4l.4-3'),
-  'Pernas': corpo('M10.1 21.4l1-4M13.9 21.4l-1-4'),
+  // Coxa e uma so regiao na silhueta (sem frente/costas pra distinguir
+  // quadriceps de posterior); a marca muda de forma — diagonal vs
+  // horizontal — pra diferenciar os dois icones sem mexer na posicao.
+  'Quadríceps': corpo('M11.3 14.6l-.7 3M12.7 14.6l.7 3'),
+  'Posterior': corpo('M10.6 18.8h1M13.4 18.8h-1'),
   'Glúteos': corpo('M9.8 13.9h4.4'),
   'Panturrilha': corpo('M10.3 20.2l-.2 1.2M13.7 20.2l.2 1.2'),
   'Abdômen': corpo('M10.4 11.2h3.2M10.4 12.8h3.2'),
   'Antebraço': corpo('M7 12.4l-.6 2.6M17 12.4l.6 2.6'),
+  // Cardio e alongamento nao sao regiao do corpo, entao fogem da familia
+  // "silhueta com marca" e usam glifo proprio (igual Outros com o halter).
+  'Cardio': ICON.heartbeat,
+  'Alongamento': ICON.stretch,
   'Outros': ICON.dumbbell,
 };
 
