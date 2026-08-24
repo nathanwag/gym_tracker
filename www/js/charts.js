@@ -14,6 +14,7 @@
  */
 
 import { fmtNum, fmtDateShort } from './ui.js';
+import { t } from './i18n.js';
 
 const W = 340;
 const H = 190;
@@ -44,7 +45,7 @@ function passoRedondo(intervalo, divisoes) {
  */
 export function lineChart({ pontos, sufixo = '', decimais = 0, aoTocar = null }) {
   if (!pontos || pontos.length === 0) {
-    return elemento(`<div class="empty small">Sem dados para o gráfico.</div>`);
+    return elemento(`<div class="empty small">${t('charts.semDados')}</div>`);
   }
 
   const plot = {
@@ -129,7 +130,11 @@ export function lineChart({ pontos, sufixo = '', decimais = 0, aoTocar = null })
 
   const svg = elemento(`
     <svg class="chart" viewBox="0 0 ${W} ${H}" role="img"
-         aria-label="Evolução ao longo do tempo, ${pontos.length} sessões, de ${fmtNum(valores[0], decimais)} a ${fmtNum(valores[valores.length - 1], decimais)}${escXml(sufixo)}">
+         aria-label="${escXml(t('charts.ariaLabel', {
+           n: pontos.length,
+           inicio: fmtNum(valores[0], decimais),
+           fim: fmtNum(valores[valores.length - 1], decimais) + sufixo,
+         }))}">
       ${linhas}
       ${area}
       <path class="chart__line" d="${caminho}"/>

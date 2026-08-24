@@ -1,5 +1,8 @@
 /* Helpers de interface compartilhados pelas telas: montagem de HTML seguro,
- * topbar, toast, bottom sheet e formatacao de numeros e datas em pt-BR. */
+ * topbar, toast, bottom sheet e formatacao de numeros e datas conforme o
+ * idioma ativo (ver i18n.js). */
+
+import { t, tn, locale } from './i18n.js';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -125,7 +128,7 @@ export function initSheet() {
  * standalone do iOS aparece com o dominio e destoa do resto do app.
  * @returns {Promise<boolean>}
  */
-export function confirmSheet({ title, message = '', confirmLabel = 'Confirmar', danger = false }) {
+export function confirmSheet({ title, message = '', confirmLabel = null, danger = false }) {
   return new Promise((resolve) => {
     let answered = false;
     const finish = (value) => {
@@ -137,8 +140,8 @@ export function confirmSheet({ title, message = '', confirmLabel = 'Confirmar', 
     const body = openSheet(title, html`
       ${message ? raw(`<p class="muted">${esc(message)}</p>`) : ''}
       <div class="stack" style="margin-top:8px">
-        <button class="btn btn--block ${danger ? 'btn--danger' : 'btn--primary'}" data-yes>${confirmLabel}</button>
-        <button class="btn btn--block btn--ghost" data-no>Cancelar</button>
+        <button class="btn btn--block ${danger ? 'btn--danger' : 'btn--primary'}" data-yes>${confirmLabel || t('common.confirmar')}</button>
+        <button class="btn btn--block btn--ghost" data-no>${t('common.cancelar')}</button>
       </div>
     `);
 
@@ -150,39 +153,38 @@ export function confirmSheet({ title, message = '', confirmLabel = 'Confirmar', 
 
 /* ---------- Formatacao ---------- */
 
-/** 60 -> "60"; 62.5 -> "62,5" (sem zeros inuteis, virgula decimal). */
+/** 60 -> "60"; 62.5 -> "62,5" em pt-BR, "62.5" em en-US. */
 export function fmtNum(value, maxDecimals = 1) {
   const n = Number(value) || 0;
-  return n.toLocaleString('pt-BR', { maximumFractionDigits: maxDecimals });
+  return n.toLocaleString(locale(), { maximumFractionDigits: maxDecimals });
 }
 
 export function fmtWeight(value, unit = 'kg') {
   return `${fmtNum(value, 2)} ${unit}`;
 }
 
-const DATE_FULL = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-const DATE_SHORT = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
-const WEEKDAY = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' });
+// Formatters sao recriados a cada chamada (nao memoizados em const de modulo)
+// porque o idioma pode mudar em runtime, sem reload — ver idioma:mudou em app.js.
+export const fmtDate = (iso) =>
+  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(iso));
+export const fmtDateShort = (iso) =>
+  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit' }).format(new Date(iso));
+export const fmtWeekday = (iso) =>
+  new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(new Date(iso));
 
-export const fmtDate = (iso) => DATE_FULL.format(new Date(iso));
-export const fmtDateShort = (iso) => DATE_SHORT.format(new Date(iso));
-export const fmtWeekday = (iso) => WEEKDAY.format(new Date(iso));
-
-const DAY_MONTH = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
-
-/** Ex: "10 de ago. – 16 de ago.". Aceita Date ou string ISO. */
-export const fmtDateRange = (inicio, fim) => `${DAY_MONTH.format(new Date(inicio))} – ${DAY_MONTH.format(new Date(fim))}`;
+/** Ex: "10 de ago. – 16 de ago." (pt) / "Aug 10 – Aug 16" (en). Aceita Date ou string ISO. */
+export function fmtDateRange(inicio, fim) {
+  const fmt = new Intl.DateTimeFormat(locale(), { day: '2-digit', month: 'short' });
+  return `${fmt.format(new Date(inicio))} – ${fmt.format(new Date(fim))}`;
+}
 
 /** "Hoje", "Ontem", "ha 3 dias" ou a data cheia. */
 export function fmtRelativeDay(iso) {
   const days = daysBetween(new Date(iso), new Date());
-  if (days <= 0) return 'Hoje';
-  if (days === 1) return 'Ontem';
-  if (days < 7) return `há ${days} dias`;
-  if (days < 30) {
-    const weeks = Math.floor(days / 7);
-    return weeks === 1 ? 'há 1 semana' : `há ${weeks} semanas`;
-  }
+  if (days <= 0) return t('common.hoje');
+  if (days === 1) return t('common.ontem');
+  if (days < 7) return tn('common.diasAtras', days);
+  if (days < 30) return tn('common.semanasAtras', Math.floor(days / 7));
   return fmtDate(iso);
 }
 
@@ -197,10 +199,12 @@ export function daysBetween(a, b) {
 export function fmtDuration(startIso, endIso) {
   if (!startIso || !endIso) return '';
   const min = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
-  if (min < 60) return `${min}min`;
+  const sufMin = t('common.min');
+  if (min < 60) return `${min}${sufMin}`;
   const h = Math.floor(min / 60);
   const rest = min % 60;
-  return rest ? `${h}h ${rest}min` : `${h}h`;
+  const sufHora = t('common.hora');
+  return rest ? `${h}${sufHora} ${rest}${sufMin}` : `${h}${sufHora}`;
 }
 
 /* ---------- Diversos ---------- */
@@ -308,10 +312,10 @@ export function createStepper({ label, value = 0, step = 1, min = 0, max = 9999,
     <div class="field">
       <span class="field__label">${label}${suffix ? raw(` <span class="muted">${esc(suffix)}</span>`) : ''}</span>
       <div class="stepper">
-        <button class="stepper__btn" type="button" data-dec aria-label="Diminuir ${label}">&minus;</button>
+        <button class="stepper__btn" type="button" data-dec aria-label="${t('ui.diminuir', { label })}">&minus;</button>
         <input class="stepper__input" type="number" inputmode="${decimals ? 'decimal' : 'numeric'}"
                step="${step}" min="${min}" max="${max}" value="${value}" aria-label="${label}">
-        <button class="stepper__btn" type="button" data-inc aria-label="Aumentar ${label}">+</button>
+        <button class="stepper__btn" type="button" data-inc aria-label="${t('ui.aumentar', { label })}">+</button>
       </div>
     </div>
   `);

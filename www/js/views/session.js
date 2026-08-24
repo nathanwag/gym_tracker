@@ -11,6 +11,7 @@ import * as db from '../db.js';
 import { evaluatePR, prSetIds, setE1rm, workoutSummary } from '../models.js';
 import { thumbHtml } from '../media.js';
 import { openExercisePicker } from './exercise-picker.js';
+import { t, tn } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, createStepper, toast,
   confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, buzz,
@@ -37,7 +38,7 @@ export async function render(view) {
     incReps: Number(cfg.incrementoReps) || 1,
     exercicios: new Map(exercicios.map((e) => [e.id, e])),
     lista: exercicios,
-    treinos: new Map(treinos.map((t) => [t.id, t])),
+    treinos: new Map(treinos.map((w) => [w.id, w])),
     // Fonte unica de verdade: todas as series do banco. As da sessao e o
     // historico de cada exercicio sao derivados daqui por filtro.
     todasSeries,
@@ -48,24 +49,24 @@ export async function render(view) {
   };
 
   const top = setTop({
-    title: 'Treino em andamento',
+    title: t('session.titulo'),
     back: '#/',
     actions: `
-      <button class="icon-btn" data-descartar aria-label="Descartar treino">${ICON.trash}</button>
-      <button class="btn btn--sm btn--primary" data-finalizar>Finalizar</button>
+      <button class="icon-btn" data-descartar aria-label="${t('session.descartarTreino')}">${ICON.trash}</button>
+      <button class="btn btn--sm btn--primary" data-finalizar>${t('session.finalizar')}</button>
     `,
   });
   top.querySelector('[data-finalizar]').onclick = finalizar;
   top.querySelector('[data-descartar]').onclick = async () => {
     const ok = await confirmSheet({
-      title: 'Descartar este treino?',
-      message: 'As séries registradas nele serão apagadas.',
-      confirmLabel: 'Descartar',
+      title: t('session.confirmarDescartar.titulo'),
+      message: t('session.confirmarDescartar.mensagem'),
+      confirmLabel: t('session.confirmarDescartar.label'),
       danger: true,
     });
     if (!ok) return;
     await db.deleteWorkout(ctx.workout.id);
-    toast('Treino descartado.');
+    toast(t('session.toastDescartado'));
     location.hash = '#/';
   };
 
@@ -75,7 +76,7 @@ export async function render(view) {
 
   const add = node(html`
     <button class="btn btn--block" data-add-ex style="margin-top:12px">
-      ${raw(ICON.plus)} Adicionar exercício
+      ${raw(ICON.plus)} ${t('session.adicionarExercicio')}
     </button>
   `);
   add.onclick = abrirSeletor;
@@ -123,7 +124,7 @@ function renderLista() {
 
   concluidosWrap.innerHTML = '';
   if (concluidos.length) {
-    concluidosWrap.append(node('<h2 class="section-title">Concluídos</h2>'));
+    concluidosWrap.append(node(`<h2 class="section-title">${t('session.concluidos')}</h2>`));
     const card = node('<div class="card"><ul class="list" data-concluidos></ul></div>');
     const ul = card.querySelector('ul');
     for (const id of concluidos) ul.append(itemConcluido(id));
@@ -154,20 +155,21 @@ function sessaoAnterior(exId) {
 
 function resumoEl() {
   const resumo = workoutSummary(seriesDoTreino());
+  const zeroMin = `0${t('common.min')}`;
   const el = node(html`
     <div class="card" data-resumo>
       <div class="stats">
         <div class="stat">
-          <div class="stat__val" data-duracao>${fmtDuration(ctx.workout.iniciadoEm, new Date().toISOString()) || '0min'}</div>
-          <div class="stat__label">duração</div>
+          <div class="stat__val" data-duracao>${fmtDuration(ctx.workout.iniciadoEm, new Date().toISOString()) || zeroMin}</div>
+          <div class="stat__label">${t('session.resumo.duracao')}</div>
         </div>
         <div class="stat">
           <div class="stat__val">${resumo.series}</div>
-          <div class="stat__label">séries</div>
+          <div class="stat__label">${t('session.resumo.series')}</div>
         </div>
         <div class="stat">
           <div class="stat__val">${fmtNum(resumo.volume, 0)}</div>
-          <div class="stat__label">volume (${ctx.unidade})</div>
+          <div class="stat__label">${t('session.resumo.volume', { unidade: ctx.unidade })}</div>
         </div>
       </div>
     </div>
@@ -177,7 +179,7 @@ function resumoEl() {
   const timer = setInterval(() => {
     if (!document.body.contains(el)) { clearInterval(timer); return; }
     el.querySelector('[data-duracao]').textContent =
-      fmtDuration(ctx.workout.iniciadoEm, new Date().toISOString()) || '0min';
+      fmtDuration(ctx.workout.iniciadoEm, new Date().toISOString()) || zeroMin;
   }, 30000);
 
   return el;
@@ -214,9 +216,9 @@ function cardExercicio(exId) {
         <h2 class="exercise__name">${ex.nome}</h2>
         <div class="exercise__meta">${raw(textoAnterior(anterior))}</div>
       </div>
-      <button class="icon-btn" data-colapsar aria-label="Concluir ${ex.nome}">${raw(ICON.check)}</button>
-      <button class="icon-btn" data-detalhe aria-label="Ver evolução de ${ex.nome}">${raw(ICON.chevron)}</button>
-      <button class="icon-btn" data-remover aria-label="Remover ${ex.nome} do treino">${raw(ICON.trash)}</button>
+      <button class="icon-btn" data-colapsar aria-label="${t('session.concluir', { nome: ex.nome })}">${raw(ICON.check)}</button>
+      <button class="icon-btn" data-detalhe aria-label="${t('session.verEvolucaoDe', { nome: ex.nome })}">${raw(ICON.chevron)}</button>
+      <button class="icon-btn" data-remover aria-label="${t('session.removerDoTreino', { nome: ex.nome })}">${raw(ICON.trash)}</button>
     </div>
   `);
   cabecalho.querySelector('[data-colapsar]').onclick = () => definirColapso(exId, true);
@@ -243,7 +245,7 @@ function itemConcluido(exId) {
   const aqui = seriesAqui(exId);
   const li = node(html`
     <li class="list__item">
-      <button class="list__link" data-reabrir aria-label="Reabrir ${ex.nome}">
+      <button class="list__link" data-reabrir aria-label="${t('session.reabrir', { nome: ex.nome })}">
         <div class="grow">
           <div style="font-weight:600">${ex.nome}</div>
           <div class="muted small">${raw(textoResumoSessao(aqui))}</div>
@@ -257,21 +259,20 @@ function itemConcluido(exId) {
 }
 
 function textoAnterior(anterior) {
-  if (!anterior) return html`<span class="muted">Primeira vez neste exercício</span>`;
+  if (!anterior) return html`<span class="muted">${t('session.primeiraVez')}</span>`;
   const resumo = anterior.series
     .map((s) => `${fmtNum(s.peso, 2)}×${s.reps}${s.aquecimento ? '*' : ''}`)
     .join('   ');
-  return html`Última vez (${fmtRelativeDay(anterior.quando)}): <b class="tnum">${resumo}</b>`;
+  return html`${t('session.ultimaVez', { data: fmtRelativeDay(anterior.quando) })} <b class="tnum">${resumo}</b>`;
 }
 
 /** Resumo do que ja foi feito aqui, usado no cabecalho quando o exercicio
  *  esta colapsado — nesse ponto o que importa e o que a pessoa acabou de
  *  registrar, nao mais a comparacao com o treino anterior. */
 function textoResumoSessao(aqui) {
-  if (!aqui.length) return html`<span class="muted">Nenhuma série registrada</span>`;
-  const n = aqui.length;
+  if (!aqui.length) return html`<span class="muted">${t('session.nenhumaSerieRegistrada')}</span>`;
   const resumo = aqui.map((s) => `${fmtNum(s.peso, 2)}×${s.reps}${s.aquecimento ? '*' : ''}`).join('   ');
-  return html`${n} ${n === 1 ? 'série' : 'séries'}: <b class="tnum">${resumo}</b>`;
+  return html`${tn('common.serie', aqui.length)}: <b class="tnum">${resumo}</b>`;
 }
 
 function itemSerie(serie, numero, isPR, ativo) {
@@ -280,7 +281,7 @@ function itemSerie(serie, numero, isPR, ativo) {
       <button class="setlist__item" data-set="${serie.id}" aria-current="${ativo}">
         <span class="setlist__num">${numero}</span>
         <span class="setlist__val">${fmtNum(serie.peso, 2)} ${ctx.unidade} × ${serie.reps}</span>
-        ${serie.aquecimento ? raw('<span class="setlist__warm">aquec.</span>') : ''}
+        ${serie.aquecimento ? raw(`<span class="setlist__warm">${t('history.aquec')}</span>`) : ''}
         ${isPR ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
         <span class="grow"></span>
         ${serie.aquecimento ? '' : raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(serie), 0)}</span>`)}
@@ -308,11 +309,11 @@ function compositor(exId, emEdicao, aqui, anterior) {
     || { peso: 20, reps: 10, aquecimento: false };
 
   const peso = createStepper({
-    label: 'Peso', suffix: ctx.unidade, value: base.peso,
+    label: t('session.peso'), suffix: ctx.unidade, value: base.peso,
     step: ctx.incPeso, min: 0, max: 1000, decimals: 1,
   });
   const reps = createStepper({
-    label: 'Repetições', value: base.reps,
+    label: t('session.repeticoes'), value: base.reps,
     step: ctx.incReps, min: 0, max: 300, decimals: 0,
   });
 
@@ -323,9 +324,9 @@ function compositor(exId, emEdicao, aqui, anterior) {
   const acoes = node('<div class="composer__actions"></div>');
 
   if (emEdicao) {
-    const excluir = node(html`<button class="btn btn--sm btn--chip btn--danger" data-excluir aria-label="Excluir série">${raw(ICON.trash)}</button>`);
-    const cancelar = node(html`<button class="btn btn--ghost" data-cancelar>Cancelar</button>`);
-    const salvar = node(html`<button class="btn btn--primary" data-salvar>Salvar</button>`);
+    const excluir = node(html`<button class="btn btn--sm btn--chip btn--danger" data-excluir aria-label="${t('session.excluirSerie')}">${raw(ICON.trash)}</button>`);
+    const cancelar = node(html`<button class="btn btn--ghost" data-cancelar>${t('common.cancelar')}</button>`);
+    const salvar = node(html`<button class="btn btn--primary" data-salvar>${t('common.salvar')}</button>`);
 
     cancelar.onclick = () => {
       ctx.editando.delete(exId);
@@ -337,9 +338,9 @@ function compositor(exId, emEdicao, aqui, anterior) {
     acoes.append(excluir, cancelar, salvar);
   } else {
     const chip = node(html`
-      <button class="btn btn--sm btn--chip btn--ghost" data-aquecimento aria-pressed="${aquecimento}">Aquec.</button>
+      <button class="btn btn--sm btn--chip btn--ghost" data-aquecimento aria-pressed="${aquecimento}">${t('session.aquecAbrev')}</button>
     `);
-    const addBtn = node(html`<button class="btn btn--primary" data-adicionar>Adicionar série</button>`);
+    const addBtn = node(html`<button class="btn btn--primary" data-adicionar>${t('session.adicionarSerie')}</button>`);
 
     chip.onclick = () => {
       aquecimento = !aquecimento;
@@ -358,7 +359,7 @@ function compositor(exId, emEdicao, aqui, anterior) {
 /* ---------- Mutacoes ---------- */
 
 async function adicionarSerie(exId, pesoValor, repsValor, aquecimento) {
-  if (repsValor <= 0) { toast('Informe quantas repetições você fez.'); return; }
+  if (repsValor <= 0) { toast(t('session.informeRepeticoes')); return; }
 
   const serie = await db.addSet({
     workoutId: ctx.workout.id,
@@ -374,19 +375,19 @@ async function adicionarSerie(exId, pesoValor, repsValor, aquecimento) {
   atualizarResumo();
   buzz(18);
 
-  if (pr.peso) toast('🏆 Recorde de carga neste exercício!');
-  else if (pr.e1rm) toast('🏆 Recorde de força estimada!');
+  if (pr.peso) toast(t('session.recordeCarga'));
+  else if (pr.e1rm) toast(t('session.recordeForca'));
 }
 
 async function salvarEdicao(exId, serie, pesoValor, repsValor) {
-  if (repsValor <= 0) { toast('Informe quantas repetições você fez.'); return; }
+  if (repsValor <= 0) { toast(t('session.informeRepeticoes')); return; }
   await db.updateSet(serie.id, { peso: pesoValor, reps: repsValor });
   serie.peso = pesoValor;
   serie.reps = repsValor;
   ctx.editando.delete(exId);
   rebuildCard(exId);
   atualizarResumo();
-  toast('Série atualizada.');
+  toast(t('session.serieAtualizada'));
 }
 
 async function excluirSerie(exId, serie) {
@@ -396,15 +397,15 @@ async function excluirSerie(exId, serie) {
   ctx.editando.delete(exId);
   rebuildCard(exId);
   atualizarResumo();
-  toast('Série excluída.');
+  toast(t('session.serieExcluida'));
 }
 
 async function removerExercicio(exId, nome) {
   const temSeries = seriesAqui(exId).length;
   const ok = await confirmSheet({
-    title: `Tirar ${nome} do treino?`,
-    message: temSeries ? `As ${temSeries} série(s) registradas hoje neste exercício serão apagadas.` : '',
-    confirmLabel: 'Remover',
+    title: t('session.confirmarRemover.titulo', { nome }),
+    message: temSeries ? t('session.confirmarRemover.mensagemComSeries', { series: tn('common.serie', temSeries) }) : '',
+    confirmLabel: t('session.confirmarRemover.label'),
     danger: true,
   });
   if (!ok) return;
@@ -421,9 +422,9 @@ async function finalizar() {
 
   if (!series.length) {
     const ok = await confirmSheet({
-      title: 'Nenhuma série registrada',
-      message: 'Sem séries não há o que salvar — o treino será descartado.',
-      confirmLabel: 'Descartar treino',
+      title: t('session.confirmarFinalizarSemSeries.titulo'),
+      message: t('session.confirmarFinalizarSemSeries.mensagem'),
+      confirmLabel: t('session.confirmarFinalizarSemSeries.label'),
       danger: true,
     });
     if (!ok) return;
@@ -433,18 +434,20 @@ async function finalizar() {
   }
 
   const resumo = workoutSummary(series);
-  const plural = (n, um, muitos) => `${n} ${n === 1 ? um : muitos}`;
   const ok = await confirmSheet({
-    title: 'Finalizar treino?',
-    message: `${plural(resumo.series, 'série', 'séries')} em `
-      + `${plural(resumo.exercicios, 'exercício', 'exercícios')} · `
-      + `${fmtNum(resumo.volume, 0)} ${ctx.unidade} de volume.`,
-    confirmLabel: 'Finalizar',
+    title: t('session.confirmarFinalizar.titulo'),
+    message: t('session.confirmarFinalizar.mensagem', {
+      series: tn('common.serie', resumo.series),
+      exercicios: tn('common.exercicio', resumo.exercicios),
+      volume: fmtNum(resumo.volume, 0),
+      unidade: ctx.unidade,
+    }),
+    confirmLabel: t('session.finalizar'),
   });
   if (!ok) return;
 
   await db.finishWorkout(ctx.workout.id);
-  toast('Treino finalizado!');
+  toast(t('session.toastFinalizado'));
   location.hash = `#/historico/${ctx.workout.id}`;
 }
 

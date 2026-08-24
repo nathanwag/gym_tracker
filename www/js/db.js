@@ -21,6 +21,7 @@ const DB_VERSION = 2;
 export const DEFAULT_SETTINGS = {
   unidade: 'kg',
   tema: 'auto',
+  idioma: 'pt',
   incrementoPeso: 2.5,
   incrementoReps: 1,
   // Versao do catalogo cujas miniaturas ja foram baixadas; evita repetir o

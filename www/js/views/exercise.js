@@ -5,10 +5,11 @@ import * as db from '../db.js';
 import {
   bests, prSetIds, sessionSummaries, bestSessionVolume, progressPct,
 } from '../models.js';
-import { GRUPOS, agruparPorGrupo } from '../seed.js';
+import { GRUPOS, agruparPorGrupo, grupoLabel } from '../seed.js';
 import { lineChart } from '../charts.js';
 import * as catalogo from '../catalog.js';
 import { thumbHtml, criarAnimacao } from '../media.js';
+import { t, tn, idioma } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, confirmSheet,
   fmtNum, fmtRelativeDay, fmtDate, semAcento, refresh, wireSegmented,
@@ -36,21 +37,21 @@ export async function renderList(view) {
   let modo = temHistorico ? 'meus' : 'todos';
   let busca = '';
 
-  setTop({ title: 'Exercícios', barra: false });
+  setTop({ title: t('exercise.listaTitulo'), barra: false });
 
   const root = node(html`
     <div class="stack">
-      <input class="input" data-busca type="search" placeholder="Buscar exercício"
+      <input class="input" data-busca type="search" placeholder="${t('exercise.buscarPlaceholder')}"
              autocomplete="off" autocapitalize="none" autocorrect="off">
       <div class="segmented" ${raw(temHistorico ? '' : 'hidden')}>
-        <button class="segmented__btn" data-modo="meus" aria-pressed="true">Com registro</button>
-        <button class="segmented__btn" data-modo="todos" aria-pressed="false">Todos</button>
+        <button class="segmented__btn" data-modo="meus" aria-pressed="true">${t('exercise.filtro.comRegistro')}</button>
+        <button class="segmented__btn" data-modo="todos" aria-pressed="false">${t('exercise.filtro.todos')}</button>
       </div>
       <a class="btn btn--block btn--ghost" href="#/catalogo">
-        ${raw(ICON.plus)} Buscar no catálogo (873 exercícios)
+        ${raw(ICON.plus)} ${t('exercise.buscarCatalogo')}
       </a>
       <button class="btn btn--block btn--ghost" data-novo>
-        ${raw(ICON.plus)} Criar exercício
+        ${raw(ICON.plus)} ${t('exercise.criarExercicio')}
       </button>
       <div data-lista></div>
     </div>
@@ -70,9 +71,7 @@ export async function renderList(view) {
       lista.append(node(html`
         <div class="card"><div class="empty">
           ${raw(ICON.dumbbell)}
-          <p>${modo === 'meus' && !q
-            ? 'Você ainda não registrou nenhuma série.'
-            : 'Nenhum exercício encontrado.'}</p>
+          <p>${modo === 'meus' && !q ? t('exercise.semRegistroVazio') : t('exercise.nenhumEncontrado')}</p>
         </div></div>
       `));
       return;
@@ -83,14 +82,14 @@ export async function renderList(view) {
       lista.append(node(html`
         <h2 class="section-title section-title--icone">
           <span class="section-title__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
-          ${grupo}
+          ${grupoLabel(grupo)}
         </h2>
       `));
       const itensHtml = doGrupo.map((ex) => {
         const r = resumos.get(ex.id);
         const detalhe = r
-          ? `${fmtRelativeDay(r.ultimo)} · melhor ${fmtNum(r.melhorPeso, 2)} ${unidade}`
-          : 'sem registro';
+          ? `${fmtRelativeDay(r.ultimo)} · ${t('exercise.melhorPeso', { peso: fmtNum(r.melhorPeso, 2), unidade })}`
+          : t('exercise.semRegistro');
         return html`
           <li class="list__item">
             <a class="list__link" href="#/exercicios/${ex.id}">
@@ -127,12 +126,15 @@ export async function renderList(view) {
    ========================================================================== */
 
 // `curto` vai no botão (senão quebra em duas linhas na tela do celular) e
-// `rotulo` na frase de variação, onde cabe o nome inteiro.
-const METRICAS = {
-  e1rm: { curto: '1RM', rotulo: '1RM estimado', campo: 'melhor1rm', decimais: 0 },
-  peso: { curto: 'Carga', rotulo: 'carga máxima', campo: 'maxPeso', decimais: 1 },
-  volume: { curto: 'Volume', rotulo: 'volume', campo: 'volume', decimais: 0 },
-};
+// `rotulo` na frase de variação, onde cabe o nome inteiro. Funcao, nao const
+// de modulo: precisa reavaliar t() a cada render (idioma pode mudar em runtime).
+function metricas() {
+  return {
+    e1rm: { curto: t('exercise.metrica.e1rmCurto'), rotulo: t('exercise.metrica.e1rmRotulo'), campo: 'melhor1rm', decimais: 0 },
+    peso: { curto: t('exercise.metrica.pesoCurto'), rotulo: t('exercise.metrica.pesoRotulo'), campo: 'maxPeso', decimais: 1 },
+    volume: { curto: t('exercise.metrica.volumeCurto'), rotulo: t('exercise.metrica.volumeRotulo'), campo: 'volume', decimais: 0 },
+  };
+}
 
 export async function renderDetail(view, exId) {
   const [exercicio, series, treinos, ativo] = await Promise.all([
@@ -143,12 +145,12 @@ export async function renderDetail(view, exId) {
   ]);
 
   if (!exercicio) {
-    view.append(node('<div class="card card__pad">Exercício não encontrado.</div>'));
+    view.append(node(`<div class="card card__pad">${t('exercise.naoEncontrado')}</div>`));
     return;
   }
 
   const unidade = db.settings().unidade;
-  const treinosPorId = new Map(treinos.map((t) => [t.id, t]));
+  const treinosPorId = new Map(treinos.map((w) => [w.id, w]));
   const resumos = sessionSummaries(series, treinosPorId);
   const recordes = bests(series);
   const melhorVolume = bestSessionVolume(resumos);
@@ -157,7 +159,7 @@ export async function renderDetail(view, exId) {
   setTop({
     title: exercicio.nome,
     back: '#/exercicios',
-    actions: '<button class="btn btn--sm btn--ghost" data-menu aria-label="Opções">···</button>',
+    actions: `<button class="btn btn--sm btn--ghost" data-menu aria-label="${t('exercise.opcoes')}">···</button>`,
   });
   document.querySelector('[data-menu]').onclick = () => menuExercicio(exercicio, series.length);
 
@@ -172,15 +174,15 @@ export async function renderDetail(view, exId) {
       <div class="stats">
         <div class="stat stat--pr">
           <div class="stat__val">${recordes.peso ? fmtNum(recordes.peso, 2) : '—'}</div>
-          <div class="stat__label">recorde de carga (${unidade})</div>
+          <div class="stat__label">${t('exercise.recordeCarga', { unidade })}</div>
         </div>
         <div class="stat stat--pr">
           <div class="stat__val">${recordes.e1rm ? fmtNum(recordes.e1rm, 0) : '—'}</div>
-          <div class="stat__label">1RM estimado</div>
+          <div class="stat__label">${t('exercise.metrica.e1rmRotulo')}</div>
         </div>
         <div class="stat stat--pr">
           <div class="stat__val">${melhorVolume ? fmtNum(melhorVolume, 0) : '—'}</div>
-          <div class="stat__label">melhor volume</div>
+          <div class="stat__label">${t('exercise.melhorVolume')}</div>
         </div>
       </div>
     </div>
@@ -188,11 +190,11 @@ export async function renderDetail(view, exId) {
 
   if (ativo && !(ativo.exerciseIds || []).includes(exercicio.id)) {
     const botao = node(html`
-      <button class="btn btn--block" data-add-treino>${raw(ICON.plus)} Adicionar ao treino em andamento</button>
+      <button class="btn btn--block" data-add-treino>${raw(ICON.plus)} ${t('exercise.adicionarAoTreino')}</button>
     `);
     botao.onclick = async () => {
       await db.addExerciseToWorkout(ativo.id, exercicio.id);
-      toast('Adicionado ao treino.');
+      toast(t('exercise.toastAdicionadoAoTreino'));
       location.hash = '#/sessao';
     };
     root.append(botao);
@@ -208,16 +210,12 @@ export async function renderDetail(view, exId) {
   if (exercicio.slug) {
     catalogo.instrucoes(exercicio.slug)
       .then((info) => {
-        if (!info?.passos?.length || !root.isConnected) return;
+        const passos = info?.[idioma()];
+        if (!passos?.length || !root.isConnected) return;
         root.append(node(html`
           <div class="card card__pad">
-            <h2 class="section-title" style="margin-top:0">
-              Como fazer
-              ${info.idioma === 'en'
-                ? raw('<span class="badge badge--en" title="ainda sem tradução">EN</span>')
-                : ''}
-            </h2>
-            <ol class="passos">${raw(info.passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
+            <h2 class="section-title" style="margin-top:0">${t('exercise.comoFazer')}</h2>
+            <ol class="passos">${raw(passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
           </div>
         `));
       })
@@ -226,14 +224,15 @@ export async function renderDetail(view, exId) {
 }
 
 function secaoGrafico(resumos, unidade) {
+  const m = metricas();
   const card = node(html`
     <div class="card">
       <div class="card__pad" style="padding-bottom:6px">
-        <h2 style="font-size:1rem">Evolução</h2>
+        <h2 style="font-size:1rem">${t('exercise.evolucao')}</h2>
         <p class="muted small" data-variacao style="margin:2px 0 10px"></p>
         <div class="segmented" data-metricas>
-          ${raw(Object.entries(METRICAS)
-            .map(([chave, m], i) => `<button class="segmented__btn" data-m="${chave}" aria-pressed="${i === 0}">${m.curto}</button>`)
+          ${raw(Object.entries(m)
+            .map(([chave, mm], i) => `<button class="segmented__btn" data-m="${chave}" aria-pressed="${i === 0}">${mm.curto}</button>`)
             .join(''))}
         </div>
       </div>
@@ -245,16 +244,14 @@ function secaoGrafico(resumos, unidade) {
   const textoVariacao = card.querySelector('[data-variacao]');
 
   const desenhar = (chave) => {
-    const m = METRICAS[chave];
+    const mm = m[chave];
     areaGrafico.innerHTML = '';
 
     if (resumos.length < 2) {
       areaGrafico.append(node(html`
         <div class="empty small">
           ${raw(ICON.dumbbell)}
-          <p>${resumos.length === 0
-            ? 'Nenhuma série registrada ainda.'
-            : 'Registre este exercício em pelo menos dois treinos para ver a linha de evolução.'}</p>
+          <p>${resumos.length === 0 ? t('exercise.grafico.vazioSemSeries') : t('exercise.grafico.vazioPoucosTreinos')}</p>
         </div>
       `));
       textoVariacao.textContent = '';
@@ -263,23 +260,26 @@ function secaoGrafico(resumos, unidade) {
 
     const pontos = resumos.map((r) => ({
       quando: r.quando,
-      valor: r[m.campo],
-      rotulo: `${r.series.length} série(s) · melhor ${fmtNum(r.maxPeso, 2)} ${unidade}`,
+      valor: r[mm.campo],
+      rotulo: `${tn('common.serie', r.series.length)} · ${t('exercise.melhorPeso', { peso: fmtNum(r.maxPeso, 2), unidade })}`,
     }));
 
     areaGrafico.append(lineChart({
       pontos,
       sufixo: chave === 'e1rm' ? '' : ` ${unidade}`,
-      decimais: m.decimais,
+      decimais: mm.decimais,
     }));
 
-    const variacao = progressPct(resumos, m.campo);
+    const variacao = progressPct(resumos, mm.campo);
     if (variacao == null) {
       textoVariacao.textContent = '';
     } else {
-      const sinal = variacao >= 0 ? '+' : '';
-      textoVariacao.textContent =
-        `${sinal}${fmtNum(variacao, 1)}% em ${m.rotulo} desde a primeira sessão (${fmtDate(resumos[0].quando)}).`;
+      textoVariacao.textContent = t('exercise.grafico.variacao', {
+        sinal: variacao >= 0 ? '+' : '',
+        valor: fmtNum(variacao, 1),
+        rotulo: mm.rotulo,
+        data: fmtDate(resumos[0].quando),
+      });
     }
   };
 
@@ -291,10 +291,10 @@ function secaoGrafico(resumos, unidade) {
 
 function secaoHistorico(resumos, prIds, unidade) {
   const wrap = node('<div></div>');
-  wrap.append(node('<h2 class="section-title">Histórico</h2>'));
+  wrap.append(node(`<h2 class="section-title">${t('exercise.historico.titulo')}</h2>`));
 
   if (!resumos.length) {
-    wrap.append(node('<div class="card"><div class="empty small"><p>Sem sessões registradas.</p></div></div>'));
+    wrap.append(node(`<div class="card"><div class="empty small"><p>${t('exercise.historico.vazio')}</p></div></div>`));
     return wrap;
   }
 
@@ -308,7 +308,7 @@ function secaoHistorico(resumos, prIds, unidade) {
           <div class="grow">
             <div style="font-weight:650">${fmtRelativeDay(r.quando)}</div>
             <div class="small" style="margin-top:2px">${raw(series)}</div>
-            <div class="muted small">volume ${fmtNum(r.volume, 0)} ${unidade} · 1RM ${fmtNum(r.melhor1rm, 0)}</div>
+            <div class="muted small">${t('exercise.historico.volumeRm', { volume: fmtNum(r.volume, 0), unidade, rm: fmtNum(r.melhor1rm, 0) })}</div>
           </div>
           <span class="list__chev">${raw(ICON.chevron)}</span>
         </a>
@@ -325,15 +325,13 @@ function secaoHistorico(resumos, prIds, unidade) {
 function menuExercicio(exercicio, totalSeries) {
   const corpo = node(html`
     <div class="stack">
-      <button class="btn btn--block" data-renomear>Renomear / mudar grupo</button>
+      <button class="btn btn--block" data-renomear>${t('exercise.menu.renomear')}</button>
       <button class="btn btn--block" data-figura>
-        ${exercicio.slug ? 'Trocar figura' : 'Escolher figura do catálogo'}
+        ${exercicio.slug ? t('exercise.menu.trocarFigura') : t('exercise.menu.escolherFigura')}
       </button>
-      <button class="btn btn--block btn--danger" data-apagar>Apagar exercício</button>
+      <button class="btn btn--block btn--danger" data-apagar>${t('exercise.menu.apagar')}</button>
       <p class="muted small" style="margin:0">
-        ${totalSeries
-          ? `Este exercício tem ${totalSeries} série(s) registradas. Para apagá-lo, apague antes os treinos em que ele aparece.`
-          : 'Sem séries registradas.'}
+        ${totalSeries ? t('exercise.menu.temSeries', { series: tn('common.serie', totalSeries) }) : t('exercise.menu.semSeries')}
       </p>
     </div>
   `);
@@ -344,14 +342,14 @@ function menuExercicio(exercicio, totalSeries) {
   corpo.querySelector('[data-apagar]').onclick = async () => {
     closeSheet();
     const ok = await confirmSheet({
-      title: `Apagar ${exercicio.nome}?`,
-      confirmLabel: 'Apagar',
+      title: t('exercise.menu.confirmarApagar.titulo', { nome: exercicio.nome }),
+      confirmLabel: t('common.apagar'),
       danger: true,
     });
     if (!ok) return;
     try {
       await db.deleteExercise(exercicio.id);
-      toast('Exercício apagado.');
+      toast(t('exercise.menu.toastApagado'));
       location.hash = '#/exercicios';
     } catch (err) {
       toast(err.message);
@@ -367,12 +365,12 @@ function escolherFigura(exercicio) {
   const corpo = node(html`
     <div class="stack">
       <input class="input" data-busca type="search" value="${exercicio.nome}"
-             placeholder="Buscar figura" autocomplete="off" autocapitalize="none" autocorrect="off">
-      <div data-resultados><p class="muted small">Carregando catálogo…</p></div>
-      ${exercicio.slug ? raw('<button class="btn btn--block btn--ghost" data-limpar>Remover figura</button>') : ''}
+             placeholder="${t('exercise.figura.buscarPlaceholder')}" autocomplete="off" autocapitalize="none" autocorrect="off">
+      <div data-resultados><p class="muted small">${t('exercise.figura.carregandoCatalogo')}</p></div>
+      ${exercicio.slug ? raw(`<button class="btn btn--block btn--ghost" data-limpar>${t('exercise.figura.removerFigura')}</button>`) : ''}
     </div>
   `);
-  openSheet('Figura do exercício', corpo);
+  openSheet(t('exercise.figura.tituloSheet'), corpo);
 
   const busca = corpo.querySelector('[data-busca]');
   const resultados = corpo.querySelector('[data-resultados]');
@@ -380,7 +378,7 @@ function escolherFigura(exercicio) {
   const aplicar = async (slug) => {
     await db.definirFiguraExercicio(exercicio.id, slug);
     closeSheet();
-    toast(slug ? 'Figura atualizada.' : 'Figura removida.');
+    toast(slug ? t('exercise.figura.toastAtualizada') : t('exercise.figura.toastRemovida'));
     refresh();
   };
 
@@ -391,7 +389,7 @@ function escolherFigura(exercicio) {
     resultados.innerHTML = '';
 
     if (!itens.length) {
-      resultados.append(node('<p class="muted small">Nenhum exercício encontrado.</p>'));
+      resultados.append(node(`<p class="muted small">${t('exercise.figura.nenhumEncontrado')}</p>`));
       return;
     }
 
@@ -400,10 +398,10 @@ function escolherFigura(exercicio) {
         <button class="list__link" data-slug="${item.slug}">
           ${raw(thumbHtml(item))}
           <div class="grow">
-            <div style="font-weight:600">${item.nome}</div>
+            <div style="font-weight:600">${catalogo.nomeExibicao(item)}</div>
             <div class="muted small">${item.nomeEn}</div>
           </div>
-          ${item.slug === exercicio.slug ? raw(`<span class="badge">atual</span>`) : ''}
+          ${item.slug === exercicio.slug ? raw(`<span class="badge">${t('exercise.figura.atual')}</span>`) : ''}
         </button>
       </li>
     `).join(''))}</ul></div>`);
@@ -416,7 +414,7 @@ function escolherFigura(exercicio) {
 
   busca.addEventListener('input', () => { desenhar().catch(() => {}); });
   desenhar().catch(() => {
-    resultados.innerHTML = '<p class="muted small">Não consegui carregar o catálogo.</p>';
+    resultados.innerHTML = `<p class="muted small">${t('exercise.figura.erroCarregar')}</p>`;
   });
 }
 
@@ -424,31 +422,31 @@ function formularioExercicio(exercicio = null) {
   const corpo = node(html`
     <div class="stack">
       <label class="field">
-        <span class="field__label">Nome</span>
+        <span class="field__label">${t('exercise.form.nome')}</span>
         <input class="input" data-nome value="${exercicio?.nome || ''}" autocapitalize="sentences">
       </label>
       <label class="field">
-        <span class="field__label">Grupo muscular</span>
+        <span class="field__label">${t('exercise.form.grupoMuscular')}</span>
         <select class="select" data-grupo>
           ${raw(GRUPOS.map((g) =>
-            `<option value="${g}"${g === exercicio?.grupoMuscular ? ' selected' : ''}>${g}</option>`).join(''))}
+            `<option value="${g}"${g === exercicio?.grupoMuscular ? ' selected' : ''}>${grupoLabel(g)}</option>`).join(''))}
         </select>
       </label>
-      <button class="btn btn--primary btn--block" data-salvar>${exercicio ? 'Salvar' : 'Criar exercício'}</button>
+      <button class="btn btn--primary btn--block" data-salvar>${exercicio ? t('exercise.form.salvar') : t('exercise.form.criar')}</button>
     </div>
   `);
-  openSheet(exercicio ? 'Editar exercício' : 'Novo exercício', corpo);
+  openSheet(exercicio ? t('exercise.form.tituloEditar') : t('exercise.form.tituloNovo'), corpo);
 
   corpo.querySelector('[data-salvar]').onclick = async () => {
     const nome = corpo.querySelector('[data-nome]').value.trim();
     const grupoMuscular = corpo.querySelector('[data-grupo]').value;
-    if (!nome) { toast('Dê um nome ao exercício.'); return; }
+    if (!nome) { toast(t('exercise.form.deNome')); return; }
 
     if (exercicio) await db.updateExercise(exercicio.id, { nome, grupoMuscular });
     else await db.addExercise({ nome, grupoMuscular });
 
     closeSheet();
-    toast(exercicio ? 'Exercício atualizado.' : 'Exercício criado.');
+    toast(exercicio ? t('exercise.form.toastAtualizado') : t('exercise.form.toastCriado'));
     refresh();
   };
 }

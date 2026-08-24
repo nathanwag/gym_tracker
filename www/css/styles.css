@@ -150,6 +150,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .topbar__back:active, .icon-btn:active { background: var(--surface-2); }
 .icon-btn[aria-pressed="true"] { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+.icon-btn[disabled] { opacity: .45; pointer-events: none; }
 .topbar__actions { display: flex; align-items: center; gap: 2px; }
 
 /* ---------- Layout ---------- */
@@ -421,6 +422,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .stat__val { font-size: 1.16rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stat__label { margin-top: 1px; font-size: .72rem; color: var(--muted); }
 .stat--pr .stat__val { color: var(--pr); }
+
+.semana-nav__voltar svg { transform: rotate(180deg); }
 
 .mgrupo { display: flex; flex-direction: column; gap: 10px; }
 .mgrupo__linha { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 8px; }
@@ -710,12 +713,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .cat__tem { flex: 0 0 auto; display: inline-flex; color: var(--accent); }
 .cat__tem svg { width: 19px; height: 19px; }
 .cat__titulo { font-size: 1.15rem; }
-
-.badge--en {
-  background: var(--surface-2);
-  color: var(--muted);
-  font-size: .62rem;
-}
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {

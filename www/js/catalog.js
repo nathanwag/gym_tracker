@@ -13,6 +13,14 @@
  */
 
 import { normalizarNome } from './text.js';
+import { idioma } from './i18n.js';
+
+/** Nome de exibicao de um item do catalogo, no idioma ativo. So pra itens do
+ *  catalogo (que tem os dois campos) — nao se aplica ao nome de um exercicio
+ *  pessoal (db.js), que so tem `nome` e fica como o usuario digitou. */
+export function nomeExibicao(item) {
+  return idioma() === 'en' ? item.nomeEn : item.nome;
+}
 
 let catalogoPromise = null;
 let instrucoesPromise = null;

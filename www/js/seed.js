@@ -15,6 +15,7 @@
  */
 
 import { normalizarNome } from './text.js';
+import { idioma } from './i18n.js';
 
 export const GRUPOS = [
   'Peito',
@@ -35,6 +36,38 @@ export const GRUPOS = [
   'Alongamento',
   'Outros',
 ];
+
+// Nome de exibicao em ingles pros 17 grupos. So pra exibicao — o valor gravado
+// no IndexedDB, as chaves de ICON_GRUPO e o campo `grupo` do catalogo
+// continuam sempre em portugues (ver grupoLabel() abaixo).
+const GRUPO_EN = {
+  'Peito': 'Chest',
+  'Costas': 'Back',
+  'Lombar': 'Lower back',
+  'Deltoides': 'Shoulders',
+  'Trapézio': 'Traps',
+  'Pescoço': 'Neck',
+  'Bíceps': 'Biceps',
+  'Tríceps': 'Triceps',
+  'Quadríceps': 'Quads',
+  'Posterior': 'Hamstrings',
+  'Glúteos': 'Glutes',
+  'Panturrilha': 'Calves',
+  'Abdômen': 'Abs',
+  'Antebraço': 'Forearms',
+  'Cardio': 'Cardio',
+  'Alongamento': 'Stretching',
+  'Outros': 'Other',
+};
+
+/** Nome do grupo pra exibir na tela, no idioma ativo. `grupo` continua sendo
+ *  a chave canonica (portugues) usada para gravar/comparar — so o texto
+ *  mostrado muda. Use isto em todo lugar que hoje imprime `${grupo}` como
+ *  texto; em `<select>`, o `value` do `<option>` continua o `grupo` original,
+ *  so o texto visivel passa por aqui. */
+export function grupoLabel(grupo) {
+  return idioma() === 'en' ? (GRUPO_EN[grupo] || grupo) : grupo;
+}
 
 export const SEED_EXERCISES = {
   'Peito': [

@@ -148,7 +148,7 @@ export function workoutSummary(sets) {
 /* ---------- Resumo semanal por grupo muscular ---------- */
 
 /** Segunda-feira 00:00:00.000 (hora local) da semana que contem `data`. */
-function segundaFeira(data) {
+export function segundaFeira(data) {
   const d = new Date(data);
   d.setHours(0, 0, 0, 0);
   const dia = d.getDay(); // 0=domingo .. 6=sabado
@@ -198,4 +198,44 @@ export function weekMuscleGroupSummary(sets, workoutsById, exercisesById, refere
     volume: naSemana.reduce((acc, s) => acc + setVolume(s), 0),
     porGrupo: [...porGrupoMap.values()].sort((a, b) => b.series - a.series),
   };
+}
+
+/* ---------- Tendencia semanal ---------- */
+
+/**
+ * Series, volume e treinos por semana de calendario, das ultimas `semanas`
+ * semanas (incluindo a atual), em ordem cronologica. Semanas sem nenhuma
+ * serie aparecem com os totais zerados (nao sao omitidas), pra manter a
+ * cadencia semanal do grafico de tendencia.
+ * @param {object[]} sets todas as series (de qualquer exercicio/treino)
+ * @param {Map<number, object>} workoutsById treinos indexados por id
+ * @param {number} semanas quantas semanas incluir (a mais recente e a semana de `referenceDate`)
+ * @param {Date} referenceDate qualquer data dentro da semana mais recente da janela
+ * @returns {{inicio: Date, treinos: number, series: number, volume: number}[]}
+ */
+export function weeklyTrend(sets, workoutsById, semanas = 8, referenceDate = new Date()) {
+  const semanaAtual = segundaFeira(referenceDate);
+  const baldes = new Map();
+  for (let i = semanas - 1; i >= 0; i--) {
+    const d = new Date(semanaAtual);
+    d.setDate(d.getDate() - i * 7);
+    baldes.set(d.getTime(), { inicio: d, treinoIds: new Set(), series: 0, volume: 0 });
+  }
+  const primeiraJanela = [...baldes.keys()][0];
+
+  for (const s of workingSets(sets)) {
+    const treino = workoutsById.get(s.workoutId);
+    const quando = new Date(treino?.iniciadoEm || s.criadoEm);
+    const inicioSemana = segundaFeira(quando).getTime();
+    if (inicioSemana < primeiraJanela) continue;
+    const balde = baldes.get(inicioSemana);
+    if (!balde) continue; // fora da janela (ex: semana futura, relogio errado)
+    balde.treinoIds.add(s.workoutId);
+    balde.series += 1;
+    balde.volume += setVolume(s);
+  }
+
+  return [...baldes.values()].map((b) => ({
+    inicio: b.inicio, treinos: b.treinoIds.size, series: b.series, volume: b.volume,
+  }));
 }

@@ -6,8 +6,9 @@
 
 import * as catalogo from '../catalog.js';
 import * as db from '../db.js';
-import { GRUPOS, agruparPorGrupo } from '../seed.js';
+import { GRUPOS, agruparPorGrupo, grupoLabel } from '../seed.js';
 import { thumbHtml, criarAnimacao } from '../media.js';
+import { t, idioma } from '../i18n.js';
 import {
   ICON, ICON_GRUPO, html, node, raw, setTop, toast, refresh,
 } from '../ui.js';
@@ -18,13 +19,13 @@ import { normalizarNome as normalizar } from '../text.js';
    ========================================================================== */
 
 export async function renderList(view) {
-  setTop({ title: 'Catálogo', back: '#/exercicios' });
+  setTop({ title: t('catalog.titulo'), back: '#/exercicios' });
 
   const root = node(html`
     <div class="stack">
-      <input class="input" data-busca type="search" placeholder="Buscar entre 873 exercícios"
+      <input class="input" data-busca type="search" placeholder="${t('catalog.buscarPlaceholder')}"
              autocomplete="off" autocapitalize="none" autocorrect="off">
-      <div data-lista><div class="card card__pad muted">Carregando…</div></div>
+      <div data-lista><div class="card card__pad muted">${t('catalog.carregando')}</div></div>
     </div>
   `);
   view.append(root);
@@ -39,7 +40,7 @@ export async function renderList(view) {
     lista.append(node(html`
       <div class="card"><div class="empty">
         ${raw(ICON.dumbbell)}
-        <p>Não consegui carregar o catálogo. Verifique a conexão e recarregue.</p>
+        <p>${t('catalog.erroCarregar')}</p>
       </div></div>
     `));
     return;
@@ -56,14 +57,13 @@ export async function renderList(view) {
         ${raw(thumbHtml(item))}
         <div class="grow">
           <div class="cat__nome">
-            ${item.nome}
-            ${item.traduzido ? '' : raw('<span class="badge badge--en" title="ainda sem tradução">EN</span>')}
+            ${catalogo.nomeExibicao(item)}
           </div>
           <div class="muted small">${item.equipamento}${item.nivel ? ` · ${item.nivel}` : ''}</div>
         </div>
         ${meus.has(item.slug)
-          ? raw(`<span class="cat__tem" title="Já está na sua biblioteca"
-                       aria-label="Já está na sua biblioteca">${ICON.check}</span>`)
+          ? raw(`<span class="cat__tem" title="${t('catalog.jaNaBiblioteca')}"
+                       aria-label="${t('catalog.jaNaBiblioteca')}">${ICON.check}</span>`)
           : raw(`<span class="list__chev">${ICON.chevron}</span>`)}
       </a>
     </li>
@@ -78,7 +78,7 @@ export async function renderList(view) {
       if (!achados.length) {
         lista.append(node(html`
           <div class="card"><div class="empty">
-            ${raw(ICON.dumbbell)}<p>Nenhum exercício encontrado para «${q}».</p>
+            ${raw(ICON.dumbbell)}<p>${t('catalog.nenhumEncontrado', { q })}</p>
           </div></div>
         `));
         return;
@@ -90,7 +90,7 @@ export async function renderList(view) {
       if (achados.length > corte.length) {
         lista.append(node(html`
           <p class="muted small" style="text-align:center">
-            mostrando ${corte.length} de ${achados.length} — refine a busca
+            ${t('catalog.mostrandoDe', { mostrados: corte.length, total: achados.length })}
           </p>
         `));
       }
@@ -105,7 +105,7 @@ export async function renderList(view) {
         <div class="card cat__grupo">
           <button class="cat__cabecalho" type="button" aria-expanded="${String(aberto)}">
             <span class="cat__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
-            <span class="grow" style="font-weight:600">${grupo}</span>
+            <span class="grow" style="font-weight:600">${grupoLabel(grupo)}</span>
             <span class="muted small">${doGrupo.length}</span>
             <span class="list__chev cat__seta">${raw(ICON.chevron)}</span>
           </button>
@@ -140,12 +140,12 @@ export async function renderList(view) {
 export async function renderDetail(view, slug) {
   const item = await catalogo.get(slug);
   if (!item) {
-    setTop({ title: 'Catálogo', back: '#/catalogo' });
-    view.append(node('<div class="card card__pad">Exercício não encontrado no catálogo.</div>'));
+    setTop({ title: t('catalog.titulo'), back: '#/catalogo' });
+    view.append(node(`<div class="card card__pad">${t('catalog.naoEncontrado')}</div>`));
     return;
   }
 
-  setTop({ title: item.nome, back: '#/catalogo' });
+  setTop({ title: catalogo.nomeExibicao(item), back: '#/catalogo' });
 
   const meus = await db.listExercises();
   const jaTenho = meus.find((e) => e.slug === slug) || null;
@@ -153,24 +153,26 @@ export async function renderDetail(view, slug) {
   const root = node('<div class="stack"></div>');
 
   // A animacao e o "videozinho": as duas fotos alternando mostram o movimento.
-  root.append(criarAnimacao(slug, { nome: item.nome }));
+  root.append(criarAnimacao(slug, { nome: catalogo.nomeExibicao(item) }));
 
   root.append(node(html`
     <div class="card card__pad stack--sm">
       <div>
-        <h2 class="cat__titulo">${item.nome}</h2>
-        <!-- O nome em ingles fica sempre visivel: e a fonte original, e uma
-             traducao ruim nunca deve ser a unica referencia. -->
-        <p class="muted small">${item.nomeEn}</p>
+        <h2 class="cat__titulo">${catalogo.nomeExibicao(item)}</h2>
+        <!-- O nome em ingles fica sempre visivel quando o idioma e portugues:
+             e a fonte original, e uma traducao ruim nunca deve ser a unica
+             referencia. Com idioma ingles, nomeExibicao() ja mostra o ingles
+             em cima, entao a segunda linha mostra o nome em portugues. -->
+        <p class="muted small">${idioma() === 'en' ? item.nome : item.nomeEn}</p>
       </div>
       <div class="chips">
-        <span class="chip">${item.grupo}</span>
+        <span class="chip">${grupoLabel(item.grupo)}</span>
         <span class="chip">${item.equipamento}</span>
         ${item.nivel ? raw(`<span class="chip">${item.nivel}</span>`) : ''}
         ${item.categoria ? raw(`<span class="chip">${item.categoria}</span>`) : ''}
       </div>
       ${item.secundarios.length
-        ? raw(`<p class="muted small">Também trabalha: ${item.secundarios.join(', ')}</p>`)
+        ? raw(`<p class="muted small">${t('catalog.tambemTrabalha', { grupos: item.secundarios.map(grupoLabel).join(', ') })}</p>`)
         : ''}
     </div>
   `));
@@ -179,19 +181,19 @@ export async function renderDetail(view, slug) {
   if (jaTenho) {
     root.append(node(html`
       <a class="btn btn--block btn--ghost" href="#/exercicios/${jaTenho.id}">
-        ${raw(ICON.check)} Já está na sua biblioteca — ver evolução
+        ${raw(ICON.check)} ${t('catalog.jaNaBibliotecaVerEvolucao')}
       </a>
     `));
   } else {
     const acao = node(html`
       <div class="card card__pad stack--sm">
         <label class="field">
-          <span class="field__label">Grupo muscular</span>
+          <span class="field__label">${t('catalog.grupoMuscular')}</span>
           <select class="select" data-grupo>
-            ${raw(GRUPOS.map((g) => `<option value="${g}"${g === item.grupo ? ' selected' : ''}>${g}</option>`).join(''))}
+            ${raw(GRUPOS.map((g) => `<option value="${g}"${g === item.grupo ? ' selected' : ''}>${grupoLabel(g)}</option>`).join(''))}
           </select>
         </label>
-        <button class="btn btn--block" data-adicionar>${raw(ICON.plus)} Adicionar aos meus exercícios</button>
+        <button class="btn btn--block" data-adicionar>${raw(ICON.plus)} ${t('catalog.adicionarAosMeus')}</button>
       </div>
     `);
 
@@ -200,7 +202,7 @@ export async function renderDetail(view, slug) {
       // Baixa as fotos grandes agora, com a rede que houver: na academia pode
       // nao haver.
       const criado = await db.addExercicioDoCatalogo(item, grupoMuscular);
-      toast(criado.jaExistia ? 'Já estava na sua biblioteca.' : `${item.nome} adicionado.`);
+      toast(criado.jaExistia ? t('catalog.toastJaEstava') : t('catalog.toastAdicionado', { nome: catalogo.nomeExibicao(item) }));
       refresh();
     };
     root.append(acao);
@@ -208,16 +210,12 @@ export async function renderDetail(view, slug) {
 
   // Passo a passo
   const instrucoes = await catalogo.instrucoes(slug).catch(() => null);
-  if (instrucoes?.passos?.length) {
+  const passos = instrucoes?.[idioma()];
+  if (passos?.length) {
     root.append(node(html`
       <div class="card card__pad">
-        <h2 class="section-title" style="margin-top:0">
-          Como fazer
-          ${instrucoes.idioma === 'en'
-            ? raw('<span class="badge badge--en" title="ainda sem tradução">EN</span>')
-            : ''}
-        </h2>
-        <ol class="passos">${raw(instrucoes.passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
+        <h2 class="section-title" style="margin-top:0">${t('catalog.comoFazer')}</h2>
+        <ol class="passos">${raw(passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
       </div>
     `));
   }

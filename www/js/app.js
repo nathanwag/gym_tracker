@@ -3,7 +3,8 @@
  * funciona igual no GitHub Pages, em subpasta, e na origem local do WebView
  * nativo do Capacitor — sem nenhuma configuracao de servidor. */
 
-import { $, initSheet, closeSheet, html, node } from './ui.js';
+import { $, initSheet, closeSheet, html, node, refresh } from './ui.js';
+import { t } from './i18n.js';
 import * as db from './db.js';
 import * as home from './views/home.js';
 import * as session from './views/session.js';
@@ -52,7 +53,7 @@ async function atualizarFab() {
   const ativo = await db.getActiveWorkout();
   fab.disabled = false;
   fab.classList.toggle('is-ativo', !!ativo);
-  fab.setAttribute('aria-label', ativo ? 'Retomar treino em andamento' : 'Iniciar treino');
+  fab.setAttribute('aria-label', ativo ? t('app.fab.retomar') : t('app.fab.iniciar'));
 }
 
 function initFab() {
@@ -100,9 +101,9 @@ async function router() {
 function showError(view, err) {
   view.innerHTML = html`
     <div class="card card__pad">
-      <h2>Algo deu errado</h2>
+      <h2>${t('app.erro.titulo')}</h2>
       <p class="muted small">${err?.message || String(err)}</p>
-      <button class="btn btn--block" onclick="location.reload()">Recarregar</button>
+      <button class="btn btn--block" onclick="location.reload()">${t('app.erro.recarregar')}</button>
     </div>
   `;
 }
@@ -114,7 +115,24 @@ function applyTheme(tema) {
   else delete root.dataset.theme;
 }
 
+/** Aplica o idioma ativo na casca estatica do app.js (www/index.html) — a
+ *  unica parte da tela que nao e reconstruida a cada render de view. Chamada
+ *  no boot e sempre que 'idioma:mudou' dispara. Le o idioma atual via t(), em
+ *  vez de receber como parametro, porque quem dispara o evento ja gravou o
+ *  valor novo em db.js antes de disparar. */
+function aplicarIdiomaEstatico() {
+  document.documentElement.lang = t('app.htmlLang');
+  for (const tab of ['treino', 'historico', 'exercicios', 'ajustes']) {
+    const span = document.querySelector(`.tabbar__item[data-tab="${tab}"] span`);
+    if (span) span.textContent = t(`app.tab.${tab}`);
+  }
+  $('#topbar-back')?.setAttribute('aria-label', t('app.voltar'));
+  document.querySelector('#sheet button[data-close-sheet]')?.setAttribute('aria-label', t('common.fechar'));
+  document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.metaDescricao'));
+}
+
 window.addEventListener('tema:mudou', (e) => applyTheme(e.detail));
+window.addEventListener('idioma:mudou', () => { aplicarIdiomaEstatico(); refresh(); });
 
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -177,15 +195,16 @@ async function boot() {
     console.error(err);
     $('#view').append(node(html`
       <div class="card card__pad">
-        <h2>Nao foi possivel abrir o banco de dados</h2>
+        <h2>${t('app.bancoErro.titulo')}</h2>
         <p class="muted small">${err?.message || String(err)}</p>
-        <p class="muted small">Se estiver numa aba privada do Safari, abra o app numa aba normal.</p>
+        <p class="muted small">${t('app.bancoErro.abaPrivada')}</p>
       </div>
     `));
     return;
   }
 
   applyTheme(db.settings().tema);
+  aplicarIdiomaEstatico();
   await router();
   await registerServiceWorker();
   requestPersistence();

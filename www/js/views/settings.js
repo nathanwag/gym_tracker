@@ -3,6 +3,7 @@
 import * as db from '../db.js';
 import { prepararBackup, exportar, lerArquivo, restaurar } from '../backup.js';
 import { MEDIA_CACHE } from '../media.js';
+import { t } from '../i18n.js';
 import {
   setTop, html, raw, node, toast, openSheet, confirmSheet, isIOS, isStandalone, ICON,
 } from '../ui.js';
@@ -10,7 +11,7 @@ import {
 const INCREMENTOS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
 
 export async function render(view) {
-  setTop({ title: 'Ajustes', barra: false });
+  setTop({ title: t('settings.titulo'), barra: false });
 
   const cfg = db.settings();
   const root = node('<div class="stack"></div>');
@@ -34,8 +35,8 @@ export async function render(view) {
 function atalhos(backupPronto, obterBackup) {
   const el = node(html`
     <div class="atalhos">
-      <button class="atalho" type="button" data-abrir-backup>${raw(ICON.download)}<span>Backup</span></button>
-      <button class="atalho" type="button" data-abrir-figuras>${raw(ICON.image)}<span>Figuras</span></button>
+      <button class="atalho" type="button" data-abrir-backup>${raw(ICON.download)}<span>${t('settings.atalhos.backup')}</span></button>
+      <button class="atalho" type="button" data-abrir-figuras>${raw(ICON.image)}<span>${t('settings.atalhos.figuras')}</span></button>
     </div>
   `);
   // Montados uma unica vez e reaproveitados a cada abertura do sheet: o de
@@ -43,8 +44,8 @@ function atalhos(backupPronto, obterBackup) {
   // se acumular a cada toque.
   const backupNode = backupBody(backupPronto, obterBackup);
   const figurasNode = figurasBody();
-  el.querySelector('[data-abrir-backup]').onclick = () => openSheet('Backup', backupNode);
-  el.querySelector('[data-abrir-figuras]').onclick = () => openSheet('Figuras dos exercícios', figurasNode);
+  el.querySelector('[data-abrir-backup]').onclick = () => openSheet(t('settings.atalhos.backup'), backupNode);
+  el.querySelector('[data-abrir-figuras]').onclick = () => openSheet(t('settings.figuras.tituloSheet'), figurasNode);
   return el;
 }
 
@@ -53,20 +54,17 @@ function atalhos(backupPronto, obterBackup) {
 function backupBody(backupPronto, obterBackup) {
   const corpo = node(html`
     <div class="stack">
-      <p class="muted small" style="margin:0">
-        Seus treinos ficam salvos só neste aparelho. Exporte um arquivo de vez em quando —
-        é o que permite trocar de celular ou recuperar tudo se os dados do navegador forem limpos.
-      </p>
-      <p class="small tnum" data-resumo style="margin:0">Preparando…</p>
-      <button class="btn btn--primary btn--block" data-exportar>Exportar treinos</button>
-      <button class="btn btn--block" data-importar>Importar backup</button>
+      <p class="muted small" style="margin:0">${t('settings.backup.explicacao')}</p>
+      <p class="small tnum" data-resumo style="margin:0">${t('settings.backup.preparando')}</p>
+      <button class="btn btn--primary btn--block" data-exportar>${t('settings.backup.exportar')}</button>
+      <button class="btn btn--block" data-importar>${t('settings.backup.importar')}</button>
       <input type="file" accept="application/json,.json" data-arquivo hidden>
     </div>
   `);
 
   backupPronto.then((b) => {
     corpo.querySelector('[data-resumo]').textContent =
-      `${b.resumo.treinos} treinos · ${b.resumo.series} séries · ${b.resumo.exercicios} exercícios`;
+      t('settings.backup.resumo', { treinos: b.resumo.treinos, series: b.resumo.series, exercicios: b.resumo.exercicios });
   });
 
   corpo.querySelector('[data-exportar]').onclick = async () => {
@@ -76,10 +74,10 @@ function backupBody(backupPronto, obterBackup) {
     const podeBaixar = !(isIOS() && isStandalone());
     const resultado = await exportar(b, { podeBaixar });
 
-    if (resultado === 'compartilhado') toast('Backup enviado. Salve em Arquivos ou iCloud.');
-    else if (resultado === 'baixado') toast('Arquivo baixado.');
-    else if (resultado === 'cancelado') toast('Exportação cancelada.');
-    else if (resultado === 'copiado') { toast('Backup copiado. Cole num app de notas e guarde.'); mostrarJson(b); }
+    if (resultado === 'compartilhado') toast(t('settings.backup.toastCompartilhado'));
+    else if (resultado === 'baixado') toast(t('settings.backup.toastBaixado'));
+    else if (resultado === 'cancelado') toast(t('settings.backup.toastCancelado'));
+    else if (resultado === 'copiado') { toast(t('settings.backup.toastCopiado')); mostrarJson(b); }
     else mostrarJson(b);
   };
 
@@ -100,16 +98,15 @@ function backupBody(backupPronto, obterBackup) {
     }
 
     const ok = await confirmSheet({
-      title: 'Restaurar este backup?',
-      message: `O arquivo tem ${dados.workouts.length} treinos e ${dados.sets.length} séries. `
-        + 'Tudo que está hoje no aparelho será substituído.',
-      confirmLabel: 'Restaurar',
+      title: t('settings.backup.confirmarRestaurar.titulo'),
+      message: t('settings.backup.confirmarRestaurar.mensagem', { treinos: dados.workouts.length, series: dados.sets.length }),
+      confirmLabel: t('settings.backup.restaurar'),
       danger: true,
     });
     if (!ok) return;
 
     await restaurar(dados);
-    toast('Backup restaurado.');
+    toast(t('settings.backup.toastRestaurado'));
     location.hash = '#/';
   };
 
@@ -119,25 +116,22 @@ function backupBody(backupPronto, obterBackup) {
 function mostrarJson(backup) {
   const corpo = node(html`
     <div class="stack">
-      <p class="muted small" style="margin:0">
-        Não foi possível salvar o arquivo automaticamente. Copie o texto abaixo e guarde
-        num app de notas ou envie para você mesmo.
-      </p>
+      <p class="muted small" style="margin:0">${t('settings.backup.manual.explicacao')}</p>
       <textarea class="input" style="height:220px;padding:10px;font-family:monospace;font-size:12px"
                 readonly>${backup.json}</textarea>
-      <button class="btn btn--primary btn--block" data-copiar>Copiar tudo</button>
+      <button class="btn btn--primary btn--block" data-copiar>${t('settings.backup.manual.copiarTudo')}</button>
     </div>
   `);
-  openSheet('Backup manual', corpo);
+  openSheet(t('settings.backup.manual.titulo'), corpo);
 
   const area = corpo.querySelector('textarea');
   corpo.querySelector('[data-copiar]').onclick = async () => {
     area.select();
     try {
       await navigator.clipboard.writeText(backup.json);
-      toast('Copiado.');
+      toast(t('settings.backup.manual.toastCopiado'));
     } catch {
-      toast('Use "Selecionar tudo" e copie manualmente.');
+      toast(t('settings.backup.manual.toastFalhaCopia'));
     }
   };
 }
@@ -147,28 +141,35 @@ function mostrarJson(backup) {
 function cardPreferencias(cfg) {
   const card = node(html`
     <div>
-      <h2 class="section-title" style="margin-top:4px">Configurações</h2>
+      <h2 class="section-title" style="margin-top:4px">${t('settings.preferencias.titulo')}</h2>
       <div class="card card__pad stack">
         <label class="field">
-          <span class="field__label">Unidade de peso</span>
+          <span class="field__label">${t('settings.preferencias.unidade.label')}</span>
           <select class="select" data-unidade>
-            <option value="kg"${cfg.unidade === 'kg' ? ' selected' : ''}>Quilos (kg)</option>
-            <option value="lb"${cfg.unidade === 'lb' ? ' selected' : ''}>Libras (lb)</option>
+            <option value="kg"${cfg.unidade === 'kg' ? ' selected' : ''}>${t('settings.preferencias.unidade.kg')}</option>
+            <option value="lb"${cfg.unidade === 'lb' ? ' selected' : ''}>${t('settings.preferencias.unidade.lb')}</option>
           </select>
         </label>
         <label class="field">
-          <span class="field__label">Passo do botão de peso</span>
+          <span class="field__label">${t('settings.preferencias.passo.label')}</span>
           <select class="select" data-incremento>
             ${raw(INCREMENTOS.map((v) =>
               `<option value="${v}"${Number(cfg.incrementoPeso) === v ? ' selected' : ''}>${String(v).replace('.', ',')}</option>`).join(''))}
           </select>
         </label>
         <label class="field">
-          <span class="field__label">Tema</span>
+          <span class="field__label">${t('settings.preferencias.tema.label')}</span>
           <select class="select" data-tema>
-            <option value="auto"${cfg.tema === 'auto' ? ' selected' : ''}>Igual ao sistema</option>
-            <option value="escuro"${cfg.tema === 'escuro' ? ' selected' : ''}>Escuro</option>
-            <option value="claro"${cfg.tema === 'claro' ? ' selected' : ''}>Claro</option>
+            <option value="auto"${cfg.tema === 'auto' ? ' selected' : ''}>${t('settings.preferencias.tema.auto')}</option>
+            <option value="escuro"${cfg.tema === 'escuro' ? ' selected' : ''}>${t('settings.preferencias.tema.escuro')}</option>
+            <option value="claro"${cfg.tema === 'claro' ? ' selected' : ''}>${t('settings.preferencias.tema.claro')}</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field__label">${t('settings.preferencias.idioma.label')}</span>
+          <select class="select" data-idioma>
+            <option value="pt"${cfg.idioma === 'pt' ? ' selected' : ''}>${t('settings.preferencias.idioma.pt')}</option>
+            <option value="en"${cfg.idioma === 'en' ? ' selected' : ''}>${t('settings.preferencias.idioma.en')}</option>
           </select>
         </label>
       </div>
@@ -177,15 +178,19 @@ function cardPreferencias(cfg) {
 
   card.querySelector('[data-unidade]').onchange = async (e) => {
     await db.setSetting('unidade', e.target.value);
-    toast('Unidade atualizada.');
+    toast(t('settings.preferencias.unidade.toast'));
   };
   card.querySelector('[data-incremento]').onchange = async (e) => {
     await db.setSetting('incrementoPeso', Number(e.target.value));
-    toast('Passo atualizado.');
+    toast(t('settings.preferencias.passo.toast'));
   };
   card.querySelector('[data-tema]').onchange = async (e) => {
     await db.setSetting('tema', e.target.value);
     window.dispatchEvent(new CustomEvent('tema:mudou', { detail: e.target.value }));
+  };
+  card.querySelector('[data-idioma]').onchange = async (e) => {
+    await db.setSetting('idioma', e.target.value);
+    window.dispatchEvent(new CustomEvent('idioma:mudou', { detail: e.target.value }));
   };
 
   return card;
@@ -199,14 +204,10 @@ function cardPreferencias(cfg) {
 function figurasBody() {
   const corpo = node(html`
     <div class="stack">
-      <p class="muted small" style="margin:0">
-        Cada exercício tem duas fotos — posição inicial e final — que alternam para mostrar
-        o movimento. As miniaturas vêm junto com o app; as fotos grandes são baixadas na
-        primeira vez que você abre cada exercício e ficam salvas.
-      </p>
-      <p class="small tnum" data-uso style="margin:0">Calculando…</p>
-      <button class="btn btn--block" data-baixar>Baixar figuras para uso offline</button>
-      <button class="btn btn--block btn--ghost" data-apagar>Apagar figuras baixadas</button>
+      <p class="muted small" style="margin:0">${t('settings.figuras.explicacao')}</p>
+      <p class="small tnum" data-uso style="margin:0">${t('settings.figuras.calculando')}</p>
+      <button class="btn btn--block" data-baixar>${t('settings.figuras.baixar')}</button>
+      <button class="btn btn--block btn--ghost" data-apagar>${t('settings.figuras.apagarBaixadas')}</button>
     </div>
   `);
 
@@ -218,47 +219,47 @@ function figurasBody() {
       const cache = await caches.open(MEDIA_CACHE);
       const total = (await cache.keys()).length;
       const est = await navigator.storage?.estimate?.().catch(() => null);
-      const mb = est?.usage ? ` · ${(est.usage / 1024 / 1024).toFixed(1)} MB no aparelho` : '';
-      uso.textContent = total ? `${total} figuras salvas${mb}` : 'Nenhuma figura salva ainda.';
+      const mb = est?.usage ? ` · ${(est.usage / 1024 / 1024).toFixed(1)} MB${t('settings.figuras.noAparelho')}` : '';
+      uso.textContent = total ? `${t('settings.figuras.salvas', { n: total })}${mb}` : t('settings.figuras.nenhumaSalva');
     } catch {
-      uso.textContent = 'Cache de figuras indisponível neste navegador.';
+      uso.textContent = t('settings.figuras.cacheIndisponivel');
     }
   };
 
   navigator.serviceWorker?.addEventListener('message', (e) => {
     if (e.data?.tipo === 'precache-midia:progresso') {
-      baixar.textContent = `Baixando… ${e.data.feitos}/${e.data.total}`;
+      baixar.textContent = t('settings.figuras.baixando', { feitos: e.data.feitos, total: e.data.total });
     } else if (e.data?.tipo === 'precache-midia:fim') {
-      baixar.textContent = 'Baixar figuras para uso offline';
+      baixar.textContent = t('settings.figuras.baixar');
       baixar.disabled = false;
-      toast(e.data.total ? `${e.data.total} figuras baixadas.` : 'Já estava tudo salvo.');
+      toast(e.data.total ? t('settings.figuras.toastBaixadas', { n: e.data.total }) : t('settings.figuras.toastJaEstava'));
       atualizarUso();
     }
   });
 
   baixar.onclick = async () => {
     baixar.disabled = true;
-    baixar.textContent = 'Preparando…';
+    baixar.textContent = t('settings.figuras.preparando');
     const { precacheMidia } = await import('../app.js');
     const iniciou = await precacheMidia({ forcar: true });
     if (!iniciou) {
-      baixar.textContent = 'Baixar figuras para uso offline';
+      baixar.textContent = t('settings.figuras.baixar');
       baixar.disabled = false;
-      toast('Não foi possível iniciar o download.');
+      toast(t('settings.figuras.toastFalhaDownload'));
     }
   };
 
   corpo.querySelector('[data-apagar]').onclick = async () => {
     const ok = await confirmSheet({
-      title: 'Apagar figuras baixadas?',
-      message: 'Elas voltam a ser baixadas conforme você abrir cada exercício.',
-      confirmLabel: 'Apagar',
+      title: t('settings.figuras.confirmarApagar.titulo'),
+      message: t('settings.figuras.confirmarApagar.mensagem'),
+      confirmLabel: t('common.apagar'),
       danger: true,
     });
     if (!ok) return;
     await caches.delete(MEDIA_CACHE);
     await db.setSetting('midiaPrecacheVersao', '');
-    toast('Figuras apagadas.');
+    toast(t('settings.figuras.toastApagadas'));
     atualizarUso();
   };
 
@@ -271,26 +272,25 @@ function figurasBody() {
 function cardApagarTudo() {
   const card = node(html`
     <div>
-      <h2 class="section-title">Zona de risco</h2>
+      <h2 class="section-title">${t('settings.zonaRisco.titulo')}</h2>
       <div class="card card__pad">
-        <button class="btn btn--block btn--danger" data-apagar>Apagar todos os dados</button>
+        <button class="btn btn--block btn--danger" data-apagar>${t('settings.zonaRisco.botao')}</button>
       </div>
     </div>
   `);
 
   card.querySelector('[data-apagar]').onclick = async () => {
     const ok = await confirmSheet({
-      title: 'Apagar tudo?',
-      message: 'Todos os treinos, séries e exercícios personalizados serão perdidos. '
-        + 'Exporte um backup antes se quiser guardar o histórico.',
-      confirmLabel: 'Apagar tudo',
+      title: t('settings.zonaRisco.confirmar.titulo'),
+      message: t('settings.zonaRisco.confirmar.mensagem'),
+      confirmLabel: t('settings.zonaRisco.confirmar.label'),
       danger: true,
     });
     if (!ok) return;
 
     await db.resetAll();
     await db.getSettings();
-    toast('Tudo apagado.');
+    toast(t('settings.zonaRisco.toastApagado'));
     location.hash = '#/';
   };
 

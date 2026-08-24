@@ -8,8 +8,9 @@
 
 import * as db from '../db.js';
 import * as catalogo from '../catalog.js';
-import { GRUPOS } from '../seed.js';
+import { GRUPOS, grupoLabel } from '../seed.js';
 import { thumbHtml } from '../media.js';
+import { t } from '../i18n.js';
 import {
   html, raw, node, ICON, toast, openSheet, closeSheet, semAcento,
 } from '../ui.js';
@@ -40,12 +41,12 @@ export function openExercisePicker({ exercicios, todasSeries, jaEscolhidoIds, ao
 
   const corpo = node(html`
     <div>
-      <input class="input" data-busca type="search" placeholder="Buscar exercício"
+      <input class="input" data-busca type="search" placeholder="${t('picker.buscarPlaceholder')}"
              autocomplete="off" autocapitalize="none" autocorrect="off">
       <div data-resultados style="margin-top:12px"></div>
     </div>
   `);
-  openSheet('Adicionar exercício', corpo);
+  openSheet(t('picker.tituloSheet'), corpo);
 
   const busca = corpo.querySelector('[data-busca]');
   const resultados = corpo.querySelector('[data-resultados]');
@@ -55,9 +56,9 @@ export function openExercisePicker({ exercicios, todasSeries, jaEscolhidoIds, ao
     resultados.innerHTML = '';
 
     if (!q && recentes.length) {
-      resultados.append(node('<h3 class="section-title" style="margin-top:0">Recentes</h3>'));
+      resultados.append(node(`<h3 class="section-title" style="margin-top:0">${t('picker.recentes')}</h3>`));
       resultados.append(listaSelecao(recentes, jaEscolhidoIds, escolher));
-      resultados.append(node('<h3 class="section-title">Todos os exercícios</h3>'));
+      resultados.append(node(`<h3 class="section-title">${t('picker.todosExercicios')}</h3>`));
     }
 
     const filtrados = q
@@ -65,7 +66,7 @@ export function openExercisePicker({ exercicios, todasSeries, jaEscolhidoIds, ao
       : exercicios;
 
     if (!filtrados.length) {
-      resultados.append(node(html`<p class="muted small">Nenhum exercício encontrado.</p>`));
+      resultados.append(node(html`<p class="muted small">${t('picker.nenhumEncontrado')}</p>`));
     } else {
       resultados.append(listaSelecao(filtrados, jaEscolhidoIds, escolher));
     }
@@ -81,7 +82,7 @@ export function openExercisePicker({ exercicios, todasSeries, jaEscolhidoIds, ao
 
       const btn = node(html`
         <button class="btn btn--block" style="margin-top:12px" data-criar>
-          ${raw(ICON.plus)} Criar &laquo;${nomeNovo}&raquo;
+          ${raw(ICON.plus)} ${t('picker.criarNome', { nome: nomeNovo })}
         </button>
       `);
       btn.onclick = () => formularioNovoExercicio(nomeNovo, escolher);
@@ -111,15 +112,15 @@ async function mostrarCatalogo(alvo, termo, exercicios, escolher) {
   const novos = itens.filter((i) => !meus.has(i.slug));
   if (!novos.length || !alvo.isConnected) return;
 
-  alvo.append(node('<h3 class="section-title">Do catálogo</h3>'));
+  alvo.append(node(`<h3 class="section-title">${t('picker.doCatalogo')}</h3>`));
 
   const card = node(html`<div class="card"><ul class="list">${raw(novos.map((item) => html`
     <li class="list__item">
       <button class="list__link" data-slug="${item.slug}">
         ${raw(thumbHtml(item))}
         <div class="grow">
-          <div style="font-weight:600">${item.nome}</div>
-          <div class="muted small">${item.grupo} · ${item.equipamento}</div>
+          <div style="font-weight:600">${catalogo.nomeExibicao(item)}</div>
+          <div class="muted small">${grupoLabel(item.grupo)} · ${item.equipamento}</div>
         </div>
         ${raw(ICON.plus)}
       </button>
@@ -150,9 +151,9 @@ function listaSelecao(exercicios, jaEscolhidoIds, escolher) {
           ${raw(thumbHtml(ex))}
           <div class="grow">
             <div style="font-weight:600">${ex.nome}</div>
-            <div class="muted small">${ex.grupoMuscular}</div>
+            <div class="muted small">${grupoLabel(ex.grupoMuscular)}</div>
           </div>
-          ${dentro ? raw('<span class="badge">no treino</span>') : raw(ICON.plus)}
+          ${dentro ? raw(`<span class="badge">${t('picker.noTreino')}</span>`) : raw(ICON.plus)}
         </button>
       </li>
     `);
@@ -167,26 +168,26 @@ function formularioNovoExercicio(nomeSugerido, escolher) {
   const corpo = node(html`
     <div class="stack">
       <label class="field">
-        <span class="field__label">Nome</span>
+        <span class="field__label">${t('exercise.form.nome')}</span>
         <input class="input" data-nome value="${nomeSugerido}" autocapitalize="sentences">
       </label>
       <label class="field">
-        <span class="field__label">Grupo muscular</span>
+        <span class="field__label">${t('exercise.form.grupoMuscular')}</span>
         <select class="select" data-grupo>
-          ${raw(GRUPOS.map((g) => `<option value="${g}">${g}</option>`).join(''))}
+          ${raw(GRUPOS.map((g) => `<option value="${g}">${grupoLabel(g)}</option>`).join(''))}
         </select>
       </label>
-      <button class="btn btn--primary btn--block" data-salvar>Criar e adicionar ao treino</button>
+      <button class="btn btn--primary btn--block" data-salvar>${t('picker.criarEAdicionar')}</button>
     </div>
   `);
-  openSheet('Novo exercício', corpo);
+  openSheet(t('exercise.form.tituloNovo'), corpo);
 
   corpo.querySelector('[data-salvar]').onclick = async () => {
     const nome = corpo.querySelector('[data-nome]').value.trim();
-    if (!nome) { toast('Dê um nome ao exercício.'); return; }
+    if (!nome) { toast(t('exercise.form.deNome')); return; }
 
     const novo = await db.addExercise({ nome, grupoMuscular: corpo.querySelector('[data-grupo]').value });
     await escolher(novo);
-    toast('Exercício criado.');
+    toast(t('exercise.form.toastCriado'));
   };
 }

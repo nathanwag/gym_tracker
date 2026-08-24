@@ -11,6 +11,7 @@
  */
 
 import { ICON_GRUPO, html, raw } from './ui.js';
+import { t } from './i18n.js';
 
 // Precisa bater com MEDIA_CACHE em sw.js — o service worker e classico
 // (sem `type: 'module'`) e nao pode importar daqui, entao a constante existe
@@ -66,9 +67,9 @@ export function criarAnimacao(slug, { nome = '' } = {}) {
   const el = document.createElement('div');
   el.className = 'flip';
   el.innerHTML = html`
-    <img class="flip__q" src="${fullUrl(slug, 0)}" alt="${nome ? `${nome}: posição inicial` : ''}">
+    <img class="flip__q" src="${fullUrl(slug, 0)}" alt="${nome ? t('media.posicaoInicial', { nome }) : ''}">
     <img class="flip__q flip__q--b" src="${fullUrl(slug, 1)}" alt="" aria-hidden="true">
-    <button class="flip__toggle" type="button" aria-label="Pausar animação" hidden></button>
+    <button class="flip__toggle" type="button" aria-label="${t('media.pausarAnimacao')}" hidden></button>
   `;
 
   const imagens = [...el.querySelectorAll('img')];
@@ -87,7 +88,7 @@ export function criarAnimacao(slug, { nome = '' } = {}) {
   const rotular = () => {
     el.classList.toggle('is-pausado', parado);
     el.classList.toggle('is-forcado', menosMovimento && !parado);
-    botao.setAttribute('aria-label', parado ? 'Ver o movimento' : 'Pausar animação');
+    botao.setAttribute('aria-label', parado ? t('media.verMovimento') : t('media.pausarAnimacao'));
   };
 
   Promise.all(imagens.map((img) => img.decode().catch(() => null))).then(() => {

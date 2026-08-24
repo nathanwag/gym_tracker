@@ -15,6 +15,7 @@
 import * as db from './db.js';
 import { slugPorNome } from './seed.js';
 import { normalizarNome } from './text.js';
+import { t } from './i18n.js';
 
 const FORMATO = 'treino-backup';
 // Continua 1 mesmo com o `slug` novo: o campo e aditivo e opcional, e bumpar
@@ -100,23 +101,23 @@ export async function lerArquivo(file) {
   try {
     payload = JSON.parse(await file.text());
   } catch {
-    throw new Error('Este arquivo não é um JSON válido.');
+    throw new Error(t('backup.erro.jsonInvalido'));
   }
   return validar(payload);
 }
 
 export function validar(payload) {
-  if (!payload || typeof payload !== 'object') throw new Error('Arquivo de backup vazio ou inválido.');
+  if (!payload || typeof payload !== 'object') throw new Error(t('backup.erro.vazioOuInvalido'));
 
   const { exercises, workouts, sets, settings = [] } = payload;
   if (!Array.isArray(exercises) || !Array.isArray(workouts) || !Array.isArray(sets)) {
-    throw new Error('Arquivo não parece um backup do Treino (faltam exercícios, treinos ou séries).');
+    throw new Error(t('backup.erro.naoParecebackup'));
   }
   if (payload.formato && payload.formato !== FORMATO) {
-    throw new Error(`Formato desconhecido: ${payload.formato}`);
+    throw new Error(t('backup.erro.formatoDesconhecido', { formato: payload.formato }));
   }
   if (payload.versao && payload.versao > VERSAO) {
-    throw new Error('Este backup foi gerado por uma versão mais nova do app.');
+    throw new Error(t('backup.erro.versaoMaisNova'));
   }
 
   const numero = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
