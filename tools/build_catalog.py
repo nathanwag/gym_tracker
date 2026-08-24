@@ -291,10 +291,22 @@ def carregar_instrucoes_pt() -> dict:
     return {k: v for k, v in bruto.items() if not k.startswith("_") and v}
 
 
+def carregar_instrucoes_en_extra() -> dict:
+    """Passo a passo em ingles escrito a mao, para exercicios sem instructions
+    no upstream (free-exercise-db). Mesmo formato de carregar_instrucoes_pt()."""
+    caminho = DADOS / "instrucoes_en_extra.json"
+    if not caminho.exists():
+        return {}
+    bruto = json.loads(caminho.read_text(encoding="utf-8"))
+    return {k: v for k, v in bruto.items() if not k.startswith("_") and v}
+
+
 def etapa_dados(por_slug: dict, forcar: bool):
     traducoes = carregar_traducoes()
     passos_pt = carregar_instrucoes_pt()
+    passos_en_extra = carregar_instrucoes_en_extra()
     catalogo, instrucoes, faltando = [], {}, []
+    faltando_pt, faltando_en = [], []
 
     for slug in sorted(por_slug):
         ex = por_slug[slug]["ex"]
@@ -336,12 +348,18 @@ def etapa_dados(por_slug: dict, forcar: bool):
             "srcId": por_slug[slug]["srcId"],
         })
 
-        # O portugues escrito a mao ganha do texto original. Quem nao tem
-        # versao em PT fica em ingles e a tela mostra o selo EN.
-        if slug in passos_pt:
-            instrucoes[slug] = {"idioma": "pt", "passos": passos_pt[slug]}
-        elif ex.get("instructions"):
-            instrucoes[slug] = {"idioma": "en", "passos": ex["instructions"]}
+        # Bilingue: o app troca de idioma sem refetch, entao os dois precisam
+        # estar sempre presentes. O ingles vem do upstream, ou do punhado
+        # escrito a mao quando o upstream nao tem instructions nenhuma.
+        pt = passos_pt.get(slug)
+        en = ex.get("instructions") or passos_en_extra.get(slug)
+        if pt and en:
+            instrucoes[slug] = {"pt": pt, "en": en}
+        else:
+            if not pt:
+                faltando_pt.append(slug)
+            if not en:
+                faltando_en.append(slug)
 
     # O manifesto e o que o app compara para decidir se precisa pre-baixar as
     # figuras; a versao muda sozinha quando o conjunto de slugs muda.
@@ -356,9 +374,15 @@ def etapa_dados(por_slug: dict, forcar: bool):
         escrever_json(SAIDA_IMG / "manifest.json", manifesto, forcar),
     ])
 
-    em_pt = sum(1 for v in instrucoes.values() if v["idioma"] == "pt")
     print(f"dados: {len(catalogo)} exercicios, {mudou} de 3 arquivos atualizados")
-    print(f"  passo a passo: {em_pt} em portugues, {len(instrucoes) - em_pt} em ingles")
+    print(f"  passo a passo: {len(instrucoes)} com pt+en, "
+          f"{len(faltando_pt)} sem pt, {len(faltando_en)} sem en")
+    if faltando_pt:
+        print(f"  sem pt: {', '.join(faltando_pt[:10])}"
+              + (f" e mais {len(faltando_pt) - 10}" if len(faltando_pt) > 10 else ""))
+    if faltando_en:
+        print(f"  sem en: {', '.join(faltando_en[:10])}"
+              + (f" e mais {len(faltando_en) - 10}" if len(faltando_en) > 10 else ""))
 
     if faltando:
         print(f"  {len(faltando)} nomes sem traducao (mostrados em ingles com selo EN)")
