@@ -9,7 +9,7 @@ import { t, tn } from '../i18n.js';
 import { grupoLabel } from '../seed.js';
 import {
   setTop, html, raw, node, ICON, ICON_GRUPO, refresh, wireSegmented,
-  fmtNum, fmtRelativeDay, fmtDateRange, fmtDateShort, isIOS, isStandalone,
+  fmtNum, fmtRelativeDay, fmtDateRange, fmtDateShort,
 } from '../ui.js';
 
 export async function render(view) {
@@ -33,9 +33,6 @@ export async function render(view) {
 
   const container = node('<div class="stack"></div>');
 
-  const aviso = cardInstalacao();
-  if (aviso) container.append(aviso);
-
   if (!ativo && treinos.length === 0) container.append(cardPrimeiraVez());
 
   const primeiraSemana = treinos.length
@@ -52,34 +49,6 @@ export async function render(view) {
   }
 
   view.append(container);
-}
-
-/* ---------- Instalacao na tela de inicio ----------
- * No iPhone isso nao e cosmetico: o Safari descarta os dados de sites comuns
- * depois de ~7 dias sem uso, e apps adicionados a tela de inicio sao isentos
- * dessa limpeza. Por isso o aviso insiste ate o app estar instalado. */
-
-function cardInstalacao() {
-  if (isStandalone() || db.settings().instalarOculto) return null;
-
-  const passos = isIOS() ? t('home.instalacao.passosIOS') : t('home.instalacao.passosOutros');
-
-  const el = node(html`
-    <div class="card card__pad">
-      <div class="row row--between" style="align-items:flex-start">
-        <h2 style="font-size:1rem">${t('home.instalacao.titulo')}</h2>
-        <button class="btn btn--sm btn--ghost" data-ocultar>${t('home.instalacao.depois')}</button>
-      </div>
-      <p class="muted small" style="margin-top:6px">${raw(passos)}</p>
-      <p class="muted small" style="margin-bottom:0">${t('home.instalacao.explicacao')}</p>
-    </div>
-  `);
-
-  el.querySelector('[data-ocultar]').onclick = async () => {
-    await db.setSetting('instalarOculto', true);
-    refresh();
-  };
-  return el;
 }
 
 /* ---------- Treino ---------- */

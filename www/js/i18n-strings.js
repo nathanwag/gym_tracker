@@ -114,11 +114,6 @@ export const DICT = {
 
     // ---------- views/home.js ----------
     'home.ultimosTreinos': 'Últimos treinos',
-    'home.instalacao.titulo': 'Instale na tela de início',
-    'home.instalacao.depois': 'Depois',
-    'home.instalacao.passosIOS': 'Toque em <b>Compartilhar</b> na barra do Safari e escolha <b>Adicionar à Tela de Início</b>.',
-    'home.instalacao.passosOutros': 'Abra o menu do navegador e escolha <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.',
-    'home.instalacao.explicacao': 'Instalado, o app abre em tela cheia, funciona sem internet e seus treinos ficam protegidos da limpeza automática de dados do navegador.',
     'home.primeiraVez': 'Toque no + na barra de baixo pra começar. Cada série que você registrar vira um ponto no gráfico de evolução.',
     'home.semana.essa': 'Essa semana',
     'home.semana.passada': 'Semana passada',
@@ -398,11 +393,6 @@ export const DICT = {
 
     // ---------- views/home.js ----------
     'home.ultimosTreinos': 'Recent workouts',
-    'home.instalacao.titulo': 'Install to your home screen',
-    'home.instalacao.depois': 'Later',
-    'home.instalacao.passosIOS': 'Tap <b>Share</b> in the Safari bar and choose <b>Add to Home Screen</b>.',
-    'home.instalacao.passosOutros': 'Open the browser menu and choose <b>Install app</b> or <b>Add to home screen</b>.',
-    'home.instalacao.explicacao': "Once installed, the app opens full-screen, works offline, and your workouts are protected from the browser's automatic data cleanup.",
     'home.primeiraVez': 'Tap the + in the bottom bar to get started. Every set you log becomes a point on the progress chart.',
     'home.semana.essa': 'This week',
     'home.semana.passada': 'Last week',
