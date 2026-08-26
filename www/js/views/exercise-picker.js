@@ -8,36 +8,30 @@
 
 import * as db from '../db.js';
 import * as catalogo from '../catalog.js';
-import { GRUPOS, grupoLabel } from '../seed.js';
+import { GRUPOS, agruparPorGrupo, grupoLabel } from '../seed.js';
 import { thumbHtml } from '../media.js';
 import { t } from '../i18n.js';
 import {
-  html, raw, node, ICON, toast, openSheet, closeSheet, semAcento,
+  html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, semAcento,
 } from '../ui.js';
+
+// Lembra quais grupos ficaram abertos entre uma abertura e outra da folha
+// nesta sessao — mesmo motivo do catalogo (catalog.js): quem esta pegando
+// varios exercicios da mesma regiao (ex: dia de perna) nao quer reabrir o
+// grupo toda vez.
+const abertos = new Set();
 
 /**
  * @param {object[]} exercicios biblioteca do usuario, no momento em que o seletor abre
- * @param {object[]} todasSeries todas as series, so para ordenar por uso recente
  * @param {Set<number>} jaEscolhidoIds ids que devem aparecer desabilitados ("no treino")
  * @param {(exercicio: object) => void|Promise<void>} aoEscolher chamado uma vez, com o
  *   exercicio resolvido (escolhido da lista, do catalogo, ou recem-criado)
  */
-export function openExercisePicker({ exercicios, todasSeries, jaEscolhidoIds, aoEscolher }) {
+export function openExercisePicker({ exercicios, jaEscolhidoIds, aoEscolher }) {
   const escolher = async (exercicio) => {
     closeSheet();
     await aoEscolher(exercicio);
   };
-
-  // Mais usados recentemente primeiro: na pratica sao sempre os mesmos 10-15
-  // exercicios, e rolar a lista inteira toda vez seria trabalhoso.
-  const porId = new Map(exercicios.map((e) => [e.id, e]));
-  const usoRecente = new Map();
-  for (const s of todasSeries) usoRecente.set(s.exerciseId, Math.max(usoRecente.get(s.exerciseId) || 0, s.id));
-  const recentes = [...usoRecente.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([id]) => porId.get(id))
-    .filter((e) => e && !jaEscolhidoIds.has(e.id))
-    .slice(0, 6);
 
   const corpo = node(html`
     <div>
@@ -55,20 +49,22 @@ export function openExercisePicker({ exercicios, todasSeries, jaEscolhidoIds, ao
     const q = semAcento(busca.value.trim());
     resultados.innerHTML = '';
 
-    if (!q && recentes.length) {
-      resultados.append(node(`<h3 class="section-title" style="margin-top:0">${t('picker.recentes')}</h3>`));
-      resultados.append(listaSelecao(recentes, jaEscolhidoIds, escolher));
-      resultados.append(node(`<h3 class="section-title">${t('picker.todosExercicios')}</h3>`));
-    }
-
     const filtrados = q
       ? exercicios.filter((e) => semAcento(e.nome).includes(q) || semAcento(e.grupoMuscular).includes(q))
       : exercicios;
 
     if (!filtrados.length) {
       resultados.append(node(html`<p class="muted small">${t('picker.nenhumEncontrado')}</p>`));
-    } else {
+    } else if (q) {
+      // Buscando: lista plana — achar exatamente o que foi digitado importa
+      // mais que navegar por grupo nesse momento.
       resultados.append(listaSelecao(filtrados, jaEscolhidoIds, escolher));
+    } else {
+      // Sem busca: por grupo muscular, colapsavel — mesmo padrao do
+      // catalogo (catalog.js), pra nao rolar a biblioteca inteira toda vez.
+      for (const { grupo, itens: doGrupo } of agruparPorGrupo(filtrados, (e) => e.grupoMuscular)) {
+        resultados.append(secaoGrupo(grupo, doGrupo, jaEscolhidoIds, escolher, desenhar));
+      }
     }
 
     const nomeNovo = busca.value.trim();
@@ -137,6 +133,32 @@ async function mostrarCatalogo(alvo, termo, exercicios, escolher) {
     };
   }
   alvo.append(card);
+}
+
+/** Card colapsavel de um grupo muscular, no molde exato do catalogo
+ *  (catalog.js) — mesmas classes de CSS, mesmo comportamento de toque. */
+function secaoGrupo(grupo, itens, jaEscolhidoIds, escolher, redesenhar) {
+  const aberto = abertos.has(grupo);
+  const secao = node(html`
+    <div class="card cat__grupo">
+      <button class="cat__cabecalho" type="button" aria-expanded="${String(aberto)}">
+        <span class="cat__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
+        <span class="grow" style="font-weight:600">${grupoLabel(grupo)}</span>
+        <span class="muted small">${itens.length}</span>
+        <span class="list__chev cat__seta">${raw(ICON.chevron)}</span>
+      </button>
+    </div>
+  `);
+
+  secao.querySelector('button').onclick = () => {
+    if (aberto) abertos.delete(grupo); else abertos.add(grupo);
+    redesenhar();
+  };
+
+  // Reaproveita listaSelecao inteira, so pegando o <ul> de dentro do card
+  // que ela devolve — pra nao aninhar .card dentro de .card.
+  if (aberto) secao.append(listaSelecao(itens, jaEscolhidoIds, escolher).querySelector('ul'));
+  return secao;
 }
 
 function listaSelecao(exercicios, jaEscolhidoIds, escolher) {

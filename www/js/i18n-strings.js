@@ -218,8 +218,6 @@ export const DICT = {
     // ---------- views/exercise-picker.js ----------
     'picker.buscarPlaceholder': 'Buscar exercício',
     'picker.tituloSheet': 'Adicionar exercício',
-    'picker.recentes': 'Recentes',
-    'picker.todosExercicios': 'Todos os exercícios',
     'picker.nenhumEncontrado': 'Nenhum exercício encontrado.',
     'picker.criarNome': 'Criar «{nome}»',
     'picker.doCatalogo': 'Do catálogo',
@@ -510,8 +508,6 @@ export const DICT = {
     // ---------- views/exercise-picker.js ----------
     'picker.buscarPlaceholder': 'Search exercise',
     'picker.tituloSheet': 'Add exercise',
-    'picker.recentes': 'Recent',
-    'picker.todosExercicios': 'All exercises',
     'picker.nenhumEncontrado': 'No exercise found.',
     'picker.criarNome': 'Create "{nome}"',
     'picker.doCatalogo': 'From the catalog',

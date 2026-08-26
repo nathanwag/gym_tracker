@@ -485,7 +485,6 @@ async function finalizar() {
 function abrirSeletor() {
   openExercisePicker({
     exercicios: ctx.lista,
-    todasSeries: ctx.todasSeries,
     jaEscolhidoIds: new Set(ctx.workout.exerciseIds || []),
     aoEscolher: adicionarExercicio,
   });
