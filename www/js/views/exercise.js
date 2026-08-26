@@ -3,16 +3,16 @@
 
 import * as db from '../db.js';
 import {
-  bests, prSetIds, sessionSummaries, bestSessionVolume, bestSessionDuracao, isTempoSet, progressPct,
+  bests, prSetIds, sessionSummaries, bestSessionVolume, bestSessionDuracao, progressPct,
 } from '../models.js';
 import { GRUPOS, agruparPorGrupo, grupoLabel, usaTempo } from '../seed.js';
 import { lineChart } from '../charts.js';
 import * as catalogo from '../catalog.js';
-import { thumbHtml, criarAnimacao } from '../media.js';
+import { thumbHtml, criarAnimacao, prefetchFotos } from '../media.js';
 import { t, tn, idioma } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, confirmSheet,
-  fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, semAcento, refresh, wireSegmented,
+  fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, fmtSerie, semAcento, refresh, wireSegmented,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -332,7 +332,7 @@ function secaoHistorico(resumos, prIds, unidade, tempo) {
 
   const itens = [...resumos].reverse().map((r) => {
     const series = r.series
-      .map((s) => `<span class="tnum">${isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)}×${s.reps}`}</span>${prIds.has(s.id) ? ' 🏆' : ''}`)
+      .map((s) => `<span class="tnum">${fmtSerie(s)}</span>${prIds.has(s.id) ? ' 🏆' : ''}`)
       .join('<span class="muted"> · </span>');
     const resumoLinha = tempo
       ? t('exercise.historico.tempoTotal', { tempo: fmtTempoSerie(r.duracaoTotal) })
@@ -412,6 +412,7 @@ function escolherFigura(exercicio) {
 
   const aplicar = async (slug) => {
     await db.definirFiguraExercicio(exercicio.id, slug);
+    if (slug) prefetchFotos(slug);
     closeSheet();
     toast(slug ? t('exercise.figura.toastAtualizada') : t('exercise.figura.toastRemovida'));
     refresh();

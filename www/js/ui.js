@@ -3,6 +3,8 @@
  * idioma ativo (ver i18n.js). */
 
 import { t, tn, locale } from './i18n.js';
+import { isTempoSet } from './models.js';
+import { agruparPorGrupo, grupoLabel } from './seed.js';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -226,6 +228,21 @@ export function fmtTempoSerie(segundos) {
   return rest ? `${min}${sufMin} ${rest}${sufSeg}` : `${min}${sufMin}`;
 }
 
+/** Valor de uma serie pra exibir compacto, sem unidade de peso: "20×10"
+ *  (peso/reps) ou "12min 30s" (cardio/alongamento). Usado onde varias series
+ *  aparecem lado a lado numa mesma linha (comparacao com o treino anterior,
+ *  resumo do que ja foi feito). Concentra num lugar so a decisao que antes
+ *  se repetia igual em cada tela que lista series. */
+export function fmtSerie(s) {
+  return isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)}×${s.reps}`;
+}
+
+/** Mesma decisao que fmtSerie, com unidade de peso e espacada — usado quando
+ *  a serie aparece sozinha numa linha (lista de series de um treino). */
+export function fmtSerieComUnidade(s, unidade) {
+  return isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)} ${unidade} × ${s.reps}`;
+}
+
 /* ---------- Diversos ---------- */
 
 export const ICON = {
@@ -291,6 +308,69 @@ export const ICON_GRUPO = {
   'Alongamento': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent)"><circle cx="14.5" cy="4.2" r="1.6" fill="var(--accent)" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
   'Outros': ICON.dumbbell,
 };
+
+/* ---------- Listas ---------- */
+
+/** Envolve uma lista de &lt;li&gt; num card padrao — usado em toda lista
+ *  simples do app (resultado de busca, sugestoes do catalogo, selecao de
+ *  exercicio). Interface pequena, pra nao repetir o par card+ul em cada tela. */
+export function listaEmCard(itensLi) {
+  const card = node('<div class="card"><ul class="list"></ul></div>');
+  const ul = card.querySelector('ul');
+  for (const li of itensLi) ul.append(li);
+  return card;
+}
+
+/**
+ * Lista de itens agrupados por `pegarGrupo(item)`, em cards que expandem e
+ * recolhem ao toque — usado pelo catalogo e pelo seletor de exercicios da
+ * sessao pra nao rolar uma lista de dezenas/centenas de itens de uma vez so.
+ * `abertos` e um Set&lt;string&gt; de nomes de grupo, de quem chama: cada tela
+ * guarda o seu (o que ficou aberto no catalogo nao e o mesmo que ficou
+ * aberto no seletor de exercicios da sessao).
+ * @param {{itens: object[], pegarGrupo: (item: object) => string,
+ *          abertos: Set<string>, renderItem: (item: object) => HTMLElement}} opts
+ * @returns {HTMLElement} elemento transparente ao layout (display:contents) —
+ *   os cards de grupo caem direto no container de quem chama, como se nao
+ *   houvesse wrapper.
+ */
+export function listaAgrupada({
+  itens, pegarGrupo, abertos, renderItem,
+}) {
+  const raiz = node('<div class="contents"></div>');
+
+  const redesenhar = () => {
+    raiz.innerHTML = '';
+    for (const { grupo, itens: doGrupo } of agruparPorGrupo(itens, pegarGrupo)) {
+      const aberto = abertos.has(grupo);
+      const secao = node(html`
+        <div class="card cat__grupo">
+          <button class="cat__cabecalho" type="button" aria-expanded="${String(aberto)}">
+            <span class="cat__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
+            <span class="grow" style="font-weight:600">${grupoLabel(grupo)}</span>
+            <span class="muted small">${doGrupo.length}</span>
+            <span class="list__chev cat__seta">${raw(ICON.chevron)}</span>
+          </button>
+        </div>
+      `);
+
+      secao.querySelector('button').onclick = () => {
+        if (aberto) abertos.delete(grupo); else abertos.add(grupo);
+        redesenhar();
+      };
+
+      if (aberto) {
+        const ul = node('<ul class="list"></ul>');
+        for (const item of doGrupo) ul.append(renderItem(item));
+        secao.append(ul);
+      }
+      raiz.append(secao);
+    }
+  };
+
+  redesenhar();
+  return raiz;
+}
 
 /** Vibracao curta ao registrar. Ignorado no iOS, que nao expoe a API. */
 export function buzz(ms = 12) {

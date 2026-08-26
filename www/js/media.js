@@ -10,6 +10,7 @@
  * no cache permanente do service worker (ver MEDIA_CACHE em sw.js).
  */
 
+import * as db from './db.js';
 import { ICON_GRUPO, html, raw } from './ui.js';
 import { t } from './i18n.js';
 
@@ -55,6 +56,35 @@ export function thumbHtml(ex, { classe = '' } = {}) {
 export function prefetchFotos(slug) {
   if (!slug) return;
   for (const i of [0, 1]) new Image().src = fullUrl(slug, i);
+}
+
+/** Pede ao service worker que baixe as miniaturas do catalogo.
+ *
+ *  Roda so uma vez por versao do catalogo, e so quando a conexao permite: sao
+ *  ~2 MB, o que e barato no wi-fi e caro no celular. Quem quiser forcar tem o
+ *  botao em Ajustes. */
+export async function precacheMidia({ forcar = false } = {}) {
+  const reg = await navigator.serviceWorker?.ready?.catch(() => null);
+  if (!reg?.active) return false;
+
+  const conexao = navigator.connection;
+  if (!forcar && (conexao?.saveData || conexao?.type === 'cellular')) return false;
+
+  let manifesto;
+  try {
+    manifesto = await (await fetch('./img/ex/manifest.json')).json();
+  } catch {
+    return false;
+  }
+
+  if (!forcar && db.settings().midiaPrecacheVersao === manifesto.versao) return false;
+
+  reg.active.postMessage({
+    tipo: 'precache-midia',
+    urls: manifesto.slugs.map((slug) => `./img/ex/thumb/${slug}.webp`),
+  });
+  await db.setSetting('midiaPrecacheVersao', manifesto.versao);
+  return true;
 }
 
 /** Alterna as duas fotos em loop, mostrando o movimento.

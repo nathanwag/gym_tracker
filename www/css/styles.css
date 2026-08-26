@@ -213,6 +213,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .row--between { justify-content: space-between; }
 .grow { flex: 1; min-width: 0; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Wrapper transparente ao layout: os filhos caem direto no container de
+   quem chama, como se o wrapper nao existisse (ver listaAgrupada em ui.js
+   e o par de steppers de duracao no compositor da sessao). */
+.contents { display: contents; }
 
 /* ---------- Botoes ---------- */
 

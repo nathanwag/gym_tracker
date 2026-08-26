@@ -2,7 +2,7 @@
 
 import * as db from '../db.js';
 import { prepararBackup, exportar, lerArquivo, restaurar } from '../backup.js';
-import { MEDIA_CACHE } from '../media.js';
+import { MEDIA_CACHE, precacheMidia } from '../media.js';
 import { t } from '../i18n.js';
 import {
   setTop, html, raw, node, toast, openSheet, confirmSheet, isIOS, isStandalone, ICON,
@@ -240,7 +240,6 @@ function figurasBody() {
   baixar.onclick = async () => {
     baixar.disabled = true;
     baixar.textContent = t('settings.figuras.preparando');
-    const { precacheMidia } = await import('../app.js');
     const iniciou = await precacheMidia({ forcar: true });
     if (!iniciou) {
       baixar.textContent = t('settings.figuras.baixar');

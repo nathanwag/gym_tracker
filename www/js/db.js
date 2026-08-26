@@ -12,7 +12,6 @@
 
 import { slugPorNome } from './seed.js';
 import { normalizarNome } from './text.js';
-import { prefetchFotos } from './media.js';
 
 const DB_NAME = 'treino';
 // v2: campo `slug` no exercicio, ligando-o as figuras de www/img/ex/.
@@ -210,13 +209,12 @@ export async function addExercise({ nome, grupoMuscular, slug = null, personaliz
 }
 
 /** Cria (ou reaproveita, se o slug ja existir) um exercicio a partir de um
- *  item do catalogo, e ja aquece o cache das fotos dele. */
+ *  item do catalogo. Quem chama e responsavel por aquecer o cache das fotos
+ *  (media.js:prefetchFotos) — db.js nao depende de media.js de proposito. */
 export async function addExercicioDoCatalogo(item, grupoMuscular = item.grupo) {
-  const criado = await addExercise({
+  return addExercise({
     nome: item.nome, grupoMuscular, slug: item.slug, personalizado: false,
   });
-  prefetchFotos(item.slug);
-  return criado;
 }
 
 export async function updateExercise(id, patch) {
@@ -228,12 +226,11 @@ export async function updateExercise(id, patch) {
   exerciseCache = null;
 }
 
-/** Liga (ou tira) a figura de um exercicio ja existente, e aquece o cache das
- *  fotos quando ha uma nova — o mesmo par que addExercicioDoCatalogo faz na
- *  criacao, aqui para o caminho de edicao (renomeado, ou criado a mao). */
+/** Liga (ou tira) a figura de um exercicio ja existente — caminho de edicao
+ *  (renomeado, ou criado a mao) para o que addExercicioDoCatalogo faz na
+ *  criacao. Mesma regra: quem chama aquece o cache das fotos, se quiser. */
 export async function definirFiguraExercicio(id, slug) {
   await updateExercise(id, { slug: slug || null });
-  if (slug) prefetchFotos(slug);
 }
 
 /** Remove um exercicio. Falha se houver series registradas nele. */

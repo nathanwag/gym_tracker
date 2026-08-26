@@ -17,7 +17,7 @@ import { usaTempo } from '../seed.js';
 import { t, tn } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, createStepper, createDuracaoStepper, toast,
-  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, fmtTempoSerie, buzz,
+  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, fmtSerie, fmtSerieComUnidade, buzz,
 } from '../ui.js';
 
 /** Estado da tela. Recriado a cada render; as telas nao compartilham estado. */
@@ -261,11 +261,10 @@ function itemConcluido(exId) {
   return li;
 }
 
-/** Texto de uma serie na comparacao/resumo: duracao pra Cardio/Alongamento,
- *  peso×reps pro resto — decidido pela propria serie, sem precisar olhar o
- *  exercicio (uma serie so grava um dos dois pares, nunca os dois). */
+/** Texto de uma serie na comparacao/resumo, com asterisco de aquecimento —
+ *  o valor em si (duracao ou peso×reps) vem de fmtSerie (ui.js). */
 function textoSerie(s) {
-  return `${isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)}×${s.reps}`}${s.aquecimento ? '*' : ''}`;
+  return `${fmtSerie(s)}${s.aquecimento ? '*' : ''}`;
 }
 
 function textoAnterior(anterior) {
@@ -289,7 +288,7 @@ function itemSerie(serie, numero, isPR, ativo) {
     <li>
       <button class="setlist__item" data-set="${serie.id}" aria-current="${ativo}">
         <span class="setlist__num">${numero}</span>
-        <span class="setlist__val">${tempo ? fmtTempoSerie(serie.duracaoSeg) : `${fmtNum(serie.peso, 2)} ${ctx.unidade} × ${serie.reps}`}</span>
+        <span class="setlist__val">${fmtSerieComUnidade(serie, ctx.unidade)}</span>
         ${serie.aquecimento ? raw(`<span class="setlist__warm">${t('history.aquec')}</span>`) : ''}
         ${isPR ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
         <span class="grow"></span>

@@ -8,11 +8,11 @@
 
 import * as db from '../db.js';
 import * as catalogo from '../catalog.js';
-import { GRUPOS, agruparPorGrupo, grupoLabel } from '../seed.js';
-import { thumbHtml } from '../media.js';
+import { GRUPOS, grupoLabel } from '../seed.js';
+import { thumbHtml, prefetchFotos } from '../media.js';
 import { t } from '../i18n.js';
 import {
-  html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, semAcento,
+  html, raw, node, ICON, toast, openSheet, closeSheet, semAcento, listaAgrupada, listaEmCard,
 } from '../ui.js';
 
 // Lembra quais grupos ficaram abertos entre uma abertura e outra da folha
@@ -58,13 +58,16 @@ export function openExercisePicker({ exercicios, jaEscolhidoIds, aoEscolher }) {
     } else if (q) {
       // Buscando: lista plana — achar exatamente o que foi digitado importa
       // mais que navegar por grupo nesse momento.
-      resultados.append(listaSelecao(filtrados, jaEscolhidoIds, escolher));
+      resultados.append(listaEmCard(filtrados.map((ex) => itemExercicio(ex, jaEscolhidoIds, escolher))));
     } else {
       // Sem busca: por grupo muscular, colapsavel — mesmo padrao do
       // catalogo (catalog.js), pra nao rolar a biblioteca inteira toda vez.
-      for (const { grupo, itens: doGrupo } of agruparPorGrupo(filtrados, (e) => e.grupoMuscular)) {
-        resultados.append(secaoGrupo(grupo, doGrupo, jaEscolhidoIds, escolher, desenhar));
-      }
+      resultados.append(listaAgrupada({
+        itens: filtrados,
+        pegarGrupo: (e) => e.grupoMuscular,
+        abertos,
+        renderItem: (ex) => itemExercicio(ex, jaEscolhidoIds, escolher),
+      }));
     }
 
     const nomeNovo = busca.value.trim();
@@ -110,80 +113,52 @@ async function mostrarCatalogo(alvo, termo, exercicios, escolher) {
 
   alvo.append(node(`<h3 class="section-title">${t('picker.doCatalogo')}</h3>`));
 
-  const card = node(html`<div class="card"><ul class="list">${raw(novos.map((item) => html`
-    <li class="list__item">
-      <button class="list__link" data-slug="${item.slug}">
-        ${raw(thumbHtml(item))}
-        <div class="grow">
-          <div style="font-weight:600">${catalogo.nomeExibicao(item)}</div>
-          <div class="muted small">${grupoLabel(item.grupo)} · ${item.equipamento}</div>
-        </div>
-        ${raw(ICON.plus)}
-      </button>
-    </li>
-  `).join(''))}</ul></div>`);
-
-  for (const botao of card.querySelectorAll('[data-slug]')) {
-    botao.onclick = async () => {
-      const item = novos.find((i) => i.slug === botao.dataset.slug);
-      // Um toque faz tudo: entra na biblioteca, entra no treino e ja busca as
-      // fotos com a rede que houver agora.
-      const criado = await db.addExercicioDoCatalogo(item);
-      await escolher(criado);
-    };
-  }
-  alvo.append(card);
-}
-
-/** Card colapsavel de um grupo muscular, no molde exato do catalogo
- *  (catalog.js) — mesmas classes de CSS, mesmo comportamento de toque. */
-function secaoGrupo(grupo, itens, jaEscolhidoIds, escolher, redesenhar) {
-  const aberto = abertos.has(grupo);
-  const secao = node(html`
-    <div class="card cat__grupo">
-      <button class="cat__cabecalho" type="button" aria-expanded="${String(aberto)}">
-        <span class="cat__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
-        <span class="grow" style="font-weight:600">${grupoLabel(grupo)}</span>
-        <span class="muted small">${itens.length}</span>
-        <span class="list__chev cat__seta">${raw(ICON.chevron)}</span>
-      </button>
-    </div>
-  `);
-
-  secao.querySelector('button').onclick = () => {
-    if (aberto) abertos.delete(grupo); else abertos.add(grupo);
-    redesenhar();
-  };
-
-  // Reaproveita listaSelecao inteira, so pegando o <ul> de dentro do card
-  // que ela devolve — pra nao aninhar .card dentro de .card.
-  if (aberto) secao.append(listaSelecao(itens, jaEscolhidoIds, escolher).querySelector('ul'));
-  return secao;
-}
-
-function listaSelecao(exercicios, jaEscolhidoIds, escolher) {
-  const card = node('<div class="card"><ul class="list"></ul></div>');
-  const ul = card.querySelector('ul');
-
-  for (const ex of exercicios) {
-    const dentro = jaEscolhidoIds.has(ex.id);
+  const itemCatalogo = (item) => {
     const li = node(html`
       <li class="list__item">
-        <button class="list__link" data-id="${ex.id}" ${raw(dentro ? 'disabled' : '')}>
-          ${raw(thumbHtml(ex))}
+        <button class="list__link">
+          ${raw(thumbHtml(item))}
           <div class="grow">
-            <div style="font-weight:600">${ex.nome}</div>
-            <div class="muted small">${grupoLabel(ex.grupoMuscular)}</div>
+            <div style="font-weight:600">${catalogo.nomeExibicao(item)}</div>
+            <div class="muted small">${grupoLabel(item.grupo)} · ${item.equipamento}</div>
           </div>
-          ${dentro ? raw(`<span class="badge">${t('picker.noTreino')}</span>`) : raw(ICON.plus)}
+          ${raw(ICON.plus)}
         </button>
       </li>
     `);
-    if (!dentro) li.querySelector('button').onclick = () => escolher(ex);
-    else li.querySelector('button').style.opacity = '.5';
-    ul.append(li);
-  }
-  return card;
+    li.querySelector('button').onclick = async () => {
+      // Um toque faz tudo: entra na biblioteca, entra no treino e ja busca as
+      // fotos com a rede que houver agora.
+      const criado = await db.addExercicioDoCatalogo(item);
+      prefetchFotos(item.slug);
+      await escolher(criado);
+    };
+    return li;
+  };
+
+  alvo.append(listaEmCard(novos.map(itemCatalogo)));
+}
+
+/** Uma linha de exercicio no seletor — usada tanto na lista plana (buscando)
+ *  quanto como renderItem de listaAgrupada (sem busca), sem embrulho de
+ *  card: quem monta a lista ao redor decide isso. */
+function itemExercicio(ex, jaEscolhidoIds, escolher) {
+  const dentro = jaEscolhidoIds.has(ex.id);
+  const li = node(html`
+    <li class="list__item">
+      <button class="list__link" data-id="${ex.id}" ${raw(dentro ? 'disabled' : '')}>
+        ${raw(thumbHtml(ex))}
+        <div class="grow">
+          <div style="font-weight:600">${ex.nome}</div>
+          <div class="muted small">${grupoLabel(ex.grupoMuscular)}</div>
+        </div>
+        ${dentro ? raw(`<span class="badge">${t('picker.noTreino')}</span>`) : raw(ICON.plus)}
+      </button>
+    </li>
+  `);
+  if (!dentro) li.querySelector('button').onclick = () => escolher(ex);
+  else li.querySelector('button').style.opacity = '.5';
+  return li;
 }
 
 function formularioNovoExercicio(nomeSugerido, escolher) {

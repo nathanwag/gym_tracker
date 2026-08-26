@@ -6,6 +6,7 @@
 import { $, initSheet, closeSheet, html, node, refresh } from './ui.js';
 import { t } from './i18n.js';
 import * as db from './db.js';
+import { precacheMidia } from './media.js';
 import * as home from './views/home.js';
 import * as session from './views/session.js';
 import * as history from './views/history.js';
@@ -164,35 +165,6 @@ async function registerServiceWorker() {
   } catch (err) {
     console.warn('Service worker nao registrado:', err);
   }
-}
-
-/** Pede ao service worker que baixe as miniaturas do catalogo.
- *
- *  Roda so uma vez por versao do catalogo, e so quando a conexao permite: sao
- *  ~2 MB, o que e barato no wi-fi e caro no celular. Quem quiser forcar tem o
- *  botao em Ajustes. */
-export async function precacheMidia({ forcar = false } = {}) {
-  const reg = await navigator.serviceWorker?.ready?.catch(() => null);
-  if (!reg?.active) return false;
-
-  const conexao = navigator.connection;
-  if (!forcar && (conexao?.saveData || conexao?.type === 'cellular')) return false;
-
-  let manifesto;
-  try {
-    manifesto = await (await fetch('./img/ex/manifest.json')).json();
-  } catch {
-    return false;
-  }
-
-  if (!forcar && db.settings().midiaPrecacheVersao === manifesto.versao) return false;
-
-  reg.active.postMessage({
-    tipo: 'precache-midia',
-    urls: manifesto.slugs.map((slug) => `./img/ex/thumb/${slug}.webp`),
-  });
-  await db.setSetting('midiaPrecacheVersao', manifesto.versao);
-  return true;
 }
 
 async function requestPersistence() {

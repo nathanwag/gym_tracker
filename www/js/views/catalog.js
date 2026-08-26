@@ -6,11 +6,11 @@
 
 import * as catalogo from '../catalog.js';
 import * as db from '../db.js';
-import { GRUPOS, agruparPorGrupo, grupoLabel } from '../seed.js';
-import { thumbHtml, criarAnimacao } from '../media.js';
+import { GRUPOS, grupoLabel } from '../seed.js';
+import { thumbHtml, criarAnimacao, prefetchFotos } from '../media.js';
 import { t, idioma } from '../i18n.js';
 import {
-  ICON, ICON_GRUPO, html, node, raw, setTop, toast, refresh,
+  ICON, html, node, raw, setTop, toast, refresh, listaAgrupada, listaEmCard,
 } from '../ui.js';
 import { normalizarNome as normalizar } from '../text.js';
 
@@ -56,7 +56,7 @@ export async function renderList(view) {
   // Quem ja esta na biblioteca aparece marcado, para nao adicionar duas vezes.
   const meus = new Set((await db.listExercises()).map((e) => e.slug).filter(Boolean));
 
-  const linha = (item) => html`
+  const linha = (item) => node(html`
     <li class="list__item">
       <a class="list__link" href="#/catalogo/${item.slug}">
         ${raw(thumbHtml(item))}
@@ -72,7 +72,7 @@ export async function renderList(view) {
           : raw(`<span class="list__chev">${ICON.chevron}</span>`)}
       </a>
     </li>
-  `;
+  `);
 
   const desenhar = () => {
     lista.innerHTML = '';
@@ -89,9 +89,7 @@ export async function renderList(view) {
         return;
       }
       const corte = achados.slice(0, 80);
-      lista.append(node(html`
-        <div class="card"><ul class="list">${raw(corte.map(linha).join(''))}</ul></div>
-      `));
+      lista.append(listaEmCard(corte.map(linha)));
       if (achados.length > corte.length) {
         lista.append(node(html`
           <p class="muted small" style="text-align:center">
@@ -102,32 +100,11 @@ export async function renderList(view) {
       return;
     }
 
-    // Sem busca: secoes fechadas, so com a contagem. Abrir 873 linhas de uma
-    // vez trava a rolagem no celular.
-    for (const { grupo, itens: doGrupo } of agruparPorGrupo(itens, (item) => item.grupo)) {
-      const aberto = abertos.has(grupo);
-      const secao = node(html`
-        <div class="card cat__grupo">
-          <button class="cat__cabecalho" type="button" aria-expanded="${String(aberto)}">
-            <span class="cat__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
-            <span class="grow" style="font-weight:600">${grupoLabel(grupo)}</span>
-            <span class="muted small">${doGrupo.length}</span>
-            <span class="list__chev cat__seta">${raw(ICON.chevron)}</span>
-          </button>
-        </div>
-      `);
-
-      secao.querySelector('button').onclick = () => {
-        if (abertos.has(grupo)) abertos.delete(grupo);
-        else abertos.add(grupo);
-        desenhar();
-      };
-
-      if (aberto) {
-        secao.append(node(html`<ul class="list">${raw(doGrupo.map(linha).join(''))}</ul>`));
-      }
-      lista.append(secao);
-    }
+    // Sem busca: por grupo, colapsavel — abrir 873 linhas de uma vez trava a
+    // rolagem no celular.
+    lista.append(listaAgrupada({
+      itens, pegarGrupo: (item) => item.grupo, abertos, renderItem: linha,
+    }));
   };
 
   root.querySelector('[data-busca]').addEventListener('input', (e) => {
@@ -204,9 +181,10 @@ export async function renderDetail(view, slug) {
 
     acao.querySelector('[data-adicionar]').onclick = async () => {
       const grupoMuscular = acao.querySelector('[data-grupo]').value;
+      const criado = await db.addExercicioDoCatalogo(item, grupoMuscular);
       // Baixa as fotos grandes agora, com a rede que houver: na academia pode
       // nao haver.
-      const criado = await db.addExercicioDoCatalogo(item, grupoMuscular);
+      prefetchFotos(item.slug);
       toast(criado.jaExistia ? t('catalog.toastJaEstava') : t('catalog.toastAdicionado', { nome: catalogo.nomeExibicao(item) }));
       refresh();
     };
