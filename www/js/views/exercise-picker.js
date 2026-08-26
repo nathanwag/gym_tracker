@@ -3,94 +3,94 @@
  * tenho" sem sair da tela.
  *
  * So resolve (e, se preciso, cria) o exercicio; quem chama decide o que
- * "escolher" significa via aoEscolher. Hoje so o treino em andamento usa
+ * "escolher" significa via onChoose. Hoje so o treino em andamento usa
  * isto, pra entrar num exercicio na sessao. */
 
 import * as db from '../db.js';
-import * as catalogo from '../catalog.js';
-import { GRUPOS, grupoLabel } from '../seed.js';
-import { thumbHtml, prefetchFotos } from '../media.js';
+import * as catalog from '../catalog.js';
+import { MUSCLE_GROUPS, groupLabel } from '../seed.js';
+import { thumbHtml, prefetchPhotos } from '../media.js';
 import { t } from '../i18n.js';
 import {
-  html, raw, node, ICON, toast, openSheet, closeSheet, semAcento, listaAgrupada, listaEmCard,
+  html, raw, node, ICON, toast, openSheet, closeSheet, stripAccents, groupedList, listInCard,
 } from '../ui.js';
 
 // Lembra quais grupos ficaram abertos entre uma abertura e outra da folha
 // nesta sessao — mesmo motivo do catalogo (catalog.js): quem esta pegando
 // varios exercicios da mesma regiao (ex: dia de perna) nao quer reabrir o
 // grupo toda vez.
-const abertos = new Set();
+const openGroups = new Set();
 
 /**
- * @param {object[]} exercicios biblioteca do usuario, no momento em que o seletor abre
- * @param {Set<number>} jaEscolhidoIds ids que devem aparecer desabilitados ("no treino")
- * @param {(exercicio: object) => void|Promise<void>} aoEscolher chamado uma vez, com o
+ * @param {object[]} exercises biblioteca do usuario, no momento em que o seletor abre
+ * @param {Set<number>} alreadyChosenIds ids que devem aparecer desabilitados ("no treino")
+ * @param {(exercise: object) => void|Promise<void>} onChoose chamado uma vez, com o
  *   exercicio resolvido (escolhido da lista, do catalogo, ou recem-criado)
  */
-export function openExercisePicker({ exercicios, jaEscolhidoIds, aoEscolher }) {
-  const escolher = async (exercicio) => {
+export function openExercisePicker({ exercises, alreadyChosenIds, onChoose }) {
+  const choose = async (exercise) => {
     closeSheet();
-    await aoEscolher(exercicio);
+    await onChoose(exercise);
   };
 
-  const corpo = node(html`
+  const body = node(html`
     <div>
-      <input class="input" data-busca type="search" placeholder="${t('picker.buscarPlaceholder')}"
+      <input class="input" data-search type="search" placeholder="${t('picker.searchPlaceholder')}"
              autocomplete="off" autocapitalize="none" autocorrect="off">
-      <div data-resultados style="margin-top:12px"></div>
+      <div data-results style="margin-top:12px"></div>
     </div>
   `);
-  openSheet(t('picker.tituloSheet'), corpo);
+  openSheet(t('picker.sheetTitle'), body);
 
-  const busca = corpo.querySelector('[data-busca]');
-  const resultados = corpo.querySelector('[data-resultados]');
+  const searchInput = body.querySelector('[data-search]');
+  const results = body.querySelector('[data-results]');
 
-  const desenhar = () => {
-    const q = semAcento(busca.value.trim());
-    resultados.innerHTML = '';
+  const draw = () => {
+    const q = stripAccents(searchInput.value.trim());
+    results.innerHTML = '';
 
-    const filtrados = q
-      ? exercicios.filter((e) => semAcento(e.nome).includes(q) || semAcento(e.grupoMuscular).includes(q))
-      : exercicios;
+    const filtered = q
+      ? exercises.filter((e) => stripAccents(e.name).includes(q) || stripAccents(e.muscleGroup).includes(q))
+      : exercises;
 
-    if (!filtrados.length) {
-      resultados.append(node(html`<p class="muted small">${t('picker.nenhumEncontrado')}</p>`));
+    if (!filtered.length) {
+      results.append(node(html`<p class="muted small">${t('picker.noneFound')}</p>`));
     } else if (q) {
       // Buscando: lista plana — achar exatamente o que foi digitado importa
       // mais que navegar por grupo nesse momento.
-      resultados.append(listaEmCard(filtrados.map((ex) => itemExercicio(ex, jaEscolhidoIds, escolher))));
+      results.append(listInCard(filtered.map((ex) => exerciseItem(ex, alreadyChosenIds, choose))));
     } else {
       // Sem busca: por grupo muscular, colapsavel — mesmo padrao do
       // catalogo (catalog.js), pra nao rolar a biblioteca inteira toda vez.
-      resultados.append(listaAgrupada({
-        itens: filtrados,
-        pegarGrupo: (e) => e.grupoMuscular,
-        abertos,
-        renderItem: (ex) => itemExercicio(ex, jaEscolhidoIds, escolher),
+      results.append(groupedList({
+        items: filtered,
+        getGroup: (e) => e.muscleGroup,
+        openGroups,
+        renderItem: (ex) => exerciseItem(ex, alreadyChosenIds, choose),
       }));
     }
 
-    const nomeNovo = busca.value.trim();
-    if (nomeNovo && !exercicios.some((e) => semAcento(e.nome) === q)) {
+    const newName = searchInput.value.trim();
+    if (newName && !exercises.some((e) => stripAccents(e.name) === q)) {
       // Do catalogo: e aqui que o app deixa de ter uma lista fixa. Quem esta em
       // pe no meio do treino precisa de um exercicio que nao tem — antes a
       // unica saida era digitar tudo a mao.
-      const doCatalogo = node('<div data-catalogo></div>');
-      resultados.append(doCatalogo);
-      mostrarCatalogo(doCatalogo, nomeNovo, exercicios, escolher);
+      const fromCatalog = node('<div data-catalog></div>');
+      results.append(fromCatalog);
+      showCatalogSuggestions(fromCatalog, newName, exercises, choose);
 
       const btn = node(html`
-        <button class="btn btn--block" style="margin-top:12px" data-criar>
-          ${raw(ICON.plus)} ${t('picker.criarNome', { nome: nomeNovo })}
+        <button class="btn btn--block" style="margin-top:12px" data-create>
+          ${raw(ICON.plus)} ${t('picker.createName', { name: newName })}
         </button>
       `);
-      btn.onclick = () => formularioNovoExercicio(nomeNovo, escolher);
-      resultados.append(btn);
+      btn.onclick = () => newExerciseForm(newName, choose);
+      results.append(btn);
     }
   };
 
-  busca.addEventListener('input', desenhar);
-  desenhar();
+  searchInput.addEventListener('input', draw);
+  draw();
 }
 
 /** Sugestoes do catalogo dentro do seletor.
@@ -98,29 +98,29 @@ export function openExercisePicker({ exercicios, jaEscolhidoIds, aoEscolher }) {
  *  O catalogo so e carregado quando o usuario ja digitou algo, para o sheet
  *  abrir instantaneo. O arquivo esta em cache do service worker, entao mesmo
  *  offline isto e leitura local. */
-async function mostrarCatalogo(alvo, termo, exercicios, escolher) {
-  let itens;
+async function showCatalogSuggestions(target, term, exercises, choose) {
+  let items;
   try {
-    ({ itens } = await catalogo.buscar(termo, { limite: 6 }));
+    ({ items } = await catalog.search(term, { limit: 6 }));
   } catch {
     return; // sem catalogo o seletor segue funcionando como antes
   }
 
   // Ja na biblioteca? Entao ja apareceu na lista de cima.
-  const meus = new Set(exercicios.map((e) => e.slug).filter(Boolean));
-  const novos = itens.filter((i) => !meus.has(i.slug));
-  if (!novos.length || !alvo.isConnected) return;
+  const mine = new Set(exercises.map((e) => e.slug).filter(Boolean));
+  const newItems = items.filter((i) => !mine.has(i.slug));
+  if (!newItems.length || !target.isConnected) return;
 
-  alvo.append(node(`<h3 class="section-title">${t('picker.doCatalogo')}</h3>`));
+  target.append(node(`<h3 class="section-title">${t('picker.fromCatalog')}</h3>`));
 
-  const itemCatalogo = (item) => {
+  const catalogItem = (item) => {
     const li = node(html`
       <li class="list__item">
         <button class="list__link">
           ${raw(thumbHtml(item))}
           <div class="grow">
-            <div style="font-weight:600">${catalogo.nomeExibicao(item)}</div>
-            <div class="muted small">${grupoLabel(item.grupo)} · ${item.equipamento}</div>
+            <div style="font-weight:600">${catalog.displayName(item)}</div>
+            <div class="muted small">${groupLabel(item.grupo)} · ${item.equipamento}</div>
           </div>
           ${raw(ICON.plus)}
         </button>
@@ -129,62 +129,62 @@ async function mostrarCatalogo(alvo, termo, exercicios, escolher) {
     li.querySelector('button').onclick = async () => {
       // Um toque faz tudo: entra na biblioteca, entra no treino e ja busca as
       // fotos com a rede que houver agora.
-      const criado = await db.addExercicioDoCatalogo(item);
-      prefetchFotos(item.slug);
-      await escolher(criado);
+      const created = await db.addExerciseFromCatalog(item);
+      prefetchPhotos(item.slug);
+      await choose(created);
     };
     return li;
   };
 
-  alvo.append(listaEmCard(novos.map(itemCatalogo)));
+  target.append(listInCard(newItems.map(catalogItem)));
 }
 
 /** Uma linha de exercicio no seletor — usada tanto na lista plana (buscando)
- *  quanto como renderItem de listaAgrupada (sem busca), sem embrulho de
+ *  quanto como renderItem de groupedList (sem busca), sem embrulho de
  *  card: quem monta a lista ao redor decide isso. */
-function itemExercicio(ex, jaEscolhidoIds, escolher) {
-  const dentro = jaEscolhidoIds.has(ex.id);
+function exerciseItem(ex, alreadyChosenIds, choose) {
+  const chosen = alreadyChosenIds.has(ex.id);
   const li = node(html`
     <li class="list__item">
-      <button class="list__link" data-id="${ex.id}" ${raw(dentro ? 'disabled' : '')}>
+      <button class="list__link" data-id="${ex.id}" ${raw(chosen ? 'disabled' : '')}>
         ${raw(thumbHtml(ex))}
         <div class="grow">
-          <div style="font-weight:600">${ex.nome}</div>
-          <div class="muted small">${grupoLabel(ex.grupoMuscular)}</div>
+          <div style="font-weight:600">${ex.name}</div>
+          <div class="muted small">${groupLabel(ex.muscleGroup)}</div>
         </div>
-        ${dentro ? raw(`<span class="badge">${t('picker.noTreino')}</span>`) : raw(ICON.plus)}
+        ${chosen ? raw(`<span class="badge">${t('picker.inWorkout')}</span>`) : raw(ICON.plus)}
       </button>
     </li>
   `);
-  if (!dentro) li.querySelector('button').onclick = () => escolher(ex);
+  if (!chosen) li.querySelector('button').onclick = () => choose(ex);
   else li.querySelector('button').style.opacity = '.5';
   return li;
 }
 
-function formularioNovoExercicio(nomeSugerido, escolher) {
-  const corpo = node(html`
+function newExerciseForm(suggestedName, choose) {
+  const body = node(html`
     <div class="stack">
       <label class="field">
-        <span class="field__label">${t('exercise.form.nome')}</span>
-        <input class="input" data-nome value="${nomeSugerido}" autocapitalize="sentences">
+        <span class="field__label">${t('exercise.form.name')}</span>
+        <input class="input" data-name value="${suggestedName}" autocapitalize="sentences">
       </label>
       <label class="field">
-        <span class="field__label">${t('exercise.form.grupoMuscular')}</span>
-        <select class="select" data-grupo>
-          ${raw(GRUPOS.map((g) => `<option value="${g}">${grupoLabel(g)}</option>`).join(''))}
+        <span class="field__label">${t('exercise.form.muscleGroup')}</span>
+        <select class="select" data-group>
+          ${raw(MUSCLE_GROUPS.map((g) => `<option value="${g}">${groupLabel(g)}</option>`).join(''))}
         </select>
       </label>
-      <button class="btn btn--primary btn--block" data-salvar>${t('picker.criarEAdicionar')}</button>
+      <button class="btn btn--primary btn--block" data-save>${t('picker.createAndAdd')}</button>
     </div>
   `);
-  openSheet(t('exercise.form.tituloNovo'), corpo);
+  openSheet(t('exercise.form.newTitle'), body);
 
-  corpo.querySelector('[data-salvar]').onclick = async () => {
-    const nome = corpo.querySelector('[data-nome]').value.trim();
-    if (!nome) { toast(t('exercise.form.deNome')); return; }
+  body.querySelector('[data-save]').onclick = async () => {
+    const name = body.querySelector('[data-name]').value.trim();
+    if (!name) { toast(t('exercise.form.giveItAName')); return; }
 
-    const novo = await db.addExercise({ nome, grupoMuscular: corpo.querySelector('[data-grupo]').value });
-    await escolher(novo);
-    toast(t('exercise.form.toastCriado'));
+    const created = await db.addExercise({ name, muscleGroup: body.querySelector('[data-group]').value });
+    await choose(created);
+    toast(t('exercise.form.toastCreated'));
   };
 }

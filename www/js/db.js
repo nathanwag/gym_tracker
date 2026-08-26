@@ -10,22 +10,27 @@
  * fora. Nunca coloque um `await` de outra coisa no meio de uma transacao.
  */
 
-import { slugPorNome } from './seed.js';
-import { normalizarNome } from './text.js';
+import { slugByName } from './seed.js';
+import { normalizeName } from './text.js';
 
+// Nome do banco em si NAO muda: IndexedDB e chaveado por (origem, nome do
+// banco) — trocar essa string faria o app abrir um banco novo e vazio,
+// ignorando todo o historico ja gravado sob o nome antigo. Excecao
+// permanente, no mesmo espirito do valor de FORMAT em backup.js.
 const DB_NAME = 'treino';
 // v2: campo `slug` no exercicio, ligando-o as figuras de www/img/ex/.
-const DB_VERSION = 2;
+// v3: nomes de campo em ingles (exercises/workouts/sets/settings).
+const DB_VERSION = 3;
 
 export const DEFAULT_SETTINGS = {
-  unidade: 'kg',
-  tema: 'auto',
-  idioma: 'pt',
-  incrementoPeso: 2.5,
-  incrementoReps: 1,
+  unit: 'kg',
+  theme: 'auto',
+  language: 'pt',
+  weightIncrement: 2.5,
+  repsIncrement: 1,
   // Versao do catalogo cujas miniaturas ja foram baixadas; evita repetir o
   // precache a cada abertura. Vazio = nunca baixou.
-  midiaPrecacheVersao: '',
+  mediaPrecacheVersion: '',
 };
 
 let dbPromise = null;
@@ -70,25 +75,118 @@ export function open() {
         // id atual. Entao o preenchimento e feito no lugar, por cursor.
         //
         // Tudo aqui e sincrono de proposito (ver o aviso no topo do arquivo):
-        // `slugPorNome()` e `normalizarNome()` sao funcoes puras sobre imports
+        // `slugByName()` e `normalizeName()` sao funcoes puras sobre imports
         // estaticos, e o encadeamento acontece dentro do onsuccess do cursor.
         // Se a transacao abortar, o banco continua em v1 e a migracao roda de
         // novo na proxima abertura.
         const store = request.transaction.objectStore('exercises');
         if (!store.indexNames.contains('by_slug')) store.createIndex('by_slug', 'slug');
 
-        const porNome = slugPorNome();
+        const bySlug = slugByName();
         const cursor = store.openCursor();
         cursor.onsuccess = () => {
-          const atual = cursor.result;
-          if (!atual) return;
-          const registro = atual.value;
+          const current = cursor.result;
+          if (!current) return;
+          const record = current.value;
           // `undefined` = nunca migrado. `null` e escolha deliberada (exercicio
           // sem figura) e nao deve ser reprocessado.
-          if (registro.slug === undefined) {
-            atual.update({ ...registro, slug: porNome.get(normalizarNome(registro.nome)) ?? null });
+          if (record.slug === undefined) {
+            current.update({ ...record, slug: bySlug.get(normalizeName(record.nome)) ?? null });
           }
-          atual.continue();
+          current.continue();
+        };
+      }
+
+      if (event.oldVersion < 3) {
+        // Nomes de campo em portugues -> ingles. Os indices `by_grupo`/
+        // `by_data` nunca sao consultados em lugar nenhum do app, entao saem
+        // em vez de acompanhar a troca de nome de campo.
+        const exercisesStore = request.transaction.objectStore('exercises');
+        if (exercisesStore.indexNames.contains('by_grupo')) exercisesStore.deleteIndex('by_grupo');
+        const exercisesCursor = exercisesStore.openCursor();
+        exercisesCursor.onsuccess = () => {
+          const cursor = exercisesCursor.result;
+          if (!cursor) return;
+          const r = cursor.value;
+          cursor.update({
+            id: r.id,
+            name: r.nome,
+            // Valor gravado (ex: "Peito") continua em portugues de proposito:
+            // vem do catalogo (fora de escopo desta migracao), so o nome do
+            // campo muda.
+            muscleGroup: r.grupoMuscular,
+            slug: r.slug,
+            custom: r.personalizado,
+            createdAt: r.criadoEm,
+          });
+          cursor.continue();
+        };
+
+        const workoutsStore = request.transaction.objectStore('workouts');
+        if (workoutsStore.indexNames.contains('by_data')) workoutsStore.deleteIndex('by_data');
+        const workoutsCursor = workoutsStore.openCursor();
+        workoutsCursor.onsuccess = () => {
+          const cursor = workoutsCursor.result;
+          if (!cursor) return;
+          const r = cursor.value;
+          cursor.update({
+            id: r.id,
+            date: r.data,
+            startedAt: r.iniciadoEm,
+            finishedAt: r.finalizadoEm,
+            notes: r.notas,
+            exerciseIds: r.exerciseIds,
+            completedIds: r.concluidoIds,
+          });
+          cursor.continue();
+        };
+
+        const setsStore = request.transaction.objectStore('sets');
+        const setsCursor = setsStore.openCursor();
+        setsCursor.onsuccess = () => {
+          const cursor = setsCursor.result;
+          if (!cursor) return;
+          const r = cursor.value;
+          cursor.update({
+            id: r.id,
+            workoutId: r.workoutId,
+            exerciseId: r.exerciseId,
+            weight: r.peso,
+            reps: r.reps,
+            // duracaoSeg so existe em series gravadas depois do recurso de
+            // cardio/alongamento — series mais antigas nunca tiveram o campo.
+            durationSec: r.duracaoSeg ?? 0,
+            warmup: r.aquecimento,
+            createdAt: r.criadoEm,
+          });
+          cursor.continue();
+        };
+
+        // settings e chave-valor (nao tem um shape fixo pra so dar update):
+        // renomear a chave em si exige apagar o registro velho e criar um
+        // novo, ja que o keyPath do store e o proprio campo `key`.
+        const settingsKeyMap = {
+          unidade: 'unit',
+          tema: 'theme',
+          idioma: 'language',
+          incrementoPeso: 'weightIncrement',
+          incrementoReps: 'repsIncrement',
+          midiaPrecacheVersao: 'mediaPrecacheVersion',
+        };
+        const themeValueMap = { claro: 'light', escuro: 'dark' };
+        const settingsStore = request.transaction.objectStore('settings');
+        const settingsCursor = settingsStore.openCursor();
+        settingsCursor.onsuccess = () => {
+          const cursor = settingsCursor.result;
+          if (!cursor) return;
+          const row = cursor.value;
+          const newKey = settingsKeyMap[row.key];
+          if (newKey) {
+            const newValue = row.key === 'tema' ? (themeValueMap[row.value] ?? row.value) : row.value;
+            cursor.delete();
+            settingsStore.add({ key: newKey, value: newValue });
+          }
+          cursor.continue();
         };
       }
     };
@@ -167,7 +265,7 @@ export async function setSetting(key, value) {
 export async function listExercises() {
   if (!exerciseCache) {
     const rows = await tx('exercises', 'readonly', (s) => req(s.getAll()));
-    rows.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    rows.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     exerciseCache = rows;
   }
   return exerciseCache;
@@ -179,65 +277,67 @@ export async function getExercise(id) {
 }
 
 /** Adiciona um exercicio. Vindo do catalogo, `slug` preenchido e
- *  `personalizado: false`; criado a mao, sem slug e `personalizado: true`.
+ *  `custom: false`; criado a mao, sem slug e `custom: true`.
  *
- *  Devolve `jaExistia` quando o slug ja estava na biblioteca: sem essa guarda,
- *  adicionar o mesmo exercicio pelo catalogo e pelo seletor criaria duas linhas
- *  e o historico de carga ficaria dividido entre elas. */
-export async function addExercise({ nome, grupoMuscular, slug = null, personalizado = true }) {
-  const registro = {
-    nome: String(nome).trim(),
-    grupoMuscular: grupoMuscular || 'Outros',
+ *  Devolve `alreadyExisted` quando o slug ja estava na biblioteca: sem essa
+ *  guarda, adicionar o mesmo exercicio pelo catalogo e pelo seletor criaria
+ *  duas linhas e o historico de carga ficaria dividido entre elas. */
+export async function addExercise({
+  name, muscleGroup, slug = null, custom = true,
+}) {
+  const record = {
+    name: String(name).trim(),
+    muscleGroup: muscleGroup || 'Outros',
     slug: slug || null,
-    personalizado,
-    criadoEm: new Date().toISOString(),
+    custom,
+    createdAt: new Date().toISOString(),
   };
 
-  const resultado = await tx('exercises', 'readwrite', (store) => {
-    if (!registro.slug) {
-      return req(store.add(registro)).then((id) => ({ ...registro, id, jaExistia: false }));
+  const result = await tx('exercises', 'readwrite', (store) => {
+    if (!record.slug) {
+      return req(store.add(record)).then((id) => ({ ...record, id, alreadyExisted: false }));
     }
-    return req(store.index('by_slug').get(registro.slug)).then((existente) => (
-      existente
-        ? { ...existente, jaExistia: true }
-        : req(store.add(registro)).then((id) => ({ ...registro, id, jaExistia: false }))
+    return req(store.index('by_slug').get(record.slug)).then((existing) => (
+      existing
+        ? { ...existing, alreadyExisted: true }
+        : req(store.add(record)).then((id) => ({ ...record, id, alreadyExisted: false }))
     ));
   });
 
   exerciseCache = null;
-  return resultado;
+  return result;
 }
 
 /** Cria (ou reaproveita, se o slug ja existir) um exercicio a partir de um
  *  item do catalogo. Quem chama e responsavel por aquecer o cache das fotos
- *  (media.js:prefetchFotos) — db.js nao depende de media.js de proposito. */
-export async function addExercicioDoCatalogo(item, grupoMuscular = item.grupo) {
+ *  (media.js:prefetchPhotos) — db.js nao depende de media.js de proposito. */
+export async function addExerciseFromCatalog(item, muscleGroup = item.grupo) {
   return addExercise({
-    nome: item.nome, grupoMuscular, slug: item.slug, personalizado: false,
+    name: item.nome, muscleGroup, slug: item.slug, custom: false,
   });
 }
 
 export async function updateExercise(id, patch) {
   await tx('exercises', 'readwrite', (store) =>
-    req(store.get(Number(id))).then((atual) => {
-      if (!atual) throw new Error('Exercício não encontrado.');
-      store.put({ ...atual, ...patch, id: atual.id });
+    req(store.get(Number(id))).then((current) => {
+      if (!current) throw new Error('Exercício não encontrado.');
+      store.put({ ...current, ...patch, id: current.id });
     }));
   exerciseCache = null;
 }
 
 /** Liga (ou tira) a figura de um exercicio ja existente — caminho de edicao
- *  (renomeado, ou criado a mao) para o que addExercicioDoCatalogo faz na
+ *  (renomeado, ou criado a mao) para o que addExerciseFromCatalog faz na
  *  criacao. Mesma regra: quem chama aquece o cache das fotos, se quiser. */
-export async function definirFiguraExercicio(id, slug) {
+export async function setExerciseImage(id, slug) {
   await updateExercise(id, { slug: slug || null });
 }
 
 /** Remove um exercicio. Falha se houver series registradas nele. */
 export async function deleteExercise(id) {
-  const usos = await countSetsByExercise(id);
-  if (usos > 0) {
-    throw new Error(`Este exercício tem ${usos} série(s) registrada(s). Apague o histórico dele antes.`);
+  const uses = await countSetsByExercise(id);
+  if (uses > 0) {
+    throw new Error(`Este exercício tem ${uses} série(s) registrada(s). Apague o histórico dele antes.`);
   }
   await tx('exercises', 'readwrite', (s) => s.delete(Number(id)));
   exerciseCache = null;
@@ -250,107 +350,107 @@ export function countSetsByExercise(id) {
 /* ---------- Treinos ---------- */
 
 export async function startWorkout() {
-  const agora = new Date().toISOString();
+  const now = new Date().toISOString();
   // exerciseIds guarda a ordem dos exercicios da sessao, inclusive os que ainda
   // nao tem nenhuma serie — a ordem nao poderia ser derivada so das series.
-  const registro = {
-    data: agora.slice(0, 10),
-    iniciadoEm: agora,
-    finalizadoEm: null,
-    notas: '',
+  const record = {
+    date: now.slice(0, 10),
+    startedAt: now,
+    finishedAt: null,
+    notes: '',
     exerciseIds: [],
-    concluidoIds: [],
+    completedIds: [],
   };
-  const id = await tx('workouts', 'readwrite', (s) => req(s.add(registro)));
-  return { ...registro, id };
+  const id = await tx('workouts', 'readwrite', (s) => req(s.add(record)));
+  return { ...record, id };
 }
 
-/** O treino em aberto (sem finalizadoEm), se existir. */
+/** O treino em aberto (sem finishedAt), se existir. */
 export async function getActiveWorkout() {
-  const todos = await tx('workouts', 'readonly', (s) => req(s.getAll()));
-  const abertos = todos.filter((w) => !w.finalizadoEm);
-  abertos.sort((a, b) => b.iniciadoEm.localeCompare(a.iniciadoEm));
-  return abertos[0] || null;
+  const all = await tx('workouts', 'readonly', (s) => req(s.getAll()));
+  const unfinished = all.filter((w) => !w.finishedAt);
+  unfinished.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  return unfinished[0] || null;
 }
 
 export function getWorkout(id) {
   return tx('workouts', 'readonly', (s) => req(s.get(Number(id))));
 }
 
-export async function listWorkouts({ limit = 0, incluirAbertos = true } = {}) {
-  const todos = await tx('workouts', 'readonly', (s) => req(s.getAll()));
-  const lista = incluirAbertos ? todos : todos.filter((w) => w.finalizadoEm);
-  lista.sort((a, b) => b.iniciadoEm.localeCompare(a.iniciadoEm));
-  return limit ? lista.slice(0, limit) : lista;
+export async function listWorkouts({ limit = 0, includeOpen = true } = {}) {
+  const all = await tx('workouts', 'readonly', (s) => req(s.getAll()));
+  const list = includeOpen ? all : all.filter((w) => w.finishedAt);
+  list.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  return limit ? list.slice(0, limit) : list;
 }
 
 export async function updateWorkout(id, patch) {
   await tx('workouts', 'readwrite', (store) =>
-    req(store.get(Number(id))).then((atual) => {
-      if (!atual) throw new Error('Treino não encontrado.');
-      store.put({ ...atual, ...patch, id: atual.id });
+    req(store.get(Number(id))).then((current) => {
+      if (!current) throw new Error('Treino não encontrado.');
+      store.put({ ...current, ...patch, id: current.id });
     }));
 }
 
 export function finishWorkout(id) {
-  return updateWorkout(id, { finalizadoEm: new Date().toISOString() });
+  return updateWorkout(id, { finishedAt: new Date().toISOString() });
 }
 
 export async function addExerciseToWorkout(workoutId, exerciseId) {
-  const treino = await getWorkout(workoutId);
-  if (!treino) throw new Error('Treino não encontrado.');
-  const ids = treino.exerciseIds || [];
+  const workout = await getWorkout(workoutId);
+  if (!workout) throw new Error('Treino não encontrado.');
+  const ids = workout.exerciseIds || [];
   if (ids.includes(Number(exerciseId))) return;
   await updateWorkout(workoutId, { exerciseIds: [...ids, Number(exerciseId)] });
 }
 
 /** Tira o exercicio da sessao e apaga as series dele naquele treino. */
 export async function removeExerciseFromWorkout(workoutId, exerciseId) {
-  const treino = await getWorkout(workoutId);
-  if (!treino) return;
-  const alvo = Number(exerciseId);
+  const workout = await getWorkout(workoutId);
+  if (!workout) return;
+  const target = Number(exerciseId);
   await updateWorkout(workoutId, {
-    exerciseIds: (treino.exerciseIds || []).filter((id) => id !== alvo),
+    exerciseIds: (workout.exerciseIds || []).filter((id) => id !== target),
   });
   await tx('sets', 'readwrite', (store) =>
-    req(store.index('by_workout').getAll(Number(workoutId))).then((series) => {
-      for (const s of series) if (s.exerciseId === alvo) store.delete(s.id);
+    req(store.index('by_workout').getAll(Number(workoutId))).then((sets) => {
+      for (const s of sets) if (s.exerciseId === target) store.delete(s.id);
     }));
 }
 
 /** Apaga o treino e, junto, todas as series dele. */
 export function deleteWorkout(id) {
-  const alvo = Number(id);
+  const target = Number(id);
   return tx(['workouts', 'sets'], 'readwrite', (workouts, sets) => {
-    workouts.delete(alvo);
-    return req(sets.index('by_workout').getAllKeys(alvo))
-      .then((chaves) => { for (const chave of chaves) sets.delete(chave); });
+    workouts.delete(target);
+    return req(sets.index('by_workout').getAllKeys(target))
+      .then((keys) => { for (const key of keys) sets.delete(key); });
   });
 }
 
 /* ---------- Series ---------- */
 
 export async function addSet({
-  workoutId, exerciseId, peso, reps, duracaoSeg, aquecimento = false,
+  workoutId, exerciseId, weight, reps, durationSec, warmup = false,
 }) {
-  const registro = {
+  const record = {
     workoutId: Number(workoutId),
     exerciseId: Number(exerciseId),
-    peso: Number(peso) || 0,
+    weight: Number(weight) || 0,
     reps: Math.max(0, Math.round(Number(reps) || 0)),
-    duracaoSeg: Math.max(0, Math.round(Number(duracaoSeg) || 0)),
-    aquecimento: Boolean(aquecimento),
-    criadoEm: new Date().toISOString(),
+    durationSec: Math.max(0, Math.round(Number(durationSec) || 0)),
+    warmup: Boolean(warmup),
+    createdAt: new Date().toISOString(),
   };
-  const id = await tx('sets', 'readwrite', (s) => req(s.add(registro)));
-  return { ...registro, id };
+  const id = await tx('sets', 'readwrite', (s) => req(s.add(record)));
+  return { ...record, id };
 }
 
 export async function updateSet(id, patch) {
   await tx('sets', 'readwrite', (store) =>
-    req(store.get(Number(id))).then((atual) => {
-      if (!atual) throw new Error('Série não encontrada.');
-      store.put({ ...atual, ...patch, id: atual.id });
+    req(store.get(Number(id))).then((current) => {
+      if (!current) throw new Error('Série não encontrada.');
+      store.put({ ...current, ...patch, id: current.id });
     }));
 }
 
@@ -380,23 +480,27 @@ export async function listAllSets() {
 
 /** Copia integral do banco, usada por backup.js para gerar o JSON. */
 export async function dumpAll() {
-  const [exercises, workouts, sets, settings] = await Promise.all([
+  const [exercises, workouts, sets, settingsRows] = await Promise.all([
     tx('exercises', 'readonly', (s) => req(s.getAll())),
     tx('workouts', 'readonly', (s) => req(s.getAll())),
     tx('sets', 'readonly', (s) => req(s.getAll())),
     tx('settings', 'readonly', (s) => req(s.getAll())),
   ]);
-  return { exercises, workouts, sets, settings };
+  return {
+    exercises, workouts, sets, settings: settingsRows,
+  };
 }
 
 /** Substitui todo o conteudo do banco (restauracao de backup). */
-export async function replaceAll({ exercises = [], workouts = [], sets = [], settings = [] }) {
+export async function replaceAll({
+  exercises = [], workouts = [], sets = [], settings: settingsRows = [],
+}) {
   await tx(['exercises', 'workouts', 'sets', 'settings'], 'readwrite', (ex, wo, se, st) => {
     ex.clear(); wo.clear(); se.clear(); st.clear();
     for (const row of exercises) ex.put(row);
     for (const row of workouts) wo.put(row);
     for (const row of sets) se.put(row);
-    for (const row of settings) st.put(row);
+    for (const row of settingsRows) st.put(row);
   });
   exerciseCache = null;
 }

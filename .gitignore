@@ -1,14 +1,5 @@
 node_modules/
-
-# Cache do tools/build_catalog.py: os JPEG originais do free-exercise-db, que
-# so servem de insumo para gerar os WebP de www/img/. Nunca dentro de www/ —
-# o workflow do Pages publica essa pasta inteira.
-tools/.cache/
 __pycache__/
-
-# Entrada e saida bruta dos lotes de traducao. O que vale fica em
-# tools/data/nomes_pt.json e tools/data/instrucoes_pt.json, depois do merge.
-tools/data/lotes/
 
 # Saidas de build dos projetos nativos. As pastas android/ e ios/ em si devem
 # ser commitadas: sao os projetos nativos que o Capacitor gera uma unica vez.

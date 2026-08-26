@@ -9,15 +9,15 @@
 
 import * as db from '../db.js';
 import {
-  evaluatePR, prSetIds, setE1rm, isTempoSet, workoutSummary,
+  evaluatePR, prSetIds, setE1rm, isDurationSet, workoutSummary,
 } from '../models.js';
 import { thumbHtml } from '../media.js';
 import { openExercisePicker } from './exercise-picker.js';
-import { usaTempo } from '../seed.js';
+import { usesDuration } from '../seed.js';
 import { t, tn } from '../i18n.js';
 import {
-  setTop, html, raw, node, ICON, createStepper, createDuracaoStepper, toast,
-  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, fmtSerie, fmtSerieComUnidade, buzz,
+  setTop, html, raw, node, ICON, createStepper, createDurationStepper, toast,
+  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, fmtSet, fmtSetWithUnit, buzz,
 } from '../ui.js';
 
 /** Estado da tela. Recriado a cada render; as telas nao compartilham estado. */
@@ -27,7 +27,7 @@ export async function render(view) {
   const workout = await db.getActiveWorkout();
   if (!workout) { location.hash = '#/'; return; }
 
-  const [exercicios, todasSeries, treinos] = await Promise.all([
+  const [exercises, allSets, workouts] = await Promise.all([
     db.listExercises(),
     db.listAllSets(),
     db.listWorkouts(),
@@ -36,59 +36,59 @@ export async function render(view) {
   const cfg = db.settings();
   ctx = {
     workout,
-    unidade: cfg.unidade,
-    incPeso: Number(cfg.incrementoPeso) || 2.5,
-    incReps: Number(cfg.incrementoReps) || 1,
-    exercicios: new Map(exercicios.map((e) => [e.id, e])),
-    lista: exercicios,
-    treinos: new Map(treinos.map((w) => [w.id, w])),
+    unit: cfg.unit,
+    weightStep: Number(cfg.weightIncrement) || 2.5,
+    repsStep: Number(cfg.repsIncrement) || 1,
+    exercises: new Map(exercises.map((e) => [e.id, e])),
+    list: exercises,
+    workouts: new Map(workouts.map((w) => [w.id, w])),
     // Fonte unica de verdade: todas as series do banco. As da sessao e o
     // historico de cada exercicio sao derivados daqui por filtro.
-    todasSeries,
-    editando: new Map(),
-    // Persistido no treino (concluidoIds) pra sobreviver a sair e voltar pra
+    allSets,
+    editing: new Map(),
+    // Persistido no treino (completedIds) pra sobreviver a sair e voltar pra
     // sessao — sem isso todo exercicio reabria ao trocar de tela.
-    colapsados: new Set(workout.concluidoIds || []),
+    collapsed: new Set(workout.completedIds || []),
   };
 
   const top = setTop({
-    title: t('session.titulo'),
+    title: t('session.title'),
     back: '#/',
     actions: `
-      <button class="icon-btn" data-descartar aria-label="${t('session.descartarTreino')}">${ICON.trash}</button>
-      <button class="btn btn--sm btn--primary" data-finalizar>${t('session.finalizar')}</button>
+      <button class="icon-btn" data-discard aria-label="${t('session.discardWorkout')}">${ICON.trash}</button>
+      <button class="btn btn--sm btn--primary" data-finish>${t('session.finish')}</button>
     `,
   });
-  top.querySelector('[data-finalizar]').onclick = finalizar;
-  top.querySelector('[data-descartar]').onclick = async () => {
+  top.querySelector('[data-finish]').onclick = finish;
+  top.querySelector('[data-discard]').onclick = async () => {
     const ok = await confirmSheet({
-      title: t('session.confirmarDescartar.titulo'),
-      message: t('session.confirmarDescartar.mensagem'),
-      confirmLabel: t('session.confirmarDescartar.label'),
+      title: t('session.confirmDiscard.title'),
+      message: t('session.confirmDiscard.message'),
+      confirmLabel: t('session.confirmDiscard.label'),
       danger: true,
     });
     if (!ok) return;
     await db.deleteWorkout(ctx.workout.id);
-    toast(t('session.toastDescartado'));
+    toast(t('session.toastDiscarded'));
     location.hash = '#/';
   };
 
   const root = node('<div class="stack"></div>');
-  root.append(resumoEl());
-  root.append(node('<div class="stack" data-lista></div>'));
+  root.append(summaryCard());
+  root.append(node('<div class="stack" data-list></div>'));
 
   const add = node(html`
     <button class="btn btn--block" data-add-ex style="margin-top:12px">
-      ${raw(ICON.plus)} ${t('session.adicionarExercicio')}
+      ${raw(ICON.plus)} ${t('session.addExercise')}
     </button>
   `);
-  add.onclick = abrirSeletor;
+  add.onclick = openPicker;
   root.append(add);
 
-  root.append(node('<div data-concluidos-wrap></div>'));
+  root.append(node('<div data-completed-wrap></div>'));
 
   view.append(root);
-  renderLista();
+  renderList();
 }
 
 /** Redesenha as duas listas (ativos e concluidos) a partir do zero — chamada
@@ -98,81 +98,81 @@ export async function render(view) {
 /** Grava quais exercicios estao concluidos no proprio treino, em segundo
  *  plano — a lista na tela ja foi redesenhada, isto so garante que sair e
  *  voltar pra sessao (ou reabrir o app) preserva o estado. */
-function persistColapsados() {
-  ctx.workout.concluidoIds = [...ctx.colapsados];
-  db.updateWorkout(ctx.workout.id, { concluidoIds: ctx.workout.concluidoIds });
+function persistCollapsed() {
+  ctx.workout.completedIds = [...ctx.collapsed];
+  db.updateWorkout(ctx.workout.id, { completedIds: ctx.workout.completedIds });
 }
 
 /** Marca (ou desmarca) um exercicio como concluido: atualiza o set em
  *  memoria, redesenha as duas listas e persiste — os tres passos que toda
  *  mudanca de lado precisa, num lugar so. */
-function definirColapso(exId, colapsado) {
-  if (colapsado) ctx.colapsados.add(exId);
-  else ctx.colapsados.delete(exId);
-  renderLista();
-  persistColapsados();
+function setCollapsed(exId, collapsed) {
+  if (collapsed) ctx.collapsed.add(exId);
+  else ctx.collapsed.delete(exId);
+  renderList();
+  persistCollapsed();
 }
 
-function renderLista() {
-  const listaEl = document.querySelector('[data-lista]');
-  const concluidosWrap = document.querySelector('[data-concluidos-wrap]');
-  if (!listaEl || !concluidosWrap) return;
+function renderList() {
+  const listEl = document.querySelector('[data-list]');
+  const completedWrap = document.querySelector('[data-completed-wrap]');
+  if (!listEl || !completedWrap) return;
 
   const ids = ctx.workout.exerciseIds || [];
-  const ativos = ids.filter((id) => !ctx.colapsados.has(id));
-  const concluidos = ids.filter((id) => ctx.colapsados.has(id));
+  const active = ids.filter((id) => !ctx.collapsed.has(id));
+  const completed = ids.filter((id) => ctx.collapsed.has(id));
 
-  listaEl.innerHTML = '';
-  for (const id of ativos) listaEl.append(cardExercicio(id));
+  listEl.innerHTML = '';
+  for (const id of active) listEl.append(exerciseCard(id));
 
-  concluidosWrap.innerHTML = '';
-  if (concluidos.length) {
-    concluidosWrap.append(node(`<h2 class="section-title">${t('session.concluidos')}</h2>`));
-    const card = node('<div class="card"><ul class="list" data-concluidos></ul></div>');
+  completedWrap.innerHTML = '';
+  if (completed.length) {
+    completedWrap.append(node(`<h2 class="section-title">${t('session.done')}</h2>`));
+    const card = node('<div class="card"><ul class="list" data-completed></ul></div>');
     const ul = card.querySelector('ul');
-    for (const id of concluidos) ul.append(itemConcluido(id));
-    concluidosWrap.append(card);
+    for (const id of completed) ul.append(completedItem(id));
+    completedWrap.append(card);
   }
 }
 
 /* ---------- Consultas derivadas ---------- */
 
-const seriesDoTreino = () => ctx.todasSeries.filter((s) => s.workoutId === ctx.workout.id);
-const seriesDoExercicio = (exId) => ctx.todasSeries.filter((s) => s.exerciseId === exId);
-const seriesAqui = (exId) => ctx.todasSeries.filter((s) => s.workoutId === ctx.workout.id && s.exerciseId === exId);
+const setsInWorkout = () => ctx.allSets.filter((s) => s.workoutId === ctx.workout.id);
+const setsForExercise = (exId) => ctx.allSets.filter((s) => s.exerciseId === exId);
+const setsHere = (exId) => ctx.allSets.filter((s) => s.workoutId === ctx.workout.id && s.exerciseId === exId);
 
 /** Series do exercicio no treino anterior mais recente (ignorando o atual). */
-function sessaoAnterior(exId) {
-  const outras = ctx.todasSeries.filter((s) => s.exerciseId === exId && s.workoutId !== ctx.workout.id);
-  if (!outras.length) return null;
+function previousSession(exId) {
+  const others = ctx.allSets.filter((s) => s.exerciseId === exId && s.workoutId !== ctx.workout.id);
+  if (!others.length) return null;
   // Ids de treino sao autoincremento: o maior e sempre o mais recente.
-  const ultimoId = outras.reduce((max, s) => Math.max(max, s.workoutId), 0);
-  const series = outras.filter((s) => s.workoutId === ultimoId);
+  const lastWorkoutId = others.reduce((max, s) => Math.max(max, s.workoutId), 0);
+  const sets = others.filter((s) => s.workoutId === lastWorkoutId);
   // A data vem do treino, nao da serie: editar uma serie depois nao deve
   // mudar a data em que aquele treino aconteceu.
-  const quando = ctx.treinos.get(ultimoId)?.iniciadoEm || series[0].criadoEm;
-  return { workoutId: ultimoId, series, quando };
+  const when = ctx.workouts.get(lastWorkoutId)?.startedAt || sets[0].createdAt;
+  return { workoutId: lastWorkoutId, sets, when };
 }
 
 /* ---------- Resumo do topo ---------- */
 
-function resumoEl() {
-  const resumo = workoutSummary(seriesDoTreino());
+function summaryCard() {
+  const summary = workoutSummary(setsInWorkout());
   const zeroMin = `0${t('common.min')}`;
   const el = node(html`
-    <div class="card" data-resumo>
+    <div class="card" data-summary>
       <div class="stats">
         <div class="stat">
-          <div class="stat__val" data-duracao>${fmtDuration(ctx.workout.iniciadoEm, new Date().toISOString()) || zeroMin}</div>
-          <div class="stat__label">${t('session.resumo.duracao')}</div>
+          <div class="stat__val" data-duration>${fmtDuration(ctx.workout.startedAt, new Date().toISOString()) || zeroMin}</div>
+          <div class="stat__label">${t('session.summary.duration')}</div>
         </div>
         <div class="stat">
-          <div class="stat__val">${resumo.series}</div>
-          <div class="stat__label">${t('session.resumo.series')}</div>
+          <div class="stat__val">${summary.sets}</div>
+          <div class="stat__label">${t('session.summary.sets')}</div>
         </div>
         <div class="stat">
-          <div class="stat__val">${fmtNum(resumo.volume, 0)}</div>
-          <div class="stat__label">${t('session.resumo.volume', { unidade: ctx.unidade })}</div>
+          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
+          <div class="stat__label">${t('session.summary.volume', { unit: ctx.unit })}</div>
         </div>
       </div>
     </div>
@@ -181,278 +181,278 @@ function resumoEl() {
   // O cronometro se cancela sozinho quando a tela sai do DOM.
   const timer = setInterval(() => {
     if (!document.body.contains(el)) { clearInterval(timer); return; }
-    el.querySelector('[data-duracao]').textContent =
-      fmtDuration(ctx.workout.iniciadoEm, new Date().toISOString()) || zeroMin;
+    el.querySelector('[data-duration]').textContent =
+      fmtDuration(ctx.workout.startedAt, new Date().toISOString()) || zeroMin;
   }, 30000);
 
   return el;
 }
 
-function atualizarResumo() {
-  const antigo = document.querySelector('[data-resumo]');
-  if (antigo) antigo.replaceWith(resumoEl());
+function updateSummary() {
+  const old = document.querySelector('[data-summary]');
+  if (old) old.replaceWith(summaryCard());
 }
 
 /* ---------- Cartao de exercicio ---------- */
 
 function rebuildCard(exId) {
-  const antigo = document.querySelector(`[data-ex="${exId}"]`);
-  if (antigo) antigo.replaceWith(cardExercicio(exId));
+  const old = document.querySelector(`[data-ex="${exId}"]`);
+  if (old) old.replaceWith(exerciseCard(exId));
 }
 
-function cardExercicio(exId) {
-  const ex = ctx.exercicios.get(exId);
+function exerciseCard(exId) {
+  const ex = ctx.exercises.get(exId);
   if (!ex) return node('<div hidden></div>');
 
-  const aqui = seriesAqui(exId);
-  const prIds = prSetIds(seriesDoExercicio(exId));
-  const anterior = sessaoAnterior(exId);
-  const editandoId = ctx.editando.get(exId) ?? null;
-  const emEdicao = aqui.find((s) => s.id === editandoId) || null;
+  const here = setsHere(exId);
+  const prIds = prSetIds(setsForExercise(exId));
+  const previous = previousSession(exId);
+  const editingId = ctx.editing.get(exId) ?? null;
+  const editing = here.find((s) => s.id === editingId) || null;
 
   const card = node(html`<section class="card" data-ex="${exId}"></section>`);
 
-  const cabecalho = node(html`
+  const header = node(html`
     <div class="exercise__head">
       ${raw(thumbHtml(ex))}
       <div class="grow">
-        <h2 class="exercise__name">${ex.nome}</h2>
-        <div class="exercise__meta">${raw(textoAnterior(anterior))}</div>
+        <h2 class="exercise__name">${ex.name}</h2>
+        <div class="exercise__meta">${raw(previousText(previous))}</div>
       </div>
-      <button class="icon-btn" data-colapsar aria-label="${t('session.concluir', { nome: ex.nome })}">${raw(ICON.check)}</button>
-      <button class="icon-btn" data-detalhe aria-label="${t('session.verEvolucaoDe', { nome: ex.nome })}">${raw(ICON.chevron)}</button>
-      <button class="icon-btn" data-remover aria-label="${t('session.removerDoTreino', { nome: ex.nome })}">${raw(ICON.trash)}</button>
+      <button class="icon-btn" data-collapse aria-label="${t('session.markDone', { name: ex.name })}">${raw(ICON.check)}</button>
+      <button class="icon-btn" data-detail aria-label="${t('session.seeProgressFor', { name: ex.name })}">${raw(ICON.chevron)}</button>
+      <button class="icon-btn" data-remove aria-label="${t('session.removeFromWorkout', { name: ex.name })}">${raw(ICON.trash)}</button>
     </div>
   `);
-  cabecalho.querySelector('[data-colapsar]').onclick = () => definirColapso(exId, true);
-  cabecalho.querySelector('[data-detalhe]').onclick = () => { location.hash = `#/exercicios/${exId}`; };
-  cabecalho.querySelector('[data-remover]').onclick = () => removerExercicio(exId, ex.nome);
-  card.append(cabecalho);
+  header.querySelector('[data-collapse]').onclick = () => setCollapsed(exId, true);
+  header.querySelector('[data-detail]').onclick = () => { location.hash = `#/exercicios/${exId}`; };
+  header.querySelector('[data-remove]').onclick = () => removeExercise(exId, ex.name);
+  card.append(header);
 
-  if (aqui.length) {
+  if (here.length) {
     const ul = node('<ul class="setlist"></ul>');
-    aqui.forEach((s, i) => ul.append(itemSerie(s, i + 1, prIds.has(s.id), s.id === editandoId)));
+    here.forEach((s, i) => ul.append(setItem(s, i + 1, prIds.has(s.id), s.id === editingId)));
     card.append(ul);
   }
-  card.append(compositor(exId, emEdicao, aqui, anterior));
+  card.append(composer(exId, editing, here, previous));
   return card;
 }
 
 /** Linha compacta pra um exercicio marcado como concluido — sem thumb e sem
  *  os tres botoes de acao grandes do cabecalho ativo, so nome + resumo do
  *  que foi feito. Reabrir (e so entao excluir/ver evolucao) e um toque. */
-function itemConcluido(exId) {
-  const ex = ctx.exercicios.get(exId);
+function completedItem(exId) {
+  const ex = ctx.exercises.get(exId);
   if (!ex) return node('<li hidden></li>');
 
-  const aqui = seriesAqui(exId);
+  const here = setsHere(exId);
   const li = node(html`
     <li class="list__item">
-      <button class="list__link" data-reabrir aria-label="${t('session.reabrir', { nome: ex.nome })}">
+      <button class="list__link" data-reopen aria-label="${t('session.reopen', { name: ex.name })}">
         <div class="grow">
-          <div style="font-weight:600">${ex.nome}</div>
-          <div class="muted small">${raw(textoResumoSessao(aqui))}</div>
+          <div style="font-weight:600">${ex.name}</div>
+          <div class="muted small">${raw(sessionSummaryText(here))}</div>
         </div>
         <span class="list__done">${raw(ICON.check)}</span>
       </button>
     </li>
   `);
-  li.querySelector('[data-reabrir]').onclick = () => definirColapso(exId, false);
+  li.querySelector('[data-reopen]').onclick = () => setCollapsed(exId, false);
   return li;
 }
 
 /** Texto de uma serie na comparacao/resumo, com asterisco de aquecimento —
- *  o valor em si (duracao ou peso×reps) vem de fmtSerie (ui.js). */
-function textoSerie(s) {
-  return `${fmtSerie(s)}${s.aquecimento ? '*' : ''}`;
+ *  o valor em si (duracao ou peso×reps) vem de fmtSet (ui.js). */
+function setText(s) {
+  return `${fmtSet(s)}${s.warmup ? '*' : ''}`;
 }
 
-function textoAnterior(anterior) {
-  if (!anterior) return html`<span class="muted">${t('session.primeiraVez')}</span>`;
-  const resumo = anterior.series.map(textoSerie).join('   ');
-  return html`${t('session.ultimaVez', { data: fmtRelativeDay(anterior.quando) })} <b class="tnum">${resumo}</b>`;
+function previousText(previous) {
+  if (!previous) return html`<span class="muted">${t('session.firstTime')}</span>`;
+  const summary = previous.sets.map(setText).join('   ');
+  return html`${t('session.lastTime', { date: fmtRelativeDay(previous.when) })} <b class="tnum">${summary}</b>`;
 }
 
 /** Resumo do que ja foi feito aqui, usado no cabecalho quando o exercicio
  *  esta colapsado — nesse ponto o que importa e o que a pessoa acabou de
  *  registrar, nao mais a comparacao com o treino anterior. */
-function textoResumoSessao(aqui) {
-  if (!aqui.length) return html`<span class="muted">${t('session.nenhumaSerieRegistrada')}</span>`;
-  const resumo = aqui.map(textoSerie).join('   ');
-  return html`${tn('common.serie', aqui.length)}: <b class="tnum">${resumo}</b>`;
+function sessionSummaryText(here) {
+  if (!here.length) return html`<span class="muted">${t('session.noSetsLogged')}</span>`;
+  const summary = here.map(setText).join('   ');
+  return html`${tn('common.set', here.length)}: <b class="tnum">${summary}</b>`;
 }
 
-function itemSerie(serie, numero, isPR, ativo) {
-  const tempo = isTempoSet(serie);
+function setItem(set, number, isPR, active) {
+  const timeBased = isDurationSet(set);
   const li = node(html`
     <li>
-      <button class="setlist__item" data-set="${serie.id}" aria-current="${ativo}">
-        <span class="setlist__num">${numero}</span>
-        <span class="setlist__val">${fmtSerieComUnidade(serie, ctx.unidade)}</span>
-        ${serie.aquecimento ? raw(`<span class="setlist__warm">${t('history.aquec')}</span>`) : ''}
+      <button class="setlist__item" data-set="${set.id}" aria-current="${active}">
+        <span class="setlist__num">${number}</span>
+        <span class="setlist__val">${fmtSetWithUnit(set, ctx.unit)}</span>
+        ${set.warmup ? raw(`<span class="setlist__warm">${t('history.warmup')}</span>`) : ''}
         ${isPR ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
         <span class="grow"></span>
-        ${(!serie.aquecimento && !tempo) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(serie), 0)}</span>`) : ''}
+        ${(!set.warmup && !timeBased) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(set), 0)}</span>`) : ''}
       </button>
     </li>
   `);
 
   li.querySelector('button').onclick = () => {
-    const atual = ctx.editando.get(serie.exerciseId);
-    if (atual === serie.id) ctx.editando.delete(serie.exerciseId);
-    else ctx.editando.set(serie.exerciseId, serie.id);
-    rebuildCard(serie.exerciseId);
+    const current = ctx.editing.get(set.exerciseId);
+    if (current === set.id) ctx.editing.delete(set.exerciseId);
+    else ctx.editing.set(set.exerciseId, set.id);
+    rebuildCard(set.exerciseId);
   };
   return li;
 }
 
 /* ---------- Compositor: onde a serie e digitada ---------- */
 
-function compositor(exId, emEdicao, aqui, anterior) {
-  const tempo = usaTempo(ctx.exercicios.get(exId)?.grupoMuscular);
+function composer(exId, editing, here, previous) {
+  const timeBased = usesDuration(ctx.exercises.get(exId)?.muscleGroup);
 
   // Pre-preenchimento, em ordem de preferencia: a serie sendo editada, a
   // ultima serie deste treino, a primeira serie do treino anterior.
-  const base = emEdicao
-    || aqui[aqui.length - 1]
-    || anterior?.series?.[0]
-    || (tempo ? { duracaoSeg: 60, aquecimento: false } : { peso: 20, reps: 10, aquecimento: false });
+  const base = editing
+    || here[here.length - 1]
+    || previous?.sets?.[0]
+    || (timeBased ? { durationSec: 60, warmup: false } : { weight: 20, reps: 10, warmup: false });
 
   const wrap = node('<div class="composer"></div>');
 
-  let peso = null;
+  let weight = null;
   let reps = null;
-  let duracao = null;
+  let duration = null;
 
-  if (tempo) {
-    duracao = createDuracaoStepper({ value: base.duracaoSeg || 0 });
-    wrap.append(duracao.el);
+  if (timeBased) {
+    duration = createDurationStepper({ value: base.durationSec || 0 });
+    wrap.append(duration.el);
   } else {
-    peso = createStepper({
-      label: t('session.peso'), suffix: ctx.unidade, value: base.peso,
-      step: ctx.incPeso, min: 0, max: 1000, decimals: 1,
+    weight = createStepper({
+      label: t('session.weight'), suffix: ctx.unit, value: base.weight,
+      step: ctx.weightStep, min: 0, max: 1000, decimals: 1,
     });
     reps = createStepper({
-      label: t('session.repeticoes'), value: base.reps,
-      step: ctx.incReps, min: 0, max: 300, decimals: 0,
+      label: t('session.reps'), value: base.reps,
+      step: ctx.repsStep, min: 0, max: 300, decimals: 0,
     });
-    wrap.append(peso.el, reps.el);
+    wrap.append(weight.el, reps.el);
   }
 
-  const valores = () => (tempo ? { duracaoSeg: duracao.get() } : { peso: peso.get(), reps: reps.get() });
+  const values = () => (timeBased ? { durationSec: duration.get() } : { weight: weight.get(), reps: reps.get() });
 
-  let aquecimento = Boolean(base.aquecimento);
-  const acoes = node('<div class="composer__actions"></div>');
+  let warmup = Boolean(base.warmup);
+  const actions = node('<div class="composer__actions"></div>');
 
-  if (emEdicao) {
-    const excluir = node(html`<button class="btn btn--sm btn--chip btn--danger" data-excluir aria-label="${t('session.excluirSerie')}">${raw(ICON.trash)}</button>`);
-    const cancelar = node(html`<button class="btn btn--ghost" data-cancelar>${t('common.cancelar')}</button>`);
-    const salvar = node(html`<button class="btn btn--primary" data-salvar>${t('common.salvar')}</button>`);
+  if (editing) {
+    const deleteBtn = node(html`<button class="btn btn--sm btn--chip btn--danger" data-delete aria-label="${t('session.deleteSet')}">${raw(ICON.trash)}</button>`);
+    const cancelBtn = node(html`<button class="btn btn--ghost" data-cancel>${t('common.cancel')}</button>`);
+    const saveBtn = node(html`<button class="btn btn--primary" data-save>${t('common.save')}</button>`);
 
-    cancelar.onclick = () => {
-      ctx.editando.delete(exId);
+    cancelBtn.onclick = () => {
+      ctx.editing.delete(exId);
       rebuildCard(exId);
     };
-    salvar.onclick = () => salvarEdicao(exId, emEdicao, valores());
-    excluir.onclick = () => excluirSerie(exId, emEdicao);
+    saveBtn.onclick = () => saveEdit(exId, editing, values());
+    deleteBtn.onclick = () => deleteSet(exId, editing);
 
-    acoes.append(excluir, cancelar, salvar);
+    actions.append(deleteBtn, cancelBtn, saveBtn);
   } else {
     const chip = node(html`
-      <button class="btn btn--sm btn--chip btn--ghost" data-aquecimento aria-pressed="${aquecimento}">${t('session.aquecAbrev')}</button>
+      <button class="btn btn--sm btn--chip btn--ghost" data-warmup aria-pressed="${warmup}">${t('session.warmupAbbrev')}</button>
     `);
-    const addBtn = node(html`<button class="btn btn--primary" data-adicionar>${t('session.adicionarSerie')}</button>`);
+    const addBtn = node(html`<button class="btn btn--primary" data-add>${t('session.addSet')}</button>`);
 
     chip.onclick = () => {
-      aquecimento = !aquecimento;
-      chip.setAttribute('aria-pressed', String(aquecimento));
-      chip.classList.toggle('btn--ghost', !aquecimento);
+      warmup = !warmup;
+      chip.setAttribute('aria-pressed', String(warmup));
+      chip.classList.toggle('btn--ghost', !warmup);
     };
-    addBtn.onclick = () => adicionarSerie(exId, valores(), aquecimento);
+    addBtn.onclick = () => addSet(exId, values(), warmup);
 
-    acoes.append(chip, addBtn);
+    actions.append(chip, addBtn);
   }
 
-  wrap.append(acoes);
+  wrap.append(actions);
   return wrap;
 }
 
 /* ---------- Mutacoes ---------- */
 
-async function adicionarSerie(exId, valores, aquecimento) {
-  const tempo = 'duracaoSeg' in valores;
-  if (tempo ? valores.duracaoSeg <= 0 : valores.reps <= 0) {
-    toast(tempo ? t('session.informeDuracao') : t('session.informeRepeticoes'));
+async function addSet(exId, values, warmup) {
+  const timeBased = 'durationSec' in values;
+  if (timeBased ? values.durationSec <= 0 : values.reps <= 0) {
+    toast(timeBased ? t('session.enterDuration') : t('session.enterReps'));
     return;
   }
 
-  const serie = await db.addSet({
+  const newSet = await db.addSet({
     workoutId: ctx.workout.id,
     exerciseId: exId,
-    ...valores,
-    aquecimento,
+    ...values,
+    warmup,
   });
-  ctx.todasSeries.push(serie);
+  ctx.allSets.push(newSet);
 
-  const pr = evaluatePR(serie, seriesDoExercicio(exId));
+  const pr = evaluatePR(newSet, setsForExercise(exId));
   rebuildCard(exId);
-  atualizarResumo();
+  updateSummary();
   buzz(18);
 
-  if (pr.duracao) toast(t('session.recordeTempo'));
-  else if (pr.peso) toast(t('session.recordeCarga'));
-  else if (pr.e1rm) toast(t('session.recordeForca'));
+  if (pr.duration) toast(t('session.timeRecord'));
+  else if (pr.weight) toast(t('session.weightRecord'));
+  else if (pr.e1rm) toast(t('session.strengthRecord'));
 }
 
-async function salvarEdicao(exId, serie, valores) {
-  const tempo = 'duracaoSeg' in valores;
-  if (tempo ? valores.duracaoSeg <= 0 : valores.reps <= 0) {
-    toast(tempo ? t('session.informeDuracao') : t('session.informeRepeticoes'));
+async function saveEdit(exId, set, values) {
+  const timeBased = 'durationSec' in values;
+  if (timeBased ? values.durationSec <= 0 : values.reps <= 0) {
+    toast(timeBased ? t('session.enterDuration') : t('session.enterReps'));
     return;
   }
-  await db.updateSet(serie.id, valores);
-  Object.assign(serie, valores);
-  ctx.editando.delete(exId);
+  await db.updateSet(set.id, values);
+  Object.assign(set, values);
+  ctx.editing.delete(exId);
   rebuildCard(exId);
-  atualizarResumo();
-  toast(t('session.serieAtualizada'));
+  updateSummary();
+  toast(t('session.setUpdated'));
 }
 
-async function excluirSerie(exId, serie) {
-  await db.deleteSet(serie.id);
-  const i = ctx.todasSeries.findIndex((s) => s.id === serie.id);
-  if (i >= 0) ctx.todasSeries.splice(i, 1);
-  ctx.editando.delete(exId);
+async function deleteSet(exId, set) {
+  await db.deleteSet(set.id);
+  const i = ctx.allSets.findIndex((s) => s.id === set.id);
+  if (i >= 0) ctx.allSets.splice(i, 1);
+  ctx.editing.delete(exId);
   rebuildCard(exId);
-  atualizarResumo();
-  toast(t('session.serieExcluida'));
+  updateSummary();
+  toast(t('session.setDeleted'));
 }
 
-async function removerExercicio(exId, nome) {
-  const temSeries = seriesAqui(exId).length;
+async function removeExercise(exId, name) {
+  const hasSets = setsHere(exId).length;
   const ok = await confirmSheet({
-    title: t('session.confirmarRemover.titulo', { nome }),
-    message: temSeries ? t('session.confirmarRemover.mensagemComSeries', { series: tn('common.serie', temSeries) }) : '',
-    confirmLabel: t('session.confirmarRemover.label'),
+    title: t('session.confirmRemove.title', { name }),
+    message: hasSets ? t('session.confirmRemove.messageWithSets', { sets: tn('common.set', hasSets) }) : '',
+    confirmLabel: t('session.confirmRemove.label'),
     danger: true,
   });
   if (!ok) return;
 
   await db.removeExerciseFromWorkout(ctx.workout.id, exId);
   ctx.workout.exerciseIds = (ctx.workout.exerciseIds || []).filter((id) => id !== exId);
-  ctx.todasSeries = ctx.todasSeries.filter((s) => !(s.workoutId === ctx.workout.id && s.exerciseId === exId));
-  definirColapso(exId, false);
-  atualizarResumo();
+  ctx.allSets = ctx.allSets.filter((s) => !(s.workoutId === ctx.workout.id && s.exerciseId === exId));
+  setCollapsed(exId, false);
+  updateSummary();
 }
 
-async function finalizar() {
-  const series = seriesDoTreino();
+async function finish() {
+  const sets = setsInWorkout();
 
-  if (!series.length) {
+  if (!sets.length) {
     const ok = await confirmSheet({
-      title: t('session.confirmarFinalizarSemSeries.titulo'),
-      message: t('session.confirmarFinalizarSemSeries.mensagem'),
-      confirmLabel: t('session.confirmarFinalizarSemSeries.label'),
+      title: t('session.confirmFinishNoSets.title'),
+      message: t('session.confirmFinishNoSets.message'),
+      confirmLabel: t('session.confirmFinishNoSets.label'),
       danger: true,
     });
     if (!ok) return;
@@ -461,31 +461,31 @@ async function finalizar() {
     return;
   }
 
-  const resumo = workoutSummary(series);
+  const summary = workoutSummary(sets);
   const ok = await confirmSheet({
-    title: t('session.confirmarFinalizar.titulo'),
-    message: t('session.confirmarFinalizar.mensagem', {
-      series: tn('common.serie', resumo.series),
-      exercicios: tn('common.exercicio', resumo.exercicios),
-      volume: fmtNum(resumo.volume, 0),
-      unidade: ctx.unidade,
+    title: t('session.confirmFinish.title'),
+    message: t('session.confirmFinish.message', {
+      sets: tn('common.set', summary.sets),
+      exercises: tn('common.exercise', summary.exercises),
+      volume: fmtNum(summary.volume, 0),
+      unit: ctx.unit,
     }),
-    confirmLabel: t('session.finalizar'),
+    confirmLabel: t('session.finish'),
   });
   if (!ok) return;
 
   await db.finishWorkout(ctx.workout.id);
-  toast(t('session.toastFinalizado'));
+  toast(t('session.toastFinished'));
   location.hash = `#/historico/${ctx.workout.id}`;
 }
 
 /* ---------- Seletor de exercicios ---------- */
 
-function abrirSeletor() {
+function openPicker() {
   openExercisePicker({
-    exercicios: ctx.lista,
-    jaEscolhidoIds: new Set(ctx.workout.exerciseIds || []),
-    aoEscolher: adicionarExercicio,
+    exercises: ctx.list,
+    alreadyChosenIds: new Set(ctx.workout.exerciseIds || []),
+    onChoose: addExerciseToSession,
   });
 }
 
@@ -493,13 +493,13 @@ function abrirSeletor() {
  *  recem-criado. A lista local e recarregada sempre: e barato (db.js cacheia
  *  em memoria e so o invalida quando algo muda) e poupa o seletor de saber se
  *  criou algo novo. */
-async function adicionarExercicio(exercicio) {
-  ctx.lista = await db.listExercises();
-  ctx.exercicios = new Map(ctx.lista.map((e) => [e.id, e]));
+async function addExerciseToSession(exercise) {
+  ctx.list = await db.listExercises();
+  ctx.exercises = new Map(ctx.list.map((e) => [e.id, e]));
 
-  await db.addExerciseToWorkout(ctx.workout.id, exercicio.id);
-  ctx.workout.exerciseIds = [...(ctx.workout.exerciseIds || []), exercicio.id];
+  await db.addExerciseToWorkout(ctx.workout.id, exercise.id);
+  ctx.workout.exerciseIds = [...(ctx.workout.exerciseIds || []), exercise.id];
 
-  renderLista();
-  document.querySelector(`[data-ex="${exercicio.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  renderList();
+  document.querySelector(`[data-ex="${exercise.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }

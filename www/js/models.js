@@ -7,110 +7,115 @@
  * E a metrica que permite comparar 8x60 kg com 5x70 kg — sem ela, "evolui ou
  * nao?" fica ambiguo sempre que carga e repeticoes mudam juntas.
  */
-export function e1rm(peso, reps) {
-  const p = Number(peso) || 0;
+export function e1rm(weight, reps) {
+  const w = Number(weight) || 0;
   const r = Number(reps) || 0;
-  if (p <= 0 || r <= 0) return 0;
-  return r === 1 ? p : p * (1 + r / 30);
+  if (w <= 0 || r <= 0) return 0;
+  return r === 1 ? w : w * (1 + r / 30);
 }
 
-export const setE1rm = (s) => e1rm(s.peso, s.reps);
-export const setVolume = (s) => (Number(s.peso) || 0) * (Number(s.reps) || 0);
-export const setDuracao = (s) => Number(s.duracaoSeg) || 0;
+export const setE1rm = (s) => e1rm(s.weight, s.reps);
+export const setVolume = (s) => (Number(s.weight) || 0) * (Number(s.reps) || 0);
+export const setDuration = (s) => Number(s.durationSec) || 0;
 
-/** Series de Cardio/Alongamento guardam duracaoSeg em vez de peso/reps (ver
+/** Series de Cardio/Alongamento guardam durationSec em vez de peso/reps (ver
  *  session.js compositor()) — peso e reps ficam 0 nelas, e vice-versa. */
-export const isTempoSet = (s) => setDuracao(s) > 0;
+export const isDurationSet = (s) => setDuration(s) > 0;
 
 /** Series que contam para estatisticas: fora aquecimento e series vazias
  *  (peso/reps para exercicio de forca, duracao para cardio/alongamento). */
-export const workingSets = (sets) => sets.filter((s) => !s.aquecimento && s.peso >= 0 && (s.reps > 0 || isTempoSet(s)));
+export const workingSets = (sets) => sets.filter((s) => !s.warmup && s.weight >= 0 && (s.reps > 0 || isDurationSet(s)));
 
 export const totalVolume = (sets) => workingSets(sets).reduce((acc, s) => acc + setVolume(s), 0);
-export const totalDuracao = (sets) => workingSets(sets).reduce((acc, s) => acc + setDuracao(s), 0);
+export const totalDuration = (sets) => workingSets(sets).reduce((acc, s) => acc + setDuration(s), 0);
 
 /* ---------- Recordes ---------- */
 
 /**
- * Melhores marcas de um conjunto de series. `duracao` e o analogo de `peso`
- * pras series de cardio/alongamento (recorde de tempo em vez de carga).
- * @returns {{peso: number, e1rm: number, duracao: number, setPeso: object|null, setE1rm: object|null, setDuracao: object|null}}
+ * Melhores marcas de um conjunto de series. `duration` e o analogo de
+ * `weight` pras series de cardio/alongamento (recorde de tempo em vez de
+ * carga).
+ * @returns {{weight: number, e1rm: number, duration: number, setWeight: object|null, setE1rm: object|null, setDuration: object|null}}
  */
 export function bests(sets) {
-  let peso = 0;
-  let melhor1rm = 0;
-  let duracao = 0;
-  let setPeso = null;
+  let weight = 0;
+  let bestE1rm = 0;
+  let duration = 0;
+  let setWeight = null;
   let setE1rmRef = null;
-  let setDuracaoRef = null;
+  let setDurationRef = null;
 
   for (const s of workingSets(sets)) {
-    if (isTempoSet(s)) {
-      const d = setDuracao(s);
-      if (d > duracao) { duracao = d; setDuracaoRef = s; }
+    if (isDurationSet(s)) {
+      const d = setDuration(s);
+      if (d > duration) { duration = d; setDurationRef = s; }
       continue;
     }
-    if (s.peso > peso) { peso = s.peso; setPeso = s; }
+    if (s.weight > weight) { weight = s.weight; setWeight = s; }
     const v = setE1rm(s);
-    if (v > melhor1rm) { melhor1rm = v; setE1rmRef = s; }
+    if (v > bestE1rm) { bestE1rm = v; setE1rmRef = s; }
   }
   return {
-    peso, e1rm: melhor1rm, duracao, setPeso, setE1rm: setE1rmRef, setDuracao: setDuracaoRef,
+    weight, e1rm: bestE1rm, duration, setWeight, setE1rm: setE1rmRef, setDuration: setDurationRef,
   };
 }
 
 /**
- * Verifica se `serie` bate recorde em relacao ao que veio antes dela.
+ * Verifica se `set` bate recorde em relacao ao que veio antes dele.
  * Compara apenas com series anteriores (id menor), para que reavaliar o
  * historico inteiro produza sempre o mesmo resultado. Series de duracao so
  * competem por recorde de tempo; series de peso/reps so por peso/e1rm.
- * @returns {{peso: boolean, e1rm: boolean, duracao: boolean, algum: boolean}}
+ * @returns {{weight: boolean, e1rm: boolean, duration: boolean, any: boolean}}
  */
-export function evaluatePR(serie, historico) {
-  if (serie.aquecimento) return { peso: false, e1rm: false, duracao: false, algum: false };
+export function evaluatePR(set, history) {
+  if (set.warmup) return {
+    weight: false, e1rm: false, duration: false, any: false,
+  };
 
-  const anteriores = historico.filter((s) => s.id !== serie.id && s.id < serie.id);
+  const earlier = history.filter((s) => s.id !== set.id && s.id < set.id);
 
-  if (isTempoSet(serie)) {
-    const previo = bests(anteriores);
-    const pr = { peso: false, e1rm: false, duracao: setDuracao(serie) > previo.duracao };
-    pr.algum = pr.duracao;
+  if (isDurationSet(set)) {
+    const previous = bests(earlier);
+    const pr = { weight: false, e1rm: false, duration: setDuration(set) > previous.duration };
+    pr.any = pr.duration;
     return pr;
   }
 
-  if (!serie.reps || serie.peso <= 0) {
-    return { peso: false, e1rm: false, duracao: false, algum: false };
+  if (!set.reps || set.weight <= 0) {
+    return {
+      weight: false, e1rm: false, duration: false, any: false,
+    };
   }
-  const previo = bests(anteriores);
+  const previous = bests(earlier);
   const pr = {
-    peso: serie.peso > previo.peso,
-    e1rm: setE1rm(serie) > previo.e1rm,
-    duracao: false,
+    weight: set.weight > previous.weight,
+    e1rm: setE1rm(set) > previous.e1rm,
+    duration: false,
   };
-  pr.algum = pr.peso || pr.e1rm;
+  pr.any = pr.weight || pr.e1rm;
   return pr;
 }
 
 /** Ids das series que foram recorde no momento em que foram registradas. */
 export function prSetIds(sets) {
-  const ordenadas = [...sets].sort((a, b) => a.id - b.id);
+  const sorted = [...sets].sort((a, b) => a.id - b.id);
   const ids = new Set();
-  let maxPeso = 0;
+  let maxWeight = 0;
   let max1rm = 0;
-  let maxDuracao = 0;
+  let maxDuration = 0;
 
-  for (const s of ordenadas) {
-    if (s.aquecimento) continue;
-    if (isTempoSet(s)) {
-      const d = setDuracao(s);
-      if (d > maxDuracao) ids.add(s.id);
-      maxDuracao = Math.max(maxDuracao, d);
+  for (const s of sorted) {
+    if (s.warmup) continue;
+    if (isDurationSet(s)) {
+      const d = setDuration(s);
+      if (d > maxDuration) ids.add(s.id);
+      maxDuration = Math.max(maxDuration, d);
       continue;
     }
-    if (!s.reps || s.peso <= 0) continue;
+    if (!s.reps || s.weight <= 0) continue;
     const v = setE1rm(s);
-    if (s.peso > maxPeso || v > max1rm) ids.add(s.id);
-    maxPeso = Math.max(maxPeso, s.peso);
+    if (s.weight > maxWeight || v > max1rm) ids.add(s.id);
+    maxWeight = Math.max(maxWeight, s.weight);
     max1rm = Math.max(max1rm, v);
   }
   return ids;
@@ -123,82 +128,82 @@ export function prSetIds(sets) {
  * Base tanto do grafico quanto do historico da tela de exercicio.
  * @param {object[]} sets series do exercicio
  * @param {Map<number, object>} workoutsById treinos indexados por id
- * @returns {{workoutId, data, quando, maxPeso, melhor1rm, melhorDuracao, volume, duracaoTotal, series}[]} em ordem cronologica
+ * @returns {{workoutId, date, when, maxWeight, bestE1rm, bestDuration, volume, totalDuration, sets}[]} em ordem cronologica
  */
 export function sessionSummaries(sets, workoutsById) {
-  const porTreino = new Map();
+  const byWorkout = new Map();
 
   for (const s of workingSets(sets)) {
-    if (!porTreino.has(s.workoutId)) porTreino.set(s.workoutId, []);
-    porTreino.get(s.workoutId).push(s);
+    if (!byWorkout.has(s.workoutId)) byWorkout.set(s.workoutId, []);
+    byWorkout.get(s.workoutId).push(s);
   }
 
-  const resumo = [];
-  for (const [workoutId, series] of porTreino) {
-    const treino = workoutsById.get(workoutId);
-    const quando = treino?.iniciadoEm || series[0].criadoEm;
-    const b = bests(series);
-    resumo.push({
+  const summaries = [];
+  for (const [workoutId, workoutSets] of byWorkout) {
+    const workout = workoutsById.get(workoutId);
+    const when = workout?.startedAt || workoutSets[0].createdAt;
+    const b = bests(workoutSets);
+    summaries.push({
       workoutId,
-      quando,
-      data: treino?.data || quando.slice(0, 10),
-      maxPeso: b.peso,
-      melhor1rm: b.e1rm,
-      melhorDuracao: b.duracao,
-      volume: series.reduce((acc, s) => acc + setVolume(s), 0),
-      duracaoTotal: series.reduce((acc, s) => acc + setDuracao(s), 0),
-      series,
+      when,
+      date: workout?.date || when.slice(0, 10),
+      maxWeight: b.weight,
+      bestE1rm: b.e1rm,
+      bestDuration: b.duration,
+      volume: workoutSets.reduce((acc, s) => acc + setVolume(s), 0),
+      totalDuration: workoutSets.reduce((acc, s) => acc + setDuration(s), 0),
+      sets: workoutSets,
     });
   }
 
-  resumo.sort((a, b) => a.quando.localeCompare(b.quando));
-  return resumo;
+  summaries.sort((a, b) => a.when.localeCompare(b.when));
+  return summaries;
 }
 
 /** Melhor volume de uma unica sessao (o terceiro tipo de recorde). */
-export function bestSessionVolume(resumos) {
-  return resumos.reduce((max, r) => Math.max(max, r.volume), 0);
+export function bestSessionVolume(summaries) {
+  return summaries.reduce((max, r) => Math.max(max, r.volume), 0);
 }
 
 /** Equivalente a bestSessionVolume para exercicios de cardio/alongamento. */
-export function bestSessionDuracao(resumos) {
-  return resumos.reduce((max, r) => Math.max(max, r.duracaoTotal), 0);
+export function bestSessionDuration(summaries) {
+  return summaries.reduce((max, r) => Math.max(max, r.totalDuration), 0);
 }
 
 /**
  * Variacao percentual entre a primeira e a ultima sessao de uma metrica.
  * Retorna null quando ha menos de duas sessoes.
  */
-export function progressPct(resumos, campo = 'melhor1rm') {
-  if (resumos.length < 2) return null;
-  const inicio = resumos[0][campo];
-  const fim = resumos[resumos.length - 1][campo];
-  if (!inicio) return null;
-  return ((fim - inicio) / inicio) * 100;
+export function progressPct(summaries, field = 'bestE1rm') {
+  if (summaries.length < 2) return null;
+  const start = summaries[0][field];
+  const end = summaries[summaries.length - 1][field];
+  if (!start) return null;
+  return ((end - start) / start) * 100;
 }
 
 /** Resumo de um treino inteiro para os cartoes de historico. */
 export function workoutSummary(sets) {
-  const validas = workingSets(sets);
-  const exercicios = new Set(validas.map((s) => s.exerciseId));
+  const valid = workingSets(sets);
+  const exercises = new Set(valid.map((s) => s.exerciseId));
   return {
-    series: validas.length,
-    exercicios: exercicios.size,
-    volume: validas.reduce((acc, s) => acc + setVolume(s), 0),
-    reps: validas.reduce((acc, s) => acc + s.reps, 0),
-    tempoTotal: validas.reduce((acc, s) => acc + setDuracao(s), 0),
+    sets: valid.length,
+    exercises: exercises.size,
+    volume: valid.reduce((acc, s) => acc + setVolume(s), 0),
+    reps: valid.reduce((acc, s) => acc + s.reps, 0),
+    totalDuration: valid.reduce((acc, s) => acc + setDuration(s), 0),
   };
 }
 
 /* ---------- Resumo semanal por grupo muscular ---------- */
 
-/** Segunda-feira 00:00:00.000 (hora local) da semana que contem `data`. */
-export function segundaFeira(data) {
-  const d = new Date(data);
+/** Segunda-feira 00:00:00.000 (hora local) da semana que contem `date`. */
+export function mondayOf(date) {
+  const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  const dia = d.getDay(); // 0=domingo .. 6=sabado
-  const diasDesdeSegunda = (dia + 6) % 7;
-  d.setDate(d.getDate() - diasDesdeSegunda);
+  const day = d.getDay(); // 0=domingo .. 6=sabado
+  const daysSinceMonday = (day + 6) % 7;
+  d.setDate(d.getDate() - daysSinceMonday);
   return d;
 }
 
@@ -206,85 +211,90 @@ export function segundaFeira(data) {
  * Series validas da semana de calendario (segunda a domingo) que contem
  * `referenceDate`, totalizadas e agrupadas por grupo muscular do exercicio.
  * Series de exercicio apagado (sem entrada em `exercisesById`) contam nos
- * totais gerais mas ficam fora de `porGrupo`, ja que nao ha grupo pra somar.
+ * totais gerais mas ficam fora de `byGroup`, ja que nao ha grupo pra somar.
  * @param {object[]} sets todas as series (de qualquer exercicio/treino)
  * @param {Map<number, object>} workoutsById treinos indexados por id
  * @param {Map<number, object>} exercisesById exercicios indexados por id
  * @param {Date} referenceDate qualquer data dentro da semana desejada
- * @returns {{inicio: Date, fim: Date, treinos: number, series: number, volume: number, porGrupo: {grupo: string, series: number, volume: number}[]}}
+ * @returns {{start: Date, end: Date, workouts: number, sets: number, volume: number, byGroup: {group: string, sets: number, volume: number, duration: number}[]}}
  */
 export function weekMuscleGroupSummary(sets, workoutsById, exercisesById, referenceDate = new Date()) {
-  const inicio = segundaFeira(referenceDate);
-  const fim = new Date(inicio);
-  fim.setDate(fim.getDate() + 7);
-  fim.setMilliseconds(-1); // domingo 23:59:59.999
+  const start = mondayOf(referenceDate);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  end.setMilliseconds(-1); // domingo 23:59:59.999
 
-  const naSemana = workingSets(sets).filter((s) => {
-    const treino = workoutsById.get(s.workoutId);
-    const quando = new Date(treino?.iniciadoEm || s.criadoEm).getTime();
-    return quando >= inicio.getTime() && quando <= fim.getTime();
+  const thisWeek = workingSets(sets).filter((s) => {
+    const workout = workoutsById.get(s.workoutId);
+    const when = new Date(workout?.startedAt || s.createdAt).getTime();
+    return when >= start.getTime() && when <= end.getTime();
   });
 
-  const porGrupoMap = new Map();
-  for (const s of naSemana) {
+  const byGroupMap = new Map();
+  for (const s of thisWeek) {
     const ex = exercisesById.get(s.exerciseId);
     if (!ex) continue;
-    let g = porGrupoMap.get(ex.grupoMuscular);
-    if (!g) { g = { grupo: ex.grupoMuscular, series: 0, volume: 0, tempo: 0 }; porGrupoMap.set(ex.grupoMuscular, g); }
-    g.series += 1;
+    let g = byGroupMap.get(ex.muscleGroup);
+    if (!g) {
+      g = {
+        group: ex.muscleGroup, sets: 0, volume: 0, duration: 0,
+      };
+      byGroupMap.set(ex.muscleGroup, g);
+    }
+    g.sets += 1;
     g.volume += setVolume(s);
-    g.tempo += setDuracao(s);
+    g.duration += setDuration(s);
   }
 
   return {
-    inicio,
-    fim,
-    treinos: new Set(naSemana.map((s) => s.workoutId)).size,
-    series: naSemana.length,
-    volume: naSemana.reduce((acc, s) => acc + setVolume(s), 0),
-    porGrupo: [...porGrupoMap.values()].sort((a, b) => b.series - a.series),
+    start,
+    end,
+    workouts: new Set(thisWeek.map((s) => s.workoutId)).size,
+    sets: thisWeek.length,
+    volume: thisWeek.reduce((acc, s) => acc + setVolume(s), 0),
+    byGroup: [...byGroupMap.values()].sort((a, b) => b.sets - a.sets),
   };
 }
 
 /* ---------- Tendencia semanal ---------- */
 
 /**
- * Series, volume e treinos por semana de calendario, das ultimas `semanas`
+ * Series, volume e treinos por semana de calendario, das ultimas `weeks`
  * semanas (incluindo a atual), em ordem cronologica. Semanas sem nenhuma
  * serie aparecem com os totais zerados (nao sao omitidas), pra manter a
  * cadencia semanal do grafico de tendencia.
  * @param {object[]} sets todas as series (de qualquer exercicio/treino)
  * @param {Map<number, object>} workoutsById treinos indexados por id
- * @param {number} semanas quantas semanas incluir (a mais recente e a semana de `referenceDate`)
+ * @param {number} weeks quantas semanas incluir (a mais recente e a semana de `referenceDate`)
  * @param {Date} referenceDate qualquer data dentro da semana mais recente da janela
- * @returns {{inicio: Date, treinos: number, series: number, volume: number}[]}
+ * @returns {{start: Date, workouts: number, sets: number, volume: number, duration: number}[]}
  */
-export function weeklyTrend(sets, workoutsById, semanas = 8, referenceDate = new Date()) {
-  const semanaAtual = segundaFeira(referenceDate);
-  const baldes = new Map();
-  for (let i = semanas - 1; i >= 0; i--) {
-    const d = new Date(semanaAtual);
+export function weeklyTrend(sets, workoutsById, weeks = 8, referenceDate = new Date()) {
+  const currentWeek = mondayOf(referenceDate);
+  const buckets = new Map();
+  for (let i = weeks - 1; i >= 0; i--) {
+    const d = new Date(currentWeek);
     d.setDate(d.getDate() - i * 7);
-    baldes.set(d.getTime(), {
-      inicio: d, treinoIds: new Set(), series: 0, volume: 0, tempo: 0,
+    buckets.set(d.getTime(), {
+      start: d, workoutIds: new Set(), sets: 0, volume: 0, duration: 0,
     });
   }
-  const primeiraJanela = [...baldes.keys()][0];
+  const firstWindow = [...buckets.keys()][0];
 
   for (const s of workingSets(sets)) {
-    const treino = workoutsById.get(s.workoutId);
-    const quando = new Date(treino?.iniciadoEm || s.criadoEm);
-    const inicioSemana = segundaFeira(quando).getTime();
-    if (inicioSemana < primeiraJanela) continue;
-    const balde = baldes.get(inicioSemana);
-    if (!balde) continue; // fora da janela (ex: semana futura, relogio errado)
-    balde.treinoIds.add(s.workoutId);
-    balde.series += 1;
-    balde.volume += setVolume(s);
-    balde.tempo += setDuracao(s);
+    const workout = workoutsById.get(s.workoutId);
+    const when = new Date(workout?.startedAt || s.createdAt);
+    const weekStart = mondayOf(when).getTime();
+    if (weekStart < firstWindow) continue;
+    const bucket = buckets.get(weekStart);
+    if (!bucket) continue; // fora da janela (ex: semana futura, relogio errado)
+    bucket.workoutIds.add(s.workoutId);
+    bucket.sets += 1;
+    bucket.volume += setVolume(s);
+    bucket.duration += setDuration(s);
   }
 
-  return [...baldes.values()].map((b) => ({
-    inicio: b.inicio, treinos: b.treinoIds.size, series: b.series, volume: b.volume, tempo: b.tempo,
+  return [...buckets.values()].map((b) => ({
+    start: b.start, workouts: b.workoutIds.size, sets: b.sets, volume: b.volume, duration: b.duration,
   }));
 }

@@ -13,151 +13,182 @@
  */
 
 import * as db from './db.js';
-import { slugPorNome } from './seed.js';
-import { normalizarNome } from './text.js';
+import { slugByName } from './seed.js';
+import { normalizeName } from './text.js';
 import { t } from './i18n.js';
 
-const FORMATO = 'treino-backup';
-// Continua 1 mesmo com o `slug` novo: o campo e aditivo e opcional, e bumpar
-// faria um aparelho ainda nao atualizado recusar o arquivo (ver validar()) —
-// justo no cenario em que o backup mais importa, o da troca de celular.
-const VERSAO = 1;
+// Valor da string NAO muda: um backup exportado antes desta mudanca ainda
+// tem "treino-backup" gravado, e validate() precisa reconhecer esse valor
+// pra sempre — mesma excecao permanente que DB_NAME em db.js.
+const FORMAT = 'treino-backup';
+// Continua 1 mesmo com o `slug` novo ou com os nomes de campo em ingles: o
+// formato so ganhou campo aditivo/opcional e leitura compativel com nome de
+// campo antigo (ver validate()) — nunca ficou incapaz de ler um arquivo
+// anterior, que e o unico motivo real pra bumpar isto.
+const VERSION = 1;
+
+// Mesmo mapeamento da migracao v3 em db.js — duplicado aqui de proposito
+// (sao 6 pares, nao vale a pena compartilhar um modulo so pra isso) pra um
+// backup exportado antes da mudanca continuar restaurando as preferencias
+// certas, em vez de voltar tudo pro padrao de fabrica.
+const SETTINGS_KEY_MAP = {
+  unidade: 'unit',
+  tema: 'theme',
+  idioma: 'language',
+  incrementoPeso: 'weightIncrement',
+  incrementoReps: 'repsIncrement',
+  midiaPrecacheVersao: 'mediaPrecacheVersion',
+};
+const THEME_VALUE_MAP = { claro: 'light', escuro: 'dark' };
+
+function remapSetting(row) {
+  const newKey = SETTINGS_KEY_MAP[row.key];
+  if (!newKey) return row;
+  const value = row.key === 'tema' ? (THEME_VALUE_MAP[row.value] ?? row.value) : row.value;
+  return { key: newKey, value };
+}
 
 /**
  * Monta o backup. Deve ser chamado ANTES do toque do usuario sempre que
  * possivel: o Safari exige que navigator.share() aconteca durante o gesto, e
  * um await longo no meio do caminho pode invalidar essa permissao.
  */
-export async function prepararBackup() {
-  const dados = await db.dumpAll();
+export async function prepareBackup() {
+  const data = await db.dumpAll();
   const payload = {
-    formato: FORMATO,
-    versao: VERSAO,
-    exportadoEm: new Date().toISOString(),
-    exercises: dados.exercises,
-    workouts: dados.workouts,
-    sets: dados.sets,
-    settings: dados.settings,
+    format: FORMAT,
+    version: VERSION,
+    exportedAt: new Date().toISOString(),
+    exercises: data.exercises,
+    workouts: data.workouts,
+    sets: data.sets,
+    settings: data.settings,
   };
 
   const json = JSON.stringify(payload);
-  const nome = `treino-${new Date().toISOString().slice(0, 10)}.json`;
+  const fileName = `treino-${new Date().toISOString().slice(0, 10)}.json`;
 
-  let arquivo = null;
+  let file = null;
   try {
-    arquivo = new File([json], nome, { type: 'application/json' });
+    file = new File([json], fileName, { type: 'application/json' });
   } catch { /* navegador antigo sem construtor de File */ }
 
   return {
     json,
-    nome,
-    arquivo,
-    resumo: {
-      exercicios: dados.exercises.length,
-      treinos: dados.workouts.length,
-      series: dados.sets.length,
-      tamanho: json.length,
+    fileName,
+    file,
+    summary: {
+      exercises: data.exercises.length,
+      workouts: data.workouts.length,
+      sets: data.sets.length,
+      size: json.length,
     },
   };
 }
 
-/** @returns {Promise<'compartilhado'|'cancelado'|'baixado'|'copiado'|'manual'>} */
-export async function exportar(backup, { podeBaixar = true } = {}) {
-  if (backup.arquivo && navigator.canShare?.({ files: [backup.arquivo] })) {
+/** @returns {Promise<'shared'|'cancelled'|'downloaded'|'copied'|'manual'>} */
+export async function exportBackup(backup, { canDownload = true } = {}) {
+  if (backup.file && navigator.canShare?.({ files: [backup.file] })) {
     try {
-      await navigator.share({ files: [backup.arquivo], title: backup.nome });
-      return 'compartilhado';
+      await navigator.share({ files: [backup.file], title: backup.fileName });
+      return 'shared';
     } catch (err) {
-      if (err?.name === 'AbortError') return 'cancelado';
+      if (err?.name === 'AbortError') return 'cancelled';
       // Qualquer outra falha cai para as alternativas abaixo.
     }
   }
 
-  if (podeBaixar) {
+  if (canDownload) {
     try {
       const url = URL.createObjectURL(new Blob([backup.json], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
-      link.download = backup.nome;
+      link.download = backup.fileName;
       document.body.append(link);
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      return 'baixado';
+      return 'downloaded';
     } catch { /* segue para a area de transferencia */ }
   }
 
   try {
     await navigator.clipboard.writeText(backup.json);
-    return 'copiado';
+    return 'copied';
   } catch {
     return 'manual';
   }
 }
 
 /** Le e valida um arquivo escolhido pelo usuario. Lanca erro se nao servir. */
-export async function lerArquivo(file) {
+export async function readFile(file) {
   let payload;
   try {
     payload = JSON.parse(await file.text());
   } catch {
-    throw new Error(t('backup.erro.jsonInvalido'));
+    throw new Error(t('backup.error.invalidJson'));
   }
-  return validar(payload);
+  return validate(payload);
 }
 
-export function validar(payload) {
-  if (!payload || typeof payload !== 'object') throw new Error(t('backup.erro.vazioOuInvalido'));
+export function validate(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error(t('backup.error.emptyOrInvalid'));
 
   const { exercises, workouts, sets, settings = [] } = payload;
   if (!Array.isArray(exercises) || !Array.isArray(workouts) || !Array.isArray(sets)) {
-    throw new Error(t('backup.erro.naoParecebackup'));
+    throw new Error(t('backup.error.notABackup'));
   }
-  if (payload.formato && payload.formato !== FORMATO) {
-    throw new Error(t('backup.erro.formatoDesconhecido', { formato: payload.formato }));
+  const format = payload.format ?? payload.formato;
+  if (format && format !== FORMAT) {
+    throw new Error(t('backup.error.unknownFormat', { format }));
   }
-  if (payload.versao && payload.versao > VERSAO) {
-    throw new Error(t('backup.erro.versaoMaisNova'));
+  const version = payload.version ?? payload.versao;
+  if (version && version > VERSION) {
+    throw new Error(t('backup.error.newerVersion'));
   }
 
-  const numero = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const toNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
   return {
     // A restauracao chama db.replaceAll(), que grava direto e NAO passa pela
-    // migracao do banco. Sem o backfill abaixo, importar um backup gerado antes
-    // do catalogo apagaria as figuras de todos os exercicios, sem erro nenhum.
+    // migracao do banco. Sem o backfill abaixo (nome de campo, slug, chave de
+    // ajuste), importar um backup antigo perderia figura de exercicio ou
+    // voltaria unidade/tema/idioma pro padrao de fabrica, sem erro nenhum.
     exercises: exercises.map((e) => ({
-      id: numero(e.id),
-      nome: String(e.nome || 'Exercício'),
-      grupoMuscular: String(e.grupoMuscular || 'Outros'),
-      slug: e.slug ?? slugPorNome().get(normalizarNome(e.nome || '')) ?? null,
-      personalizado: Boolean(e.personalizado),
-      criadoEm: e.criadoEm || new Date().toISOString(),
+      id: toNumber(e.id),
+      name: String(e.name ?? e.nome ?? 'Exercício'),
+      muscleGroup: String(e.muscleGroup ?? e.grupoMuscular ?? 'Outros'),
+      slug: e.slug ?? slugByName().get(normalizeName(e.name ?? e.nome ?? '')) ?? null,
+      custom: Boolean(e.custom ?? e.personalizado),
+      createdAt: e.createdAt ?? e.criadoEm ?? new Date().toISOString(),
     })),
     workouts: workouts.map((w) => ({
-      id: numero(w.id),
-      data: w.data || String(w.iniciadoEm || '').slice(0, 10),
-      iniciadoEm: w.iniciadoEm || new Date().toISOString(),
-      finalizadoEm: w.finalizadoEm || null,
-      notas: w.notas || '',
-      exerciseIds: Array.isArray(w.exerciseIds) ? w.exerciseIds.map(numero) : [],
+      id: toNumber(w.id),
+      date: w.date ?? w.data ?? String(w.startedAt ?? w.iniciadoEm ?? '').slice(0, 10),
+      startedAt: w.startedAt ?? w.iniciadoEm ?? new Date().toISOString(),
+      finishedAt: w.finishedAt ?? w.finalizadoEm ?? null,
+      notes: w.notes ?? w.notas ?? '',
+      exerciseIds: Array.isArray(w.exerciseIds) ? w.exerciseIds.map(toNumber) : [],
+      completedIds: Array.isArray(w.completedIds)
+        ? w.completedIds.map(toNumber)
+        : Array.isArray(w.concluidoIds) ? w.concluidoIds.map(toNumber) : [],
     })),
     sets: sets.map((s) => ({
-      id: numero(s.id),
-      workoutId: numero(s.workoutId),
-      exerciseId: numero(s.exerciseId),
-      peso: numero(s.peso),
-      reps: Math.round(numero(s.reps)),
-      duracaoSeg: Math.round(numero(s.duracaoSeg)),
-      aquecimento: Boolean(s.aquecimento),
-      criadoEm: s.criadoEm || new Date().toISOString(),
+      id: toNumber(s.id),
+      workoutId: toNumber(s.workoutId),
+      exerciseId: toNumber(s.exerciseId),
+      weight: toNumber(s.weight ?? s.peso),
+      reps: Math.round(toNumber(s.reps)),
+      durationSec: Math.round(toNumber(s.durationSec ?? s.duracaoSeg)),
+      warmup: Boolean(s.warmup ?? s.aquecimento),
+      createdAt: s.createdAt ?? s.criadoEm ?? new Date().toISOString(),
     })),
-    settings: Array.isArray(settings) ? settings.filter((s) => s && s.key) : [],
+    settings: Array.isArray(settings) ? settings.filter((s) => s && s.key).map(remapSetting) : [],
   };
 }
 
 /** Substitui tudo que esta no aparelho pelo conteudo do backup. */
-export async function restaurar(dados) {
-  await db.replaceAll(dados);
+export async function restore(data) {
+  await db.replaceAll(data);
   await db.getSettings();
 }

@@ -3,8 +3,8 @@
  * idioma ativo (ver i18n.js). */
 
 import { t, tn, locale } from './i18n.js';
-import { isTempoSet } from './models.js';
-import { agruparPorGrupo, grupoLabel } from './seed.js';
+import { isDurationSet } from './models.js';
+import { groupBy, groupLabel } from './seed.js';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -17,7 +17,7 @@ export const refresh = () => window.dispatchEvent(new Event('app:refresh'));
  *  verdade dentro do app nesta sessao, volta pra tela anterior real (de onde
  *  a pessoa veio); senao cai no destino fixo `fallback`. Evento pelo mesmo
  *  motivo de refresh() acima — sem ciclo de modulos com app.js. */
-export const voltar = (fallback) => window.dispatchEvent(new CustomEvent('app:voltar', { detail: fallback }));
+export const goBack = (fallback) => window.dispatchEvent(new CustomEvent('app:voltar', { detail: fallback }));
 
 /* ---------- HTML seguro ----------
  * Nomes de exercicio e notas sao digitados pelo usuario, entao toda
@@ -61,13 +61,15 @@ export function node(markup) {
 /* ---------- Topbar ---------- */
 
 /**
- * @param {{title: string, back?: string|null, actions?: string, barra?: boolean}} opts
+ * @param {{title: string, back?: string|null, actions?: string, showBar?: boolean}} opts
  *   back = rota (hash) do botao voltar; ausente esconde o botao.
- *   barra = false esconde a barra inteira (usado nas 4 abas raiz, onde ela so
+ *   showBar = false esconde a barra inteira (usado nas 4 abas raiz, onde ela so
  *   repetiria o nome que a tabbar ja mostra); o titulo da aba do navegador
  *   continua sendo definido normalmente.
  */
-export function setTop({ title, back = null, actions = '', barra = true }) {
+export function setTop({
+  title, back = null, actions = '', showBar = true,
+}) {
   const topbarEl = $('#topbar');
   const titleEl = $('#topbar-title');
   const backEl = $('#topbar-back');
@@ -76,11 +78,11 @@ export function setTop({ title, back = null, actions = '', barra = true }) {
   titleEl.textContent = title;
   document.title = title === 'Treino' ? 'Treino' : `${title} · Treino`;
   backEl.hidden = !back;
-  backEl.onclick = back ? () => voltar(back) : null;
+  backEl.onclick = back ? () => goBack(back) : null;
   actionsEl.innerHTML = actions;
 
-  topbarEl.hidden = !barra;
-  $('#view').classList.toggle('view--sem-topbar', !barra);
+  topbarEl.hidden = !showBar;
+  $('#view').classList.toggle('view--no-topbar', !showBar);
 
   return actionsEl;
 }
@@ -136,7 +138,9 @@ export function initSheet() {
  * standalone do iOS aparece com o dominio e destoa do resto do app.
  * @returns {Promise<boolean>}
  */
-export function confirmSheet({ title, message = '', confirmLabel = null, danger = false }) {
+export function confirmSheet({
+  title, message = '', confirmLabel = null, danger = false,
+}) {
   return new Promise((resolve) => {
     let answered = false;
     const finish = (value) => {
@@ -148,8 +152,8 @@ export function confirmSheet({ title, message = '', confirmLabel = null, danger 
     const body = openSheet(title, html`
       ${message ? raw(`<p class="muted">${esc(message)}</p>`) : ''}
       <div class="stack" style="margin-top:8px">
-        <button class="btn btn--block ${danger ? 'btn--danger' : 'btn--primary'}" data-yes>${confirmLabel || t('common.confirmar')}</button>
-        <button class="btn btn--block btn--ghost" data-no>${t('common.cancelar')}</button>
+        <button class="btn btn--block ${danger ? 'btn--danger' : 'btn--primary'}" data-yes>${confirmLabel || t('common.confirm')}</button>
+        <button class="btn btn--block btn--ghost" data-no>${t('common.cancel')}</button>
       </div>
     `);
 
@@ -181,18 +185,18 @@ export const fmtWeekday = (iso) =>
   new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(new Date(iso));
 
 /** Ex: "10 de ago. – 16 de ago." (pt) / "Aug 10 – Aug 16" (en). Aceita Date ou string ISO. */
-export function fmtDateRange(inicio, fim) {
+export function fmtDateRange(start, end) {
   const fmt = new Intl.DateTimeFormat(locale(), { day: '2-digit', month: 'short' });
-  return `${fmt.format(new Date(inicio))} – ${fmt.format(new Date(fim))}`;
+  return `${fmt.format(new Date(start))} – ${fmt.format(new Date(end))}`;
 }
 
 /** "Hoje", "Ontem", "ha 3 dias" ou a data cheia. */
 export function fmtRelativeDay(iso) {
   const days = daysBetween(new Date(iso), new Date());
-  if (days <= 0) return t('common.hoje');
-  if (days === 1) return t('common.ontem');
-  if (days < 7) return tn('common.diasAtras', days);
-  if (days < 30) return tn('common.semanasAtras', Math.floor(days / 7));
+  if (days <= 0) return t('common.today');
+  if (days === 1) return t('common.yesterday');
+  if (days < 7) return tn('common.daysAgo', days);
+  if (days < 30) return tn('common.weeksAgo', Math.floor(days / 7));
   return fmtDate(iso);
 }
 
@@ -211,19 +215,19 @@ export function fmtDuration(startIso, endIso) {
   if (min < 60) return `${min}${sufMin}`;
   const h = Math.floor(min / 60);
   const rest = min % 60;
-  const sufHora = t('common.hora');
+  const sufHora = t('common.hour');
   return rest ? `${h}${sufHora} ${rest}${sufMin}` : `${h}${sufHora}`;
 }
 
 /** Duracao de uma serie de Cardio/Alongamento (segundos) em "12min 30s" /
  *  "45s". Diferente de fmtDuration: aqui a entrada ja e a duracao guardada
  *  na serie, nao dois timestamps ISO pra subtrair. */
-export function fmtTempoSerie(segundos) {
-  const s = Math.max(0, Math.round(Number(segundos) || 0));
+export function fmtTempoSerie(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
   const min = Math.floor(s / 60);
   const rest = s % 60;
   const sufMin = t('common.min');
-  const sufSeg = t('common.seg');
+  const sufSeg = t('common.sec');
   if (min <= 0) return `${rest}${sufSeg}`;
   return rest ? `${min}${sufMin} ${rest}${sufSeg}` : `${min}${sufMin}`;
 }
@@ -233,14 +237,14 @@ export function fmtTempoSerie(segundos) {
  *  aparecem lado a lado numa mesma linha (comparacao com o treino anterior,
  *  resumo do que ja foi feito). Concentra num lugar so a decisao que antes
  *  se repetia igual em cada tela que lista series. */
-export function fmtSerie(s) {
-  return isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)}×${s.reps}`;
+export function fmtSet(s) {
+  return isDurationSet(s) ? fmtTempoSerie(s.durationSec) : `${fmtNum(s.weight, 2)}×${s.reps}`;
 }
 
-/** Mesma decisao que fmtSerie, com unidade de peso e espacada — usado quando
+/** Mesma decisao que fmtSet, com unidade de peso e espacada — usado quando
  *  a serie aparece sozinha numa linha (lista de series de um treino). */
-export function fmtSerieComUnidade(s, unidade) {
-  return isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)} ${unidade} × ${s.reps}`;
+export function fmtSetWithUnit(s, unit) {
+  return isDurationSet(s) ? fmtTempoSerie(s.durationSec) : `${fmtNum(s.weight, 2)} ${unit} × ${s.reps}`;
 }
 
 /* ---------- Diversos ---------- */
@@ -270,37 +274,37 @@ export const ICON = {
  * cuida disso. A mancha e o unico elemento com fill/color explicitos aqui,
  * de proposito — e o que precisa saltar aos olhos.
  */
-const CORPO = 'M12 2.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2M12 6.4v7M8.4 8.2L12 7l3.6 1.2M8.4 8.2L7 12.4M15.6 8.2L17 12.4M12 13.4l-1.9 8M12 13.4l1.9 8';
-const ponto = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="currentColor"/>`;
+const BODY_PATH = 'M12 2.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2M12 6.4v7M8.4 8.2L12 7l3.6 1.2M8.4 8.2L7 12.4M15.6 8.2L17 12.4M12 13.4l-1.9 8M12 13.4l1.9 8';
+const dot = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="currentColor"/>`;
 // color:var(--accent) no svg inteiro (nao so no ponto) e o que faz a marca
 // destacar igual Cardio/Alongamento -- silhueta e ponto no mesmo tom, so a
-// opacidade diferente, em vez de silhueta cinza (herdada de .cat__icone) com
+// opacidade diferente, em vez de silhueta cinza (herdada de .catalog__icon) com
 // um ponto colorido cortando a familia.
-const corpo = (...pontos) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent)"><path d="${CORPO}" opacity=".3"/>${pontos.map((p) => ponto(...p)).join('')}</svg>`;
+const body = (...dots) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent)"><path d="${BODY_PATH}" opacity=".3"/>${dots.map((p) => dot(...p)).join('')}</svg>`;
 
-export const ICON_GRUPO = {
-  'Peito': corpo([12, 9.1, 1.7]),
-  'Costas': corpo([12, 10.6, 1.7]),
+export const ICON_GROUPS = {
+  'Peito': body([12, 9.1, 1.7]),
+  'Costas': body([12, 10.6, 1.7]),
   // Abaixo de Costas na silhueta, perto do quadril: hiperextensao/terra e
   // cadeia posterior, nao puxada -- por isso saiu de Costas.
-  'Lombar': corpo([12, 12.9, 1.3]),
-  'Deltoides': corpo([8.4, 8.2, 1.3], [15.6, 8.2, 1.3]),
+  'Lombar': body([12, 12.9, 1.3]),
+  'Deltoides': body([8.4, 8.2, 1.3], [15.6, 8.2, 1.3]),
   // Logo abaixo do pescoço, mais estreito que a mancha de Deltoides: e onde
   // o trapezio fica na silhueta (base do pescoço ate o topo do ombro).
-  'Trapézio': corpo([12, 7.5, 1.15]),
-  'Pescoço': corpo([12, 5.3, 1]),
-  'Bíceps': corpo([6.8, 10.9, 1.2]),
-  'Tríceps': corpo([17.2, 10.9, 1.2]),
+  'Trapézio': body([12, 7.5, 1.15]),
+  'Pescoço': body([12, 5.3, 1]),
+  'Bíceps': body([6.8, 10.9, 1.2]),
+  'Tríceps': body([17.2, 10.9, 1.2]),
   // Coxa e uma so regiao na silhueta (sem frente/costas pra distinguir
   // quadriceps de posterior); a marca muda de altura — mais alta vs mais
   // baixa na coxa — pra diferenciar os dois icones.
-  'Quadríceps': corpo([11.2, 16, 1.3], [12.8, 16, 1.3]),
-  'Posterior': corpo([10.6, 19, 1.05], [13.4, 19, 1.05]),
-  'Glúteos': corpo([12, 13.9, 1.5]),
-  'Panturrilha': corpo([10.2, 20.8, 0.9], [13.8, 20.8, 0.9]),
-  'Abdômen': corpo([12, 11.2, 1], [12, 12.8, 1]),
-  'Antebraço': corpo([6.7, 13.7, 1.1], [17.3, 13.7, 1.1]),
+  'Quadríceps': body([11.2, 16, 1.3], [12.8, 16, 1.3]),
+  'Posterior': body([10.6, 19, 1.05], [13.4, 19, 1.05]),
+  'Glúteos': body([12, 13.9, 1.5]),
+  'Panturrilha': body([10.2, 20.8, 0.9], [13.8, 20.8, 0.9]),
+  'Abdômen': body([12, 11.2, 1], [12, 12.8, 1]),
+  'Antebraço': body([6.7, 13.7, 1.1], [17.3, 13.7, 1.1]),
   // Cardio e alongamento nao sao regiao do corpo, entao fogem da familia
   // "silhueta com mancha" e usam glifo proprio -- mas no mesmo color:var(--accent)
   // que corpo() usa agora, entao a familia toda fica no mesmo tom.
@@ -314,62 +318,62 @@ export const ICON_GRUPO = {
 /** Envolve uma lista de &lt;li&gt; num card padrao — usado em toda lista
  *  simples do app (resultado de busca, sugestoes do catalogo, selecao de
  *  exercicio). Interface pequena, pra nao repetir o par card+ul em cada tela. */
-export function listaEmCard(itensLi) {
+export function listInCard(items) {
   const card = node('<div class="card"><ul class="list"></ul></div>');
   const ul = card.querySelector('ul');
-  for (const li of itensLi) ul.append(li);
+  for (const li of items) ul.append(li);
   return card;
 }
 
 /**
- * Lista de itens agrupados por `pegarGrupo(item)`, em cards que expandem e
+ * Lista de itens agrupados por `getGroup(item)`, em cards que expandem e
  * recolhem ao toque — usado pelo catalogo e pelo seletor de exercicios da
  * sessao pra nao rolar uma lista de dezenas/centenas de itens de uma vez so.
- * `abertos` e um Set&lt;string&gt; de nomes de grupo, de quem chama: cada tela
+ * `openGroups` e um Set&lt;string&gt; de nomes de grupo, de quem chama: cada tela
  * guarda o seu (o que ficou aberto no catalogo nao e o mesmo que ficou
  * aberto no seletor de exercicios da sessao).
- * @param {{itens: object[], pegarGrupo: (item: object) => string,
- *          abertos: Set<string>, renderItem: (item: object) => HTMLElement}} opts
+ * @param {{items: object[], getGroup: (item: object) => string,
+ *          openGroups: Set<string>, renderItem: (item: object) => HTMLElement}} opts
  * @returns {HTMLElement} elemento transparente ao layout (display:contents) —
  *   os cards de grupo caem direto no container de quem chama, como se nao
  *   houvesse wrapper.
  */
-export function listaAgrupada({
-  itens, pegarGrupo, abertos, renderItem,
+export function groupedList({
+  items, getGroup, openGroups, renderItem,
 }) {
-  const raiz = node('<div class="contents"></div>');
+  const root = node('<div class="contents"></div>');
 
-  const redesenhar = () => {
-    raiz.innerHTML = '';
-    for (const { grupo, itens: doGrupo } of agruparPorGrupo(itens, pegarGrupo)) {
-      const aberto = abertos.has(grupo);
-      const secao = node(html`
-        <div class="card cat__grupo">
-          <button class="cat__cabecalho" type="button" aria-expanded="${String(aberto)}">
-            <span class="cat__icone" aria-hidden="true">${raw(ICON_GRUPO[grupo] || '')}</span>
-            <span class="grow" style="font-weight:600">${grupoLabel(grupo)}</span>
-            <span class="muted small">${doGrupo.length}</span>
-            <span class="list__chev cat__seta">${raw(ICON.chevron)}</span>
+  const redraw = () => {
+    root.innerHTML = '';
+    for (const { group, items: groupItems } of groupBy(items, getGroup)) {
+      const open = openGroups.has(group);
+      const section = node(html`
+        <div class="card catalog__group">
+          <button class="catalog__header" type="button" aria-expanded="${String(open)}">
+            <span class="catalog__icon" aria-hidden="true">${raw(ICON_GROUPS[group] || '')}</span>
+            <span class="grow" style="font-weight:600">${groupLabel(group)}</span>
+            <span class="muted small">${groupItems.length}</span>
+            <span class="list__chev catalog__arrow">${raw(ICON.chevron)}</span>
           </button>
         </div>
       `);
 
-      secao.querySelector('button').onclick = () => {
-        if (aberto) abertos.delete(grupo); else abertos.add(grupo);
-        redesenhar();
+      section.querySelector('button').onclick = () => {
+        if (open) openGroups.delete(group); else openGroups.add(group);
+        redraw();
       };
 
-      if (aberto) {
+      if (open) {
         const ul = node('<ul class="list"></ul>');
-        for (const item of doGrupo) ul.append(renderItem(item));
-        secao.append(ul);
+        for (const item of groupItems) ul.append(renderItem(item));
+        section.append(ul);
       }
-      raiz.append(secao);
+      root.append(section);
     }
   };
 
-  redesenhar();
-  return raiz;
+  redraw();
+  return root;
 }
 
 /** Vibracao curta ao registrar. Ignorado no iOS, que nao expoe a API. */
@@ -379,7 +383,7 @@ export function buzz(ms = 12) {
 
 // Mora em text.js (sem DOM) porque db.js tambem precisa dela na migracao;
 // reexportada aqui para nao mexer em quem ja importava de ui.js.
-export { semAcento, normalizarNome } from './text.js';
+export { stripAccents, normalizeName } from './text.js';
 
 /* ---------- Plataforma ---------- */
 
@@ -406,15 +410,17 @@ export function isStandalone() {
  *          decimals?: number, suffix?: string}} opts
  * @returns {{el: HTMLElement, get: () => number, set: (v: number) => void, focus: () => void}}
  */
-export function createStepper({ label, value = 0, step = 1, min = 0, max = 9999, decimals = 0, suffix = '' }) {
+export function createStepper({
+  label, value = 0, step = 1, min = 0, max = 9999, decimals = 0, suffix = '',
+}) {
   const wrap = node(html`
     <div class="field">
       <span class="field__label">${label}${suffix ? raw(` <span class="muted">${esc(suffix)}</span>`) : ''}</span>
       <div class="stepper">
-        <button class="stepper__btn" type="button" data-dec aria-label="${t('ui.diminuir', { label })}">&minus;</button>
+        <button class="stepper__btn" type="button" data-dec aria-label="${t('ui.decrease', { label })}">&minus;</button>
         <input class="stepper__input" type="number" inputmode="${decimals ? 'decimal' : 'numeric'}"
                step="${step}" min="${min}" max="${max}" value="${value}" aria-label="${label}">
-        <button class="stepper__btn" type="button" data-inc aria-label="${t('ui.aumentar', { label })}">+</button>
+        <button class="stepper__btn" type="button" data-inc aria-label="${t('ui.increase', { label })}">+</button>
       </div>
     </div>
   `);
@@ -440,53 +446,56 @@ export function createStepper({ label, value = 0, step = 1, min = 0, max = 9999,
   // Selecionar tudo ao focar evita ter que apagar o valor anterior digito a digito.
   input.addEventListener('focus', () => input.select());
 
-  return { el: wrap, get, set, focus: () => input.focus() };
+  return {
+    el: wrap, get, set, focus: () => input.focus(),
+  };
 }
 
 /**
- * Par de steppers min+seg pra series de Cardio/Alongamento (ver GRUPOS_TEMPO
- * em seed.js), que guardam duracao em vez de peso/reps. Mesmo contrato de
- * createStepper — get()/set() trabalham em segundos totais — pra nao exigir
- * tratamento especial nos call sites que hoje esperam {el, get, set, focus}.
+ * Par de steppers min+seg pra series de Cardio/Alongamento (ver
+ * DURATION_GROUPS em seed.js), que guardam duracao em vez de peso/reps.
+ * Mesmo contrato de createStepper — get()/set() trabalham em segundos
+ * totais — pra nao exigir tratamento especial nos call sites que hoje
+ * esperam {el, get, set, focus}.
  * @param {{value?: number}} opts value em segundos
  * @returns {{el: HTMLElement, get: () => number, set: (v: number) => void, focus: () => void}}
  */
-export function createDuracaoStepper({ value = 0 } = {}) {
-  const totalIni = Math.max(0, Math.round(Number(value) || 0));
-  const minutos = createStepper({
-    label: t('session.duracaoMin'), value: Math.floor(totalIni / 60), step: 1, min: 0, max: 600, decimals: 0,
+export function createDurationStepper({ value = 0 } = {}) {
+  const initialTotal = Math.max(0, Math.round(Number(value) || 0));
+  const minutes = createStepper({
+    label: t('session.durationMin'), value: Math.floor(initialTotal / 60), step: 1, min: 0, max: 600, decimals: 0,
   });
-  const segundos = createStepper({
-    label: t('session.duracaoSeg'), value: totalIni % 60, step: 5, min: 0, max: 59, decimals: 0,
+  const seconds = createStepper({
+    label: t('session.durationSec'), value: initialTotal % 60, step: 5, min: 0, max: 59, decimals: 0,
   });
 
-  const wrap = node('<div class="composer__duracao"></div>');
-  wrap.append(minutos.el, segundos.el);
+  const wrap = node('<div class="composer__duration"></div>');
+  wrap.append(minutes.el, seconds.el);
 
   const set = (v) => {
     const total = Math.max(0, Math.round(Number(v) || 0));
-    minutos.set(Math.floor(total / 60));
-    segundos.set(total % 60);
+    minutes.set(Math.floor(total / 60));
+    seconds.set(total % 60);
   };
 
   return {
     el: wrap,
-    get: () => minutos.get() * 60 + segundos.get(),
+    get: () => minutes.get() * 60 + seconds.get(),
     set,
-    focus: () => minutos.focus(),
+    focus: () => minutes.focus(),
   };
 }
 
 /** Liga um grupo `.segmented` (N botoes, um ativo): clique troca o
- *  `aria-pressed` de todos e chama `onChange(botao)` com o botao escolhido —
- *  o dataset de cada botao (`data-modo`, `data-m`, ...) fica por conta de
+ *  `aria-pressed` de todos e chama `onChange(button)` com o botao escolhido —
+ *  o dataset de cada botao (`data-mode`, `data-m`, ...) fica por conta de
  *  quem chama, cada grupo usa o atributo que faz sentido pra ele. */
 export function wireSegmented(container, onChange) {
-  const botoes = container.querySelectorAll('.segmented__btn');
-  for (const botao of botoes) {
-    botao.onclick = () => {
-      for (const b of botoes) b.setAttribute('aria-pressed', String(b === botao));
-      onChange(botao);
+  const buttons = container.querySelectorAll('.segmented__btn');
+  for (const button of buttons) {
+    button.onclick = () => {
+      for (const b of buttons) b.setAttribute('aria-pressed', String(b === button));
+      onChange(button);
     };
   }
 }

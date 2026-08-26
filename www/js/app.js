@@ -6,7 +6,7 @@
 import { $, initSheet, closeSheet, html, node, refresh } from './ui.js';
 import { t } from './i18n.js';
 import * as db from './db.js';
-import { precacheMidia } from './media.js';
+import { precacheMedia } from './media.js';
 import * as home from './views/home.js';
 import * as session from './views/session.js';
 import * as history from './views/history.js';
@@ -29,12 +29,12 @@ const ROUTES = [
 ];
 
 const TABS = [
-  [/^\/(sessao)?$/, 'treino'],
-  [/^\/historico/, 'historico'],
+  [/^\/(sessao)?$/, 'workout'],
+  [/^\/historico/, 'history'],
   // O catalogo nao tem aba propria: a tabbar de 4 ja esta no limite confortavel
   // de toque. Ele vive dentro de Exercicios e mantem essa aba acesa.
-  [/^\/(exercicios|catalogo)/, 'exercicios'],
-  [/^\/ajustes/, 'ajustes'],
+  [/^\/(exercicios|catalogo)/, 'exercises'],
+  [/^\/ajustes/, 'settings'],
 ];
 
 function currentPath() {
@@ -42,26 +42,26 @@ function currentPath() {
 }
 
 function highlightTab(path) {
-  const ativa = TABS.find(([re]) => re.test(path))?.[1];
+  const active = TABS.find(([re]) => re.test(path))?.[1];
   for (const item of document.querySelectorAll('.tabbar__item')) {
-    if (item.dataset.tab === ativa) item.setAttribute('aria-current', 'page');
+    if (item.dataset.tab === active) item.setAttribute('aria-current', 'page');
     else item.removeAttribute('aria-current');
   }
 }
 
-async function atualizarFab() {
-  const fab = $('#fab-treino');
-  const ativo = await db.getActiveWorkout();
+async function updateFab() {
+  const fab = $('#fab-workout');
+  const active = await db.getActiveWorkout();
   fab.disabled = false;
-  fab.classList.toggle('is-ativo', !!ativo);
-  fab.setAttribute('aria-label', ativo ? t('app.fab.retomar') : t('app.fab.iniciar'));
+  fab.classList.toggle('is-active', !!active);
+  fab.setAttribute('aria-label', active ? t('app.fab.resume') : t('app.fab.start'));
 }
 
 function initFab() {
-  const fab = $('#fab-treino');
+  const fab = $('#fab-workout');
   fab.onclick = async () => {
-    const ativo = await db.getActiveWorkout();
-    if (!ativo) {
+    const active = await db.getActiveWorkout();
+    if (!active) {
       fab.disabled = true;
       await db.startWorkout();
     }
@@ -85,9 +85,9 @@ let isGoingBack = false;
 
 async function router() {
   const path = currentPath();
-  const rota = ROUTES.find(([re]) => re.test(path));
+  const route = ROUTES.find(([re]) => re.test(path));
 
-  if (!rota) { location.hash = '#/'; return; }
+  if (!route) { location.hash = '#/'; return; }
 
   // Ignora refresh-in-place (app:refresh chama router() com o mesmo path) e
   // trata o primeiro render do boot como base, sem empilhar.
@@ -100,11 +100,11 @@ async function router() {
   const token = ++renderToken;
   closeSheet();
   highlightTab(path);
-  atualizarFab();
+  updateFab();
 
   const view = $('#view');
-  const [, handler] = rota;
-  const params = rota[0].exec(path).slice(1);
+  const [, handler] = route;
+  const params = route[0].exec(path).slice(1);
 
   try {
     view.innerHTML = '';
@@ -122,38 +122,38 @@ async function router() {
 function showError(view, err) {
   view.innerHTML = html`
     <div class="card card__pad">
-      <h2>${t('app.erro.titulo')}</h2>
+      <h2>${t('app.error.title')}</h2>
       <p class="muted small">${err?.message || String(err)}</p>
-      <button class="btn btn--block" onclick="location.reload()">${t('app.erro.recarregar')}</button>
+      <button class="btn btn--block" onclick="location.reload()">${t('app.error.reload')}</button>
     </div>
   `;
 }
 
-function applyTheme(tema) {
+function applyTheme(theme) {
   const root = document.documentElement;
-  if (tema === 'claro') root.dataset.theme = 'light';
-  else if (tema === 'escuro') root.dataset.theme = 'dark';
+  if (theme === 'light') root.dataset.theme = 'light';
+  else if (theme === 'dark') root.dataset.theme = 'dark';
   else delete root.dataset.theme;
 }
 
 /** Aplica o idioma ativo na casca estatica do app.js (www/index.html) — a
  *  unica parte da tela que nao e reconstruida a cada render de view. Chamada
- *  no boot e sempre que 'idioma:mudou' dispara. Le o idioma atual via t(), em
+ *  no boot e sempre que 'language:changed' dispara. Le o idioma atual via t(), em
  *  vez de receber como parametro, porque quem dispara o evento ja gravou o
  *  valor novo em db.js antes de disparar. */
-function aplicarIdiomaEstatico() {
+function applyStaticLanguage() {
   document.documentElement.lang = t('app.htmlLang');
-  for (const tab of ['treino', 'historico', 'exercicios', 'ajustes']) {
+  for (const tab of ['workout', 'history', 'exercises', 'settings']) {
     const span = document.querySelector(`.tabbar__item[data-tab="${tab}"] span`);
     if (span) span.textContent = t(`app.tab.${tab}`);
   }
-  $('#topbar-back')?.setAttribute('aria-label', t('app.voltar'));
-  document.querySelector('#sheet button[data-close-sheet]')?.setAttribute('aria-label', t('common.fechar'));
-  document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.metaDescricao'));
+  $('#topbar-back')?.setAttribute('aria-label', t('app.back'));
+  document.querySelector('#sheet button[data-close-sheet]')?.setAttribute('aria-label', t('common.close'));
+  document.querySelector('meta[name="description"]')?.setAttribute('content', t('app.metaDescription'));
 }
 
-window.addEventListener('tema:mudou', (e) => applyTheme(e.detail));
-window.addEventListener('idioma:mudou', () => { aplicarIdiomaEstatico(); refresh(); });
+window.addEventListener('theme:changed', (e) => applyTheme(e.detail));
+window.addEventListener('language:changed', () => { applyStaticLanguage(); refresh(); });
 
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -195,21 +195,21 @@ async function boot() {
     console.error(err);
     $('#view').append(node(html`
       <div class="card card__pad">
-        <h2>${t('app.bancoErro.titulo')}</h2>
+        <h2>${t('app.dbError.title')}</h2>
         <p class="muted small">${err?.message || String(err)}</p>
-        <p class="muted small">${t('app.bancoErro.abaPrivada')}</p>
+        <p class="muted small">${t('app.dbError.privateTab')}</p>
       </div>
     `));
     return;
   }
 
-  applyTheme(db.settings().tema);
-  aplicarIdiomaEstatico();
+  applyTheme(db.settings().theme);
+  applyStaticLanguage();
   await router();
   await registerServiceWorker();
   requestPersistence();
   // Depois da tela pronta: baixar figuras nunca deve atrasar o primeiro render.
-  precacheMidia().catch(() => {});
+  precacheMedia().catch(() => {});
 }
 
 boot();

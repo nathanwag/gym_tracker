@@ -164,7 +164,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
     calc(var(--tabbar-h) + var(--safe-bottom) + 24px);
   outline: none;
 }
-.view--sem-topbar { padding-top: calc(var(--safe-top) + 12px); }
+.view--no-topbar { padding-top: calc(var(--safe-top) + 12px); }
 
 .stack > * + * { margin-top: 12px; }
 
@@ -178,8 +178,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .section-title:first-child { margin-top: 4px; }
 
-.atalhos { display: flex; gap: 10px; margin: 22px 0 10px; }
-.atalho {
+.shortcuts { display: flex; gap: 10px; margin: 22px 0 10px; }
+.shortcut {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -195,7 +195,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   color: var(--text);
   cursor: pointer;
 }
-.atalho:active { background: var(--surface-2); }
+.shortcut:active { background: var(--surface-2); }
 
 .card {
   background: var(--surface);
@@ -286,7 +286,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 /* display:contents: os dois .field (min/seg) caem direto nas 2 colunas do
    grid do .composer, como se nao houvesse wrapper -- mesmo layout de peso/reps. */
-.composer__duracao { display: contents; }
+.composer__duration { display: contents; }
 .composer__actions { grid-column: 1 / -1; display: flex; gap: 8px; }
 .composer__actions .btn { flex: 1; }
 .composer__actions .btn--chip { flex: 0 0 auto; }
@@ -430,16 +430,16 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .stat__label { margin-top: 1px; font-size: .72rem; color: var(--muted); }
 .stat--pr .stat__val { color: var(--pr); }
 
-.semana-nav__voltar svg { transform: rotate(180deg); }
+.week-nav__back svg { transform: rotate(180deg); }
 
-.mgrupo { display: flex; flex-direction: column; gap: 10px; }
-.mgrupo__linha { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 8px; }
-.mgrupo__icone { display: flex; color: var(--muted); }
-.mgrupo__icone svg { width: 20px; height: 20px; }
-.mgrupo__nome { font-size: .84rem; white-space: nowrap; }
-.mgrupo__track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
-.mgrupo__fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
-.mgrupo__series { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.muscle-group { display: flex; flex-direction: column; gap: 10px; }
+.muscle-group__row { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 8px; }
+.muscle-group__icon { display: flex; color: var(--muted); }
+.muscle-group__icon svg { width: 20px; height: 20px; }
+.muscle-group__name { font-size: .84rem; white-space: nowrap; }
+.muscle-group__track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.muscle-group__fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.muscle-group__sets { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 
 /* ---------- Grafico ---------- */
 
@@ -508,7 +508,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .tabbar__item[aria-current="page"] { color: var(--accent); }
 .tabbar__spacer { flex: 0 0 64px; }
 
-.fab-treino {
+.fab-workout {
   position: absolute;
   left: 50%;
   top: -26px;
@@ -526,14 +526,14 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   box-shadow: var(--shadow);
   cursor: pointer;
 }
-.fab-treino:active { transform: translateX(-50%) translateY(1px); }
-.fab-treino[disabled] { opacity: .6; pointer-events: none; }
-.fab-treino svg { width: 26px; height: 26px; }
-.fab-treino__icone--ativo { display: none; }
-.fab-treino.is-ativo .fab-treino__icone--iniciar { display: none; }
-.fab-treino.is-ativo .fab-treino__icone--ativo { display: block; }
-.fab-treino.is-ativo { background: var(--success); animation: fab-pulso 1.8s ease-in-out infinite; }
-@keyframes fab-pulso {
+.fab-workout:active { transform: translateX(-50%) translateY(1px); }
+.fab-workout[disabled] { opacity: .6; pointer-events: none; }
+.fab-workout svg { width: 26px; height: 26px; }
+.fab-workout__icon--active { display: none; }
+.fab-workout.is-active .fab-workout__icon--start { display: none; }
+.fab-workout.is-active .fab-workout__icon--active { display: block; }
+.fab-workout.is-active { background: var(--success); animation: fab-pulse 1.8s ease-in-out infinite; }
+@keyframes fab-pulse {
   0%, 100% { box-shadow: var(--shadow), 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); }
   50% { box-shadow: var(--shadow), 0 0 0 9px color-mix(in srgb, var(--success) 0%, transparent); }
 }
@@ -631,7 +631,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.flip__q {
+.flip__frame {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -640,9 +640,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 /* So anima depois que as duas decodificaram: comecar antes faz o primeiro
    ciclo piscar em branco. */
-.flip.is-pronto .flip__q { animation: flip-a 1.4s steps(1, end) infinite; }
-.flip.is-pronto .flip__q--b { animation-name: flip-b; }
-.flip.is-pausado .flip__q { animation-play-state: paused; }
+.flip.is-ready .flip__frame { animation: flip-a 1.4s steps(1, end) infinite; }
+.flip.is-ready .flip__frame--b { animation-name: flip-b; }
+.flip.is-paused .flip__frame { animation-play-state: paused; }
 
 @keyframes flip-a { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
 @keyframes flip-b { 0%, 50% { opacity: 0; } 50.01%, 100% { opacity: 1; } }
@@ -672,9 +672,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   border-left: 3.5px solid currentColor;
   border-right: 3.5px solid currentColor;
 }
-/* Triangulo = retomar. `is-pausado` marca "parado" nos dois modos, inclusive
+/* Triangulo = retomar. `is-paused` marca "parado" nos dois modos, inclusive
    sob prefers-reduced-motion, onde parado e o estado inicial. */
-.flip.is-pausado .flip__toggle::before {
+.flip.is-paused .flip__toggle::before {
   width: 0;
   height: 0;
   margin-left: 13px;
@@ -686,15 +686,15 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 /* As fotos tem fundo claro; no tema escuro um retangulo branco no meio da tela
    e agressivo demais. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .flip__q,
+  :root:not([data-theme="light"]) .flip__frame,
   :root:not([data-theme="light"]) .thumb__img { filter: brightness(.88); }
 }
-:root[data-theme="dark"] .flip__q,
+:root[data-theme="dark"] .flip__frame,
 :root[data-theme="dark"] .thumb__img { filter: brightness(.88); }
 
 /* ---------- Catalogo ---------- */
 
-.cat__cabecalho {
+.catalog__header {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -707,19 +707,19 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   text-align: left;
   cursor: pointer;
 }
-.cat__cabecalho:active { background: var(--surface-2); }
-.cat__icone { display: inline-flex; color: var(--muted); }
-.cat__icone svg { width: 20px; height: 20px; }
-.cat__seta { transition: transform .15s ease; }
-.cat__cabecalho[aria-expanded="true"] .cat__seta { transform: rotate(90deg); }
-.cat__grupo > .list { border-top: 1px solid var(--border); }
+.catalog__header:active { background: var(--surface-2); }
+.catalog__icon { display: inline-flex; color: var(--muted); }
+.catalog__icon svg { width: 20px; height: 20px; }
+.catalog__arrow { transition: transform .15s ease; }
+.catalog__header[aria-expanded="true"] .catalog__arrow { transform: rotate(90deg); }
+.catalog__group > .list { border-top: 1px solid var(--border); }
 
-.cat__nome { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.catalog__name { display: flex; align-items: center; gap: 6px; font-weight: 600; }
 /* Icone em vez de "na biblioteca" escrito: o texto roubava largura do nome do
    exercicio e o jogava para duas linhas. */
-.cat__tem { flex: 0 0 auto; display: inline-flex; color: var(--accent); }
-.cat__tem svg { width: 19px; height: 19px; }
-.cat__titulo { font-size: 1.15rem; }
+.catalog__owned { flex: 0 0 auto; display: inline-flex; color: var(--accent); }
+.catalog__owned svg { width: 19px; height: 19px; }
+.catalog__title { font-size: 1.15rem; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
@@ -730,9 +730,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   font-size: .76rem;
 }
 
-.passos { margin: 0; padding-left: 1.15em; }
-.passos li { margin-top: 8px; font-size: .92rem; line-height: 1.5; }
-.passos li:first-child { margin-top: 0; }
+.steps { margin: 0; padding-left: 1.15em; }
+.steps li { margin-top: 8px; font-size: .92rem; line-height: 1.5; }
+.steps li:first-child { margin-top: 0; }
 
 .stack--sm > * + * { margin-top: 10px; }
 
@@ -743,8 +743,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
      ~100Hz — pior do que ignorar a preferencia, e conteudo piscante e risco de
      saude. Aqui a animacao para de verdade e mostra so a posicao inicial; o
      botao continua disponivel para quem quiser ver o movimento. */
-  .flip .flip__q { animation: none !important; }
-  .flip .flip__q--b { opacity: 0; }
-  .flip.is-forcado .flip__q { animation: flip-a 1.4s steps(1, end) infinite !important; }
-  .flip.is-forcado .flip__q--b { animation-name: flip-b !important; }
+  .flip .flip__frame { animation: none !important; }
+  .flip .flip__frame--b { opacity: 0; }
+  .flip.is-forced .flip__frame { animation: flip-a 1.4s steps(1, end) infinite !important; }
+  .flip.is-forced .flip__frame--b { animation-name: flip-b !important; }
 }

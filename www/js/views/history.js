@@ -2,69 +2,69 @@
 
 import * as db from '../db.js';
 import {
-  workoutSummary, prSetIds, setE1rm, totalVolume, totalDuracao, isTempoSet,
+  workoutSummary, prSetIds, setE1rm, totalVolume, totalDuration, isDurationSet,
 } from '../models.js';
 import { thumbHtml } from '../media.js';
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet,
-  fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration, fmtTempoSerie, fmtSerieComUnidade,
+  fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration, fmtTempoSerie, fmtSetWithUnit,
 } from '../ui.js';
 
-const mesAno = (iso) => new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(new Date(iso));
+const monthYear = (iso) => new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(new Date(iso));
 
 /* ==========================================================================
    Lista de treinos
    ========================================================================== */
 
 export async function render(view) {
-  setTop({ title: t('history.titulo'), barra: false });
+  setTop({ title: t('history.title'), showBar: false });
 
-  const [treinos, series] = await Promise.all([db.listWorkouts(), db.listAllSets()]);
-  const unidade = db.settings().unidade;
+  const [workouts, sets] = await Promise.all([db.listWorkouts(), db.listAllSets()]);
+  const unit = db.settings().unit;
 
-  if (!treinos.length) {
+  if (!workouts.length) {
     view.append(node(html`
       <div class="card"><div class="empty">
         ${raw(ICON.dumbbell)}
-        <p>${t('history.vazio.mensagem')}</p>
-        <a class="btn btn--primary" href="#/">${t('history.vazio.comecar')}</a>
+        <p>${t('history.empty.message')}</p>
+        <a class="btn btn--primary" href="#/">${t('history.empty.start')}</a>
       </div></div>
     `));
     return;
   }
 
-  const porTreino = new Map();
-  for (const s of series) {
-    if (!porTreino.has(s.workoutId)) porTreino.set(s.workoutId, []);
-    porTreino.get(s.workoutId).push(s);
+  const byWorkout = new Map();
+  for (const s of sets) {
+    if (!byWorkout.has(s.workoutId)) byWorkout.set(s.workoutId, []);
+    byWorkout.get(s.workoutId).push(s);
   }
 
   const root = node('<div></div>');
-  let mesAtual = null;
+  let currentMonth = null;
 
-  for (const treino of treinos) {
-    const mes = mesAno(treino.iniciadoEm);
-    if (mes !== mesAtual) {
-      mesAtual = mes;
-      root.append(node(html`<h2 class="section-title">${mes}</h2>`));
+  for (const workout of workouts) {
+    const month = monthYear(workout.startedAt);
+    if (month !== currentMonth) {
+      currentMonth = month;
+      root.append(node(html`<h2 class="section-title">${month}</h2>`));
       root.append(node('<div class="card"><ul class="list"></ul></div>'));
     }
 
-    const r = workoutSummary(porTreino.get(treino.id) || []);
+    const r = workoutSummary(byWorkout.get(workout.id) || []);
     const ul = root.lastElementChild.querySelector('ul');
     ul.append(node(html`
       <li class="list__item">
-        <a class="list__link" href="#/historico/${treino.id}">
+        <a class="list__link" href="#/historico/${workout.id}">
           <div class="grow">
             <div class="row" style="gap:6px">
-              <span style="font-weight:650">${fmtRelativeDay(treino.iniciadoEm)}</span>
-              ${treino.finalizadoEm ? '' : raw(`<span class="badge badge--accent">${t('history.emAndamento')}</span>`)}
+              <span style="font-weight:650">${fmtRelativeDay(workout.startedAt)}</span>
+              ${workout.finishedAt ? '' : raw(`<span class="badge badge--accent">${t('history.inProgress')}</span>`)}
             </div>
             <div class="muted small">
-              ${tn('common.exercicio', r.exercicios)} ·
-              ${tn('common.serie', r.series)} ·
-              ${fmtNum(r.volume, 0)} ${unidade}
+              ${tn('common.exercise', r.exercises)} ·
+              ${tn('common.set', r.sets)} ·
+              ${fmtNum(r.volume, 0)} ${unit}
             </div>
           </div>
           <span class="list__chev">${raw(ICON.chevron)}</span>
@@ -81,38 +81,38 @@ export async function render(view) {
    ========================================================================== */
 
 export async function renderWorkout(view, workoutId) {
-  const [treino, series, exercicios, todasSeries] = await Promise.all([
+  const [workout, sets, exercises, allSets] = await Promise.all([
     db.getWorkout(workoutId),
     db.listSetsByWorkout(workoutId),
     db.listExercises(),
     db.listAllSets(),
   ]);
 
-  if (!treino) {
-    setTop({ title: t('history.tituloGenerico'), back: '#/historico' });
-    view.append(node(`<div class="card card__pad">${t('history.naoEncontrado')}</div>`));
+  if (!workout) {
+    setTop({ title: t('history.genericTitle'), back: '#/historico' });
+    view.append(node(`<div class="card card__pad">${t('history.notFound')}</div>`));
     return;
   }
 
-  const unidade = db.settings().unidade;
-  const porId = new Map(exercicios.map((e) => [e.id, e]));
-  const resumo = workoutSummary(series);
+  const unit = db.settings().unit;
+  const byId = new Map(exercises.map((e) => [e.id, e]));
+  const summary = workoutSummary(sets);
 
   setTop({
-    title: fmtDate(treino.iniciadoEm),
+    title: fmtDate(workout.startedAt),
     back: '#/historico',
-    actions: `<button class="btn btn--sm btn--ghost" data-apagar aria-label="${t('history.apagar')}">${t('common.apagar')}</button>`,
+    actions: `<button class="btn btn--sm btn--ghost" data-delete aria-label="${t('history.delete')}">${t('common.delete')}</button>`,
   });
-  document.querySelector('[data-apagar]').onclick = async () => {
+  document.querySelector('[data-delete]').onclick = async () => {
     const ok = await confirmSheet({
-      title: t('history.confirmarApagar.titulo'),
-      message: t('history.confirmarApagar.mensagem'),
-      confirmLabel: t('common.apagar'),
+      title: t('history.confirmDelete.title'),
+      message: t('history.confirmDelete.message'),
+      confirmLabel: t('common.delete'),
       danger: true,
     });
     if (!ok) return;
-    await db.deleteWorkout(treino.id);
-    toast(t('history.toastApagado'));
+    await db.deleteWorkout(workout.id);
+    toast(t('history.toastDeleted'));
     location.hash = '#/historico';
   };
 
@@ -122,80 +122,80 @@ export async function renderWorkout(view, workoutId) {
     <div class="card">
       <div class="card__pad" style="padding-bottom:10px">
         <div class="row" style="gap:8px">
-          <h2 style="font-size:1rem">${fmtWeekday(treino.iniciadoEm)}</h2>
-          ${treino.finalizadoEm ? '' : raw(`<span class="badge badge--accent">${t('history.emAndamento')}</span>`)}
+          <h2 style="font-size:1rem">${fmtWeekday(workout.startedAt)}</h2>
+          ${workout.finishedAt ? '' : raw(`<span class="badge badge--accent">${t('history.inProgress')}</span>`)}
         </div>
       </div>
       <div class="stats">
         <div class="stat">
-          <div class="stat__val">${fmtDuration(treino.iniciadoEm, treino.finalizadoEm) || '—'}</div>
-          <div class="stat__label">${t('history.stat.duracao')}</div>
+          <div class="stat__val">${fmtDuration(workout.startedAt, workout.finishedAt) || '—'}</div>
+          <div class="stat__label">${t('history.stat.duration')}</div>
         </div>
         <div class="stat">
-          <div class="stat__val">${resumo.series}</div>
-          <div class="stat__label">${t('history.stat.series')}</div>
+          <div class="stat__val">${summary.sets}</div>
+          <div class="stat__label">${t('history.stat.sets')}</div>
         </div>
         <div class="stat">
-          <div class="stat__val">${fmtNum(resumo.volume, 0)}</div>
-          <div class="stat__label">${t('history.stat.volume', { unidade })}</div>
+          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
+          <div class="stat__label">${t('history.stat.volume', { unit })}</div>
         </div>
       </div>
     </div>
   `));
 
-  if (!treino.finalizadoEm) {
-    const retomar = node(`<button class="btn btn--primary btn--block">${t('history.retomar')}</button>`);
-    retomar.onclick = () => { location.hash = '#/sessao'; };
-    root.append(retomar);
+  if (!workout.finishedAt) {
+    const resume = node(`<button class="btn btn--primary btn--block">${t('history.resume')}</button>`);
+    resume.onclick = () => { location.hash = '#/sessao'; };
+    root.append(resume);
   }
 
   // Ordem dos exercicios: a mesma da sessao; quem tiver serie sem estar na
   // lista (dado antigo ou importado) entra no fim.
-  const ordem = [...(treino.exerciseIds || [])];
-  for (const s of series) if (!ordem.includes(s.exerciseId)) ordem.push(s.exerciseId);
+  const order = [...(workout.exerciseIds || [])];
+  for (const s of sets) if (!order.includes(s.exerciseId)) order.push(s.exerciseId);
 
-  if (!series.length) {
-    root.append(node(`<div class="card"><div class="empty small"><p>${t('history.semSeries')}</p></div></div>`));
+  if (!sets.length) {
+    root.append(node(`<div class="card"><div class="empty small"><p>${t('history.noSets')}</p></div></div>`));
   }
 
-  for (const exId of ordem) {
-    const doExercicio = series.filter((s) => s.exerciseId === exId);
-    if (!doExercicio.length) continue;
+  for (const exId of order) {
+    const exerciseSets = sets.filter((s) => s.exerciseId === exId);
+    if (!exerciseSets.length) continue;
 
-    const ex = porId.get(exId);
-    const prIds = prSetIds(todasSeries.filter((s) => s.exerciseId === exId));
+    const ex = byId.get(exId);
+    const prIds = prSetIds(allSets.filter((s) => s.exerciseId === exId));
 
-    const linhas = doExercicio.map((s, i) => {
-      const tempo = isTempoSet(s);
+    const rows = exerciseSets.map((s, i) => {
+      const timeBased = isDurationSet(s);
       return html`
       <li class="list__item">
         <div class="setlist__item" style="cursor:default">
           <span class="setlist__num">${i + 1}</span>
-          <span class="setlist__val">${fmtSerieComUnidade(s, unidade)}</span>
-          ${s.aquecimento ? raw(`<span class="setlist__warm">${t('history.aquec')}</span>`) : ''}
+          <span class="setlist__val">${fmtSetWithUnit(s, unit)}</span>
+          ${s.warmup ? raw(`<span class="setlist__warm">${t('history.warmup')}</span>`) : ''}
           ${prIds.has(s.id) ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
           <span class="grow"></span>
-          ${(!s.aquecimento && !tempo) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(s), 0)}</span>`) : ''}
+          ${(!s.warmup && !timeBased) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(s), 0)}</span>`) : ''}
         </div>
       </li>
     `;
     });
-    const tempoExercicio = isTempoSet(doExercicio[0]);
+    const exerciseIsTimeBased = isDurationSet(exerciseSets[0]);
 
     root.append(node(html`
       <div class="card">
         <div class="exercise__head">
           ${ex ? raw(thumbHtml(ex)) : ''}
           <div class="grow">
-            <h2 class="exercise__name">${ex?.nome || t('history.exercicioRemovido')}</h2>
+            <h2 class="exercise__name">${ex?.name || t('history.removedExercise')}</h2>
             <div class="exercise__meta">
-              ${tn('common.serie', doExercicio.length)} ·
-              ${tempoExercicio ? fmtTempoSerie(totalDuracao(doExercicio)) : `${fmtNum(totalVolume(doExercicio), 0)} ${unidade}`}
+              ${tn('common.set', exerciseSets.length)} ·
+              ${exerciseIsTimeBased ? fmtTempoSerie(totalDuration(exerciseSets)) : `${fmtNum(totalVolume(exerciseSets), 0)} ${unit}`}
             </div>
           </div>
-          ${ex ? raw(`<a class="icon-btn" href="#/exercicios/${ex.id}" aria-label="${t('history.verEvolucao')}">${ICON.chevron}</a>`) : ''}
+          ${ex ? raw(`<a class="icon-btn" href="#/exercicios/${ex.id}" aria-label="${t('history.seeProgress')}">${ICON.chevron}</a>`) : ''}
         </div>
-        <ul class="list">${raw(linhas.join(''))}</ul>
+        <ul class="list">${raw(rows.join(''))}</ul>
       </div>
     `));
   }

@@ -12,7 +12,7 @@
  * GitHub Pages quanto na origem local do WebView nativo.
  */
 
-const VERSION = 'treino-v6';
+const VERSION = 'treino-v7';
 
 // Dois caches de proposito. O do app e versionado e descartavel: bumpar VERSION
 // e como se deploya. O de midia NAO e versionado — sao dezenas de MB de fotos
@@ -24,8 +24,8 @@ const APP_CACHE = VERSION;
 // js/media.js guarda uma copia desta constante para o lado da pagina (service
 // worker classico, sem `type: 'module'`, nao pode importar daqui) — as duas
 // strings precisam continuar iguais.
-const MEDIA_CACHE = 'treino-midia';
-const PERMANENTES = new Set([MEDIA_CACHE]);
+const MEDIA_CACHE = 'workout-media';
+const PERMANENT = new Set([MEDIA_CACHE]);
 
 // Em desenvolvimento o cache atrapalha mais do que ajuda: uma alteracao de CSS
 // so apareceria na segunda recarga. Em localhost o SW fica em modo transparente.
@@ -60,7 +60,7 @@ const ASSETS = [
   // O catalogo entra no precache para a busca funcionar offline. As 873
   // miniaturas NAO entram: 873 cache.add em paralelo num 3G de academia demora
   // minutos, e se o install falhar o app perde o offline inteiro. Elas sao
-  // baixadas depois, em lotes, a pedido da pagina (ver 'precache-midia').
+  // baixadas depois, em lotes, a pedido da pagina (ver 'precache-media').
   './data/catalogo.json',
   './data/instrucoes.json',
   './img/ex/manifest.json',
@@ -85,7 +85,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(keys
-      .filter((k) => k !== APP_CACHE && !PERMANENTES.has(k))
+      .filter((k) => k !== APP_CACHE && !PERMANENT.has(k))
       .map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
@@ -94,8 +94,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data === 'skip-waiting') { self.skipWaiting(); return; }
 
-  if (event.data?.tipo === 'precache-midia') {
-    event.waitUntil(precacheMidia(event.data.urls || [], event.source));
+  if (event.data?.type === 'precache-media') {
+    event.waitUntil(precacheMedia(event.data.urls || [], event.source));
   }
 });
 
@@ -107,23 +107,23 @@ self.addEventListener('message', (event) => {
  *
  *  Lotes de 24 porque centenas de requisicoes simultaneas travam a rede da
  *  pagina inteira no celular. */
-async function precacheMidia(urls, cliente) {
+async function precacheMedia(urls, client) {
   const cache = await caches.open(MEDIA_CACHE);
 
   // Uma chamada a keys() e um Set: 873 cache.match() seriam ordens de grandeza
   // mais caros.
-  const existentes = new Set((await cache.keys()).map((r) => new URL(r.url).pathname));
-  const faltando = urls.filter((u) => !existentes.has(new URL(u, self.location.href).pathname));
+  const existing = new Set((await cache.keys()).map((r) => new URL(r.url).pathname));
+  const missing = urls.filter((u) => !existing.has(new URL(u, self.location.href).pathname));
 
-  let feitos = 0;
-  for (let i = 0; i < faltando.length; i += 24) {
-    const lote = faltando.slice(i, i + 24);
-    await Promise.all(lote.map((u) => cache.add(u).catch(() => {})));
-    feitos += lote.length;
-    cliente?.postMessage({ tipo: 'precache-midia:progresso', feitos, total: faltando.length });
+  let done = 0;
+  for (let i = 0; i < missing.length; i += 24) {
+    const batch = missing.slice(i, i + 24);
+    await Promise.all(batch.map((u) => cache.add(u).catch(() => {})));
+    done += batch.length;
+    client?.postMessage({ type: 'precache-media:progress', done, total: missing.length });
   }
 
-  cliente?.postMessage({ tipo: 'precache-midia:fim', total: faltando.length });
+  client?.postMessage({ type: 'precache-media:done', total: missing.length });
 }
 
 self.addEventListener('fetch', (event) => {

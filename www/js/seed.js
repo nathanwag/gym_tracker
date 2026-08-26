@@ -1,6 +1,6 @@
 /* SEED_EXERCISES nao popula mais a biblioteca sozinho — ela comeca vazia, e o
  * usuario adiciona do catalogo de 873 (#/catalogo) ou a mao (botao "Novo").
- * O que sobra de uso real aqui e slugPorNome(): da figura a exercicios de quem
+ * O que sobra de uso real aqui e slugByName(): da figura a exercicios de quem
  * ja usava o app antes do `slug` existir, casando pelo nome.
  *
  * O `slug` liga o exercicio a suas figuras em www/img/ex/ e a entrada do
@@ -10,14 +10,13 @@
  * o icone do grupo no lugar da foto.
  *
  * Os slugs vem do free-exercise-db (dominio publico) e foram conferidos um a
- * um; `python tools/build_catalog.py --sugerir-seed` imprime candidatos para
- * quem for adicionar mais.
+ * um.
  */
 
-import { normalizarNome } from './text.js';
-import { idioma } from './i18n.js';
+import { normalizeName } from './text.js';
+import { language } from './i18n.js';
 
-export const GRUPOS = [
+export const MUSCLE_GROUPS = [
   'Peito',
   'Costas',
   'Lombar',
@@ -39,16 +38,16 @@ export const GRUPOS = [
 
 // Cardio e alongamento nao usam peso/repeticoes: a serie e registrada como
 // duracao (ver session.js/models.js). Esses dois grupos sao um conjunto
-// fechado (mesmo tratamento especial que ja recebem em build_catalog.py e
-// no ICON_GRUPO abaixo), entao um helper puro basta — sem campo novo em
+// fechado (mesmo tratamento especial que ja recebem no catalogo e no
+// ICON_GROUPS abaixo), entao um helper puro basta — sem campo novo em
 // `exercises`.
-export const GRUPOS_TEMPO = ['Cardio', 'Alongamento'];
-export const usaTempo = (grupoMuscular) => GRUPOS_TEMPO.includes(grupoMuscular);
+export const DURATION_GROUPS = ['Cardio', 'Alongamento'];
+export const usesDuration = (muscleGroup) => DURATION_GROUPS.includes(muscleGroup);
 
 // Nome de exibicao em ingles pros 17 grupos. So pra exibicao — o valor gravado
-// no IndexedDB, as chaves de ICON_GRUPO e o campo `grupo` do catalogo
-// continuam sempre em portugues (ver grupoLabel() abaixo).
-const GRUPO_EN = {
+// no IndexedDB, as chaves de ICON_GROUPS e o campo `grupo` do catalogo
+// continuam sempre em portugues (ver groupLabel() abaixo).
+const GROUP_LABELS_EN = {
   'Peito': 'Chest',
   'Costas': 'Back',
   'Lombar': 'Lower back',
@@ -68,147 +67,148 @@ const GRUPO_EN = {
   'Outros': 'Other',
 };
 
-/** Nome do grupo pra exibir na tela, no idioma ativo. `grupo` continua sendo
+/** Nome do grupo pra exibir na tela, no idioma ativo. `group` continua sendo
  *  a chave canonica (portugues) usada para gravar/comparar — so o texto
- *  mostrado muda. Use isto em todo lugar que hoje imprime `${grupo}` como
- *  texto; em `<select>`, o `value` do `<option>` continua o `grupo` original,
+ *  mostrado muda. Use isto em todo lugar que hoje imprime `${group}` como
+ *  texto; em `<select>`, o `value` do `<option>` continua o `group` original,
  *  so o texto visivel passa por aqui. */
-export function grupoLabel(grupo) {
-  return idioma() === 'en' ? (GRUPO_EN[grupo] || grupo) : grupo;
+export function groupLabel(group) {
+  return language() === 'en' ? (GROUP_LABELS_EN[group] || group) : group;
 }
 
 export const SEED_EXERCISES = {
   'Peito': [
-    { nome: 'Supino reto com barra', slug: 'barbell-bench-press-medium-grip' },
-    { nome: 'Supino reto com halteres', slug: 'dumbbell-bench-press' },
-    { nome: 'Supino inclinado com barra', slug: 'barbell-incline-bench-press-medium-grip' },
-    { nome: 'Supino inclinado com halteres', slug: 'incline-dumbbell-press' },
-    { nome: 'Supino declinado', slug: 'decline-barbell-bench-press' },
-    { nome: 'Supino na máquina', slug: 'machine-bench-press' },
-    { nome: 'Crucifixo com halteres', slug: 'dumbbell-flyes' },
-    { nome: 'Crucifixo na máquina (voador)', slug: 'butterfly' },
-    { nome: 'Crossover na polia', slug: 'cable-crossover' },
-    { nome: 'Mergulho nas paralelas', slug: 'dips-chest-version' },
-    { nome: 'Flexão de braço', slug: 'pushups' },
+    { name: 'Supino reto com barra', slug: 'barbell-bench-press-medium-grip' },
+    { name: 'Supino reto com halteres', slug: 'dumbbell-bench-press' },
+    { name: 'Supino inclinado com barra', slug: 'barbell-incline-bench-press-medium-grip' },
+    { name: 'Supino inclinado com halteres', slug: 'incline-dumbbell-press' },
+    { name: 'Supino declinado', slug: 'decline-barbell-bench-press' },
+    { name: 'Supino na máquina', slug: 'machine-bench-press' },
+    { name: 'Crucifixo com halteres', slug: 'dumbbell-flyes' },
+    { name: 'Crucifixo na máquina (voador)', slug: 'butterfly' },
+    { name: 'Crossover na polia', slug: 'cable-crossover' },
+    { name: 'Mergulho nas paralelas', slug: 'dips-chest-version' },
+    { name: 'Flexão de braço', slug: 'pushups' },
   ],
   'Costas': [
-    { nome: 'Barra fixa', slug: 'pullups' },
-    { nome: 'Puxada frontal (pulley)', slug: 'wide-grip-lat-pulldown' },
-    { nome: 'Puxada supinada', slug: 'underhand-cable-pulldowns' },
-    { nome: 'Remada curvada com barra', slug: 'bent-over-barbell-row' },
-    { nome: 'Remada unilateral com halter', slug: 'one-arm-dumbbell-row' },
-    { nome: 'Remada baixa na polia', slug: 'seated-cable-rows' },
-    { nome: 'Remada cavalinho', slug: 't-bar-row-with-handle' },
-    { nome: 'Remada na máquina', slug: 'leverage-iso-row' },
-    { nome: 'Pulldown com braços estendidos', slug: 'straight-arm-pulldown' },
+    { name: 'Barra fixa', slug: 'pullups' },
+    { name: 'Puxada frontal (pulley)', slug: 'wide-grip-lat-pulldown' },
+    { name: 'Puxada supinada', slug: 'underhand-cable-pulldowns' },
+    { name: 'Remada curvada com barra', slug: 'bent-over-barbell-row' },
+    { name: 'Remada unilateral com halter', slug: 'one-arm-dumbbell-row' },
+    { name: 'Remada baixa na polia', slug: 'seated-cable-rows' },
+    { name: 'Remada cavalinho', slug: 't-bar-row-with-handle' },
+    { name: 'Remada na máquina', slug: 'leverage-iso-row' },
+    { name: 'Pulldown com braços estendidos', slug: 'straight-arm-pulldown' },
   ],
   'Lombar': [
-    { nome: 'Levantamento terra', slug: 'barbell-deadlift' },
+    { name: 'Levantamento terra', slug: 'barbell-deadlift' },
   ],
   'Deltoides': [
-    { nome: 'Desenvolvimento com barra', slug: 'standing-military-press' },
-    { nome: 'Desenvolvimento com halteres', slug: 'seated-dumbbell-press' },
-    { nome: 'Desenvolvimento na máquina', slug: 'machine-shoulder-military-press' },
-    { nome: 'Desenvolvimento Arnold', slug: 'arnold-dumbbell-press' },
-    { nome: 'Elevação lateral', slug: 'side-lateral-raise' },
-    { nome: 'Elevação frontal', slug: 'front-dumbbell-raise' },
-    { nome: 'Crucifixo inverso (voador invertido)', slug: 'reverse-machine-flyes' },
-    { nome: 'Remada alta', slug: 'upright-barbell-row' },
+    { name: 'Desenvolvimento com barra', slug: 'standing-military-press' },
+    { name: 'Desenvolvimento com halteres', slug: 'seated-dumbbell-press' },
+    { name: 'Desenvolvimento na máquina', slug: 'machine-shoulder-military-press' },
+    { name: 'Desenvolvimento Arnold', slug: 'arnold-dumbbell-press' },
+    { name: 'Elevação lateral', slug: 'side-lateral-raise' },
+    { name: 'Elevação frontal', slug: 'front-dumbbell-raise' },
+    { name: 'Crucifixo inverso (voador invertido)', slug: 'reverse-machine-flyes' },
+    { name: 'Remada alta', slug: 'upright-barbell-row' },
   ],
   'Trapézio': [
-    { nome: 'Encolhimento de ombros', slug: 'barbell-shrug' },
+    { name: 'Encolhimento de ombros', slug: 'barbell-shrug' },
   ],
   'Bíceps': [
-    { nome: 'Rosca direta com barra', slug: 'barbell-curl' },
-    { nome: 'Rosca direta com halteres', slug: 'dumbbell-bicep-curl' },
-    { nome: 'Rosca alternada', slug: 'dumbbell-alternate-bicep-curl' },
-    { nome: 'Rosca martelo', slug: 'hammer-curls' },
-    { nome: 'Rosca scott', slug: 'preacher-curl' },
-    { nome: 'Rosca concentrada', slug: 'concentration-curls' },
-    { nome: 'Rosca na polia', slug: 'standing-biceps-cable-curl' },
-    { nome: 'Rosca inversa', slug: 'reverse-barbell-curl' },
+    { name: 'Rosca direta com barra', slug: 'barbell-curl' },
+    { name: 'Rosca direta com halteres', slug: 'dumbbell-bicep-curl' },
+    { name: 'Rosca alternada', slug: 'dumbbell-alternate-bicep-curl' },
+    { name: 'Rosca martelo', slug: 'hammer-curls' },
+    { name: 'Rosca scott', slug: 'preacher-curl' },
+    { name: 'Rosca concentrada', slug: 'concentration-curls' },
+    { name: 'Rosca na polia', slug: 'standing-biceps-cable-curl' },
+    { name: 'Rosca inversa', slug: 'reverse-barbell-curl' },
   ],
   'Tríceps': [
-    { nome: 'Tríceps na polia (corda)', slug: 'triceps-pushdown-rope-attachment' },
-    { nome: 'Tríceps na polia (barra)', slug: 'triceps-pushdown' },
-    { nome: 'Tríceps testa', slug: 'lying-close-grip-barbell-triceps-extension-behind-the-head' },
-    { nome: 'Tríceps francês', slug: 'standing-overhead-barbell-triceps-extension' },
-    { nome: 'Tríceps coice', slug: 'tricep-dumbbell-kickback' },
-    { nome: 'Supino fechado', slug: 'close-grip-barbell-bench-press' },
-    { nome: 'Mergulho no banco', slug: 'bench-dips' },
+    { name: 'Tríceps na polia (corda)', slug: 'triceps-pushdown-rope-attachment' },
+    { name: 'Tríceps na polia (barra)', slug: 'triceps-pushdown' },
+    { name: 'Tríceps testa', slug: 'lying-close-grip-barbell-triceps-extension-behind-the-head' },
+    { name: 'Tríceps francês', slug: 'standing-overhead-barbell-triceps-extension' },
+    { name: 'Tríceps coice', slug: 'tricep-dumbbell-kickback' },
+    { name: 'Supino fechado', slug: 'close-grip-barbell-bench-press' },
+    { name: 'Mergulho no banco', slug: 'bench-dips' },
   ],
   'Quadríceps': [
-    { nome: 'Agachamento livre', slug: 'barbell-squat' },
-    { nome: 'Agachamento no Smith', slug: 'smith-machine-squat' },
-    { nome: 'Agachamento frontal', slug: 'front-barbell-squat' },
-    { nome: 'Leg press', slug: 'leg-press' },
-    { nome: 'Hack machine', slug: 'hack-squat' },
-    { nome: 'Cadeira extensora', slug: 'leg-extensions' },
-    { nome: 'Afundo (passada)', slug: 'dumbbell-lunges' },
-    { nome: 'Agachamento búlgaro', slug: 'split-squat-with-dumbbells' },
+    { name: 'Agachamento livre', slug: 'barbell-squat' },
+    { name: 'Agachamento no Smith', slug: 'smith-machine-squat' },
+    { name: 'Agachamento frontal', slug: 'front-barbell-squat' },
+    { name: 'Leg press', slug: 'leg-press' },
+    { name: 'Hack machine', slug: 'hack-squat' },
+    { name: 'Cadeira extensora', slug: 'leg-extensions' },
+    { name: 'Afundo (passada)', slug: 'dumbbell-lunges' },
+    { name: 'Agachamento búlgaro', slug: 'split-squat-with-dumbbells' },
   ],
   'Posterior': [
-    { nome: 'Mesa flexora', slug: 'lying-leg-curls' },
-    { nome: 'Cadeira flexora', slug: 'seated-leg-curl' },
-    { nome: 'Stiff', slug: 'stiff-legged-barbell-deadlift' },
-    { nome: 'Levantamento terra romeno', slug: 'romanian-deadlift' },
+    { name: 'Mesa flexora', slug: 'lying-leg-curls' },
+    { name: 'Cadeira flexora', slug: 'seated-leg-curl' },
+    { name: 'Stiff', slug: 'stiff-legged-barbell-deadlift' },
+    { name: 'Levantamento terra romeno', slug: 'romanian-deadlift' },
   ],
   'Glúteos': [
-    { nome: 'Elevação pélvica (hip thrust)', slug: 'barbell-hip-thrust' },
-    { nome: 'Coice na polia', slug: 'one-legged-cable-kickback' },
-    { nome: 'Glúteo na máquina', slug: 'glute-kickback' },
-    { nome: 'Cadeira adutora', slug: 'thigh-adductor' },
-    { nome: 'Cadeira abdutora', slug: 'thigh-abductor' },
+    { name: 'Elevação pélvica (hip thrust)', slug: 'barbell-hip-thrust' },
+    { name: 'Coice na polia', slug: 'one-legged-cable-kickback' },
+    { name: 'Glúteo na máquina', slug: 'glute-kickback' },
+    { name: 'Cadeira adutora', slug: 'thigh-adductor' },
+    { name: 'Cadeira abdutora', slug: 'thigh-abductor' },
   ],
   'Panturrilha': [
-    { nome: 'Panturrilha em pé', slug: 'standing-calf-raises' },
-    { nome: 'Panturrilha sentado', slug: 'seated-calf-raise' },
-    { nome: 'Panturrilha no leg press', slug: 'calf-press-on-the-leg-press-machine' },
+    { name: 'Panturrilha em pé', slug: 'standing-calf-raises' },
+    { name: 'Panturrilha sentado', slug: 'seated-calf-raise' },
+    { name: 'Panturrilha no leg press', slug: 'calf-press-on-the-leg-press-machine' },
   ],
   'Abdômen': [
-    { nome: 'Abdominal supra', slug: 'crunches' },
-    { nome: 'Abdominal infra', slug: 'reverse-crunch' },
-    { nome: 'Abdominal na polia', slug: 'cable-crunch' },
-    { nome: 'Abdominal na máquina', slug: 'ab-crunch-machine' },
-    { nome: 'Elevação de pernas', slug: 'hanging-leg-raise' },
-    { nome: 'Prancha', slug: 'plank' },
+    { name: 'Abdominal supra', slug: 'crunches' },
+    { name: 'Abdominal infra', slug: 'reverse-crunch' },
+    { name: 'Abdominal na polia', slug: 'cable-crunch' },
+    { name: 'Abdominal na máquina', slug: 'ab-crunch-machine' },
+    { name: 'Elevação de pernas', slug: 'hanging-leg-raise' },
+    { name: 'Prancha', slug: 'plank' },
   ],
   'Antebraço': [
-    { nome: 'Rosca de punho', slug: 'seated-palm-up-barbell-wrist-curl' },
-    { nome: 'Rosca de punho inversa', slug: 'seated-palms-down-barbell-wrist-curl' },
-    { nome: 'Farmer walk', slug: 'farmers-walk' },
+    { name: 'Rosca de punho', slug: 'seated-palm-up-barbell-wrist-curl' },
+    { name: 'Rosca de punho inversa', slug: 'seated-palms-down-barbell-wrist-curl' },
+    { name: 'Farmer walk', slug: 'farmers-walk' },
   ],
 };
 
-/** Agrupa `itens` pela chave que `pegarGrupo` devolve, na ordem anatomica de
- *  GRUPOS; um grupo que nao esteja em GRUPOS (dado antigo, borda) sai no fim
- *  em vez de sumir. Grupos sem nenhum item nao aparecem no resultado. */
-export function agruparPorGrupo(itens, pegarGrupo) {
-  const porGrupo = new Map();
-  for (const item of itens) {
-    const grupo = pegarGrupo(item);
-    if (!porGrupo.has(grupo)) porGrupo.set(grupo, []);
-    porGrupo.get(grupo).push(item);
+/** Agrupa `items` pela chave que `getGroup` devolve, na ordem anatomica de
+ *  MUSCLE_GROUPS; um grupo que nao esteja em MUSCLE_GROUPS (dado antigo,
+ *  borda) sai no fim em vez de sumir. Grupos sem nenhum item nao aparecem no
+ *  resultado. */
+export function groupBy(items, getGroup) {
+  const byGroup = new Map();
+  for (const item of items) {
+    const group = getGroup(item);
+    if (!byGroup.has(group)) byGroup.set(group, []);
+    byGroup.get(group).push(item);
   }
-  const ordem = [...GRUPOS, ...[...porGrupo.keys()].filter((g) => !GRUPOS.includes(g))];
-  return ordem
-    .map((grupo) => ({ grupo, itens: porGrupo.get(grupo) }))
-    .filter((g) => g.itens?.length);
+  const order = [...MUSCLE_GROUPS, ...[...byGroup.keys()].filter((g) => !MUSCLE_GROUPS.includes(g))];
+  return order
+    .map((group) => ({ group, items: byGroup.get(group) }))
+    .filter((g) => g.items?.length);
 }
 
 /** Nome normalizado -> slug, para dar figura a quem foi criado antes do catalogo.
  *  Memoizado: a migracao do banco chama isto de dentro de uma transacao, onde
  *  nao pode haver await nem trabalho pesado. */
-let mapaNomeSlug = null;
+let nameToSlugMap = null;
 
-export function slugPorNome() {
-  if (!mapaNomeSlug) {
-    mapaNomeSlug = new Map();
-    for (const itens of Object.values(SEED_EXERCISES)) {
-      for (const { nome, slug } of itens) {
-        if (slug) mapaNomeSlug.set(normalizarNome(nome), slug);
+export function slugByName() {
+  if (!nameToSlugMap) {
+    nameToSlugMap = new Map();
+    for (const items of Object.values(SEED_EXERCISES)) {
+      for (const { name, slug } of items) {
+        if (slug) nameToSlugMap.set(normalizeName(name), slug);
       }
     }
   }
-  return mapaNomeSlug;
+  return nameToSlugMap;
 }

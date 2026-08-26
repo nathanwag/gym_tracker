@@ -4,15 +4,15 @@
  * Sem busca, as secoes por grupo vem fechadas; com busca, o corte e em 80.
  */
 
-import * as catalogo from '../catalog.js';
+import * as catalog from '../catalog.js';
 import * as db from '../db.js';
-import { GRUPOS, grupoLabel } from '../seed.js';
-import { thumbHtml, criarAnimacao, prefetchFotos } from '../media.js';
-import { t, idioma } from '../i18n.js';
+import { MUSCLE_GROUPS, groupLabel } from '../seed.js';
+import { thumbHtml, createAnimation, prefetchPhotos } from '../media.js';
+import { t, language } from '../i18n.js';
 import {
-  ICON, html, node, raw, setTop, toast, refresh, listaAgrupada, listaEmCard,
+  ICON, html, node, raw, setTop, toast, refresh, groupedList, listInCard,
 } from '../ui.js';
-import { normalizarNome as normalizar } from '../text.js';
+import { normalizeName as normalize } from '../text.js';
 
 /* ==========================================================================
    Lista
@@ -22,78 +22,78 @@ import { normalizarNome as normalizar } from '../text.js';
 // sessao — sem isso, voltar de um exercicio sempre reabria a lista do zero
 // (grupo fechado, busca vazia). Escopo de modulo, nao da funcao: sobrevive a
 // renderList() rodar de novo a cada navegacao pro #/catalogo.
-const abertos = new Set();
-let busca = '';
+const openGroups = new Set();
+let search = '';
 
 export async function renderList(view) {
-  setTop({ title: t('catalog.titulo'), back: '#/exercicios' });
+  setTop({ title: t('catalog.title'), back: '#/exercicios' });
 
   const root = node(html`
     <div class="stack">
-      <input class="input" data-busca type="search" placeholder="${t('catalog.buscarPlaceholder')}"
-             autocomplete="off" autocapitalize="none" autocorrect="off" value="${busca}">
-      <div data-lista><div class="card card__pad muted">${t('catalog.carregando')}</div></div>
+      <input class="input" data-search type="search" placeholder="${t('catalog.searchPlaceholder')}"
+             autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
+      <div data-list><div class="card card__pad muted">${t('catalog.loading')}</div></div>
     </div>
   `);
   view.append(root);
 
-  const lista = root.querySelector('[data-lista]');
+  const list = root.querySelector('[data-list]');
 
-  let itens;
+  let items;
   try {
-    itens = await catalogo.carregar();
+    items = await catalog.load();
   } catch {
-    lista.innerHTML = '';
-    lista.append(node(html`
+    list.innerHTML = '';
+    list.append(node(html`
       <div class="card"><div class="empty">
         ${raw(ICON.dumbbell)}
-        <p>${t('catalog.erroCarregar')}</p>
+        <p>${t('catalog.loadError')}</p>
       </div></div>
     `));
     return;
   }
 
   // Quem ja esta na biblioteca aparece marcado, para nao adicionar duas vezes.
-  const meus = new Set((await db.listExercises()).map((e) => e.slug).filter(Boolean));
+  const mine = new Set((await db.listExercises()).map((e) => e.slug).filter(Boolean));
 
-  const linha = (item) => node(html`
+  const row = (item) => node(html`
     <li class="list__item">
       <a class="list__link" href="#/catalogo/${item.slug}">
         ${raw(thumbHtml(item))}
         <div class="grow">
-          <div class="cat__nome">
-            ${catalogo.nomeExibicao(item)}
+          <div class="catalog__name">
+            ${catalog.displayName(item)}
           </div>
           <div class="muted small">${item.equipamento}${item.nivel ? ` · ${item.nivel}` : ''}</div>
         </div>
-        ${meus.has(item.slug)
-          ? raw(`<span class="cat__tem" title="${t('catalog.jaNaBiblioteca')}"
-                       aria-label="${t('catalog.jaNaBiblioteca')}">${ICON.check}</span>`)
+        ${mine.has(item.slug)
+          ? raw(`<span class="catalog__owned" title="${t('catalog.alreadyInLibrary')}"
+                       aria-label="${t('catalog.alreadyInLibrary')}">${ICON.check}</span>`)
           : raw(`<span class="list__chev">${ICON.chevron}</span>`)}
       </a>
     </li>
   `);
 
-  const desenhar = () => {
-    lista.innerHTML = '';
+  const draw = () => {
+    list.innerHTML = '';
 
-    if (busca.trim()) {
-      const q = busca.trim();
-      const achados = itens.filter((i) => i.chaveBusca.includes(normalizar(q)));
-      if (!achados.length) {
-        lista.append(node(html`
+    if (search.trim()) {
+      const q = search.trim();
+      const matches = items.filter((i) => i.searchKey.includes(normalize(q)));
+      if (!matches.length) {
+        list.append(node(html`
           <div class="card"><div class="empty">
-            ${raw(ICON.dumbbell)}<p>${t('catalog.nenhumEncontrado', { q })}</p>
+            ${raw(ICON.dumbbell)}<p>${t('catalog.noneFound', { q })}</p>
           </div></div>
         `));
         return;
       }
-      const corte = achados.slice(0, 80);
-      lista.append(listaEmCard(corte.map(linha)));
-      if (achados.length > corte.length) {
-        lista.append(node(html`
+      const shown = matches.slice(0, 80);
+      list.append(listInCard(shown.map(row)));
+      if (matches.length > shown.length) {
+        list.append(node(html`
           <p class="muted small" style="text-align:center">
-            ${t('catalog.mostrandoDe', { mostrados: corte.length, total: achados.length })}
+            ${t('catalog.showingOf', { shown: shown.length, total: matches.length })}
           </p>
         `));
       }
@@ -102,17 +102,17 @@ export async function renderList(view) {
 
     // Sem busca: por grupo, colapsavel — abrir 873 linhas de uma vez trava a
     // rolagem no celular.
-    lista.append(listaAgrupada({
-      itens, pegarGrupo: (item) => item.grupo, abertos, renderItem: linha,
+    list.append(groupedList({
+      items, getGroup: (item) => item.grupo, openGroups, renderItem: row,
     }));
   };
 
-  root.querySelector('[data-busca]').addEventListener('input', (e) => {
-    busca = e.target.value;
-    desenhar();
+  root.querySelector('[data-search]').addEventListener('input', (e) => {
+    search = e.target.value;
+    draw();
   });
 
-  desenhar();
+  draw();
 }
 
 /* ==========================================================================
@@ -120,85 +120,85 @@ export async function renderList(view) {
    ========================================================================== */
 
 export async function renderDetail(view, slug) {
-  const item = await catalogo.get(slug);
+  const item = await catalog.get(slug);
   if (!item) {
-    setTop({ title: t('catalog.titulo'), back: '#/catalogo' });
-    view.append(node(`<div class="card card__pad">${t('catalog.naoEncontrado')}</div>`));
+    setTop({ title: t('catalog.title'), back: '#/catalogo' });
+    view.append(node(`<div class="card card__pad">${t('catalog.notFound')}</div>`));
     return;
   }
 
-  setTop({ title: catalogo.nomeExibicao(item), back: '#/catalogo' });
+  setTop({ title: catalog.displayName(item), back: '#/catalogo' });
 
-  const meus = await db.listExercises();
-  const jaTenho = meus.find((e) => e.slug === slug) || null;
+  const mine = await db.listExercises();
+  const alreadyHave = mine.find((e) => e.slug === slug) || null;
 
   const root = node('<div class="stack"></div>');
 
   // A animacao e o "videozinho": as duas fotos alternando mostram o movimento.
-  root.append(criarAnimacao(slug, { nome: catalogo.nomeExibicao(item) }));
+  root.append(createAnimation(slug, { name: catalog.displayName(item) }));
 
   root.append(node(html`
     <div class="card card__pad stack--sm">
       <div>
-        <h2 class="cat__titulo">${catalogo.nomeExibicao(item)}</h2>
+        <h2 class="catalog__title">${catalog.displayName(item)}</h2>
         <!-- O nome em ingles fica sempre visivel quando o idioma e portugues:
              e a fonte original, e uma traducao ruim nunca deve ser a unica
-             referencia. Com idioma ingles, nomeExibicao() ja mostra o ingles
+             referencia. Com idioma ingles, displayName() ja mostra o ingles
              em cima, entao a segunda linha mostra o nome em portugues. -->
-        <p class="muted small">${idioma() === 'en' ? item.nome : item.nomeEn}</p>
+        <p class="muted small">${language() === 'en' ? item.nome : item.nomeEn}</p>
       </div>
       <div class="chips">
-        <span class="chip">${grupoLabel(item.grupo)}</span>
+        <span class="chip">${groupLabel(item.grupo)}</span>
         <span class="chip">${item.equipamento}</span>
         ${item.nivel ? raw(`<span class="chip">${item.nivel}</span>`) : ''}
         ${item.categoria ? raw(`<span class="chip">${item.categoria}</span>`) : ''}
       </div>
       ${item.secundarios.length
-        ? raw(`<p class="muted small">${t('catalog.tambemTrabalha', { grupos: item.secundarios.map(grupoLabel).join(', ') })}</p>`)
+        ? raw(`<p class="muted small">${t('catalog.alsoWorks', { groups: item.secundarios.map(groupLabel).join(', ') })}</p>`)
         : ''}
     </div>
   `));
 
   // Acao principal
-  if (jaTenho) {
+  if (alreadyHave) {
     root.append(node(html`
-      <a class="btn btn--block btn--ghost" href="#/exercicios/${jaTenho.id}">
-        ${raw(ICON.check)} ${t('catalog.jaNaBibliotecaVerEvolucao')}
+      <a class="btn btn--block btn--ghost" href="#/exercicios/${alreadyHave.id}">
+        ${raw(ICON.check)} ${t('catalog.alreadyInLibrarySeeProgress')}
       </a>
     `));
   } else {
-    const acao = node(html`
+    const action = node(html`
       <div class="card card__pad stack--sm">
         <label class="field">
-          <span class="field__label">${t('catalog.grupoMuscular')}</span>
-          <select class="select" data-grupo>
-            ${raw(GRUPOS.map((g) => `<option value="${g}"${g === item.grupo ? ' selected' : ''}>${grupoLabel(g)}</option>`).join(''))}
+          <span class="field__label">${t('catalog.muscleGroup')}</span>
+          <select class="select" data-group>
+            ${raw(MUSCLE_GROUPS.map((g) => `<option value="${g}"${g === item.grupo ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
           </select>
         </label>
-        <button class="btn btn--block" data-adicionar>${raw(ICON.plus)} ${t('catalog.adicionarAosMeus')}</button>
+        <button class="btn btn--block" data-add>${raw(ICON.plus)} ${t('catalog.addToMine')}</button>
       </div>
     `);
 
-    acao.querySelector('[data-adicionar]').onclick = async () => {
-      const grupoMuscular = acao.querySelector('[data-grupo]').value;
-      const criado = await db.addExercicioDoCatalogo(item, grupoMuscular);
+    action.querySelector('[data-add]').onclick = async () => {
+      const muscleGroup = action.querySelector('[data-group]').value;
+      const created = await db.addExerciseFromCatalog(item, muscleGroup);
       // Baixa as fotos grandes agora, com a rede que houver: na academia pode
       // nao haver.
-      prefetchFotos(item.slug);
-      toast(criado.jaExistia ? t('catalog.toastJaEstava') : t('catalog.toastAdicionado', { nome: catalogo.nomeExibicao(item) }));
+      prefetchPhotos(item.slug);
+      toast(created.alreadyExisted ? t('catalog.toastAlreadyHad') : t('catalog.toastAdded', { name: catalog.displayName(item) }));
       refresh();
     };
-    root.append(acao);
+    root.append(action);
   }
 
   // Passo a passo
-  const instrucoes = await catalogo.instrucoes(slug).catch(() => null);
-  const passos = instrucoes?.[idioma()];
-  if (passos?.length) {
+  const instructions = await catalog.instructions(slug).catch(() => null);
+  const steps = instructions?.[language()];
+  if (steps?.length) {
     root.append(node(html`
       <div class="card card__pad">
-        <h2 class="section-title" style="margin-top:0">${t('catalog.comoFazer')}</h2>
-        <ol class="passos">${raw(passos.map((p) => html`<li>${p}</li>`).join(''))}</ol>
+        <h2 class="section-title" style="margin-top:0">${t('catalog.howTo')}</h2>
+        <ol class="steps">${raw(steps.map((p) => html`<li>${p}</li>`).join(''))}</ol>
       </div>
     `));
   }

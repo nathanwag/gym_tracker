@@ -12,72 +12,72 @@
  * db.js — o app tem um unico cache mutavel, e nao dois.
  */
 
-import { normalizarNome } from './text.js';
-import { idioma } from './i18n.js';
+import { normalizeName } from './text.js';
+import { language } from './i18n.js';
 
 /** Nome de exibicao de um item do catalogo, no idioma ativo. So pra itens do
  *  catalogo (que tem os dois campos) — nao se aplica ao nome de um exercicio
- *  pessoal (db.js), que so tem `nome` e fica como o usuario digitou. */
-export function nomeExibicao(item) {
-  return idioma() === 'en' ? item.nomeEn : item.nome;
+ *  pessoal (db.js), que so tem `name` e fica como o usuario digitou. */
+export function displayName(item) {
+  return language() === 'en' ? item.nomeEn : item.nome;
 }
 
-let catalogoPromise = null;
-let instrucoesPromise = null;
-let porSlug = null;
+let catalogPromise = null;
+let instructionsPromise = null;
+let bySlug = null;
 
-async function carregarJson(caminho) {
-  const resposta = await fetch(caminho);
-  if (!resposta.ok) throw new Error(`Falha ao carregar ${caminho}`);
-  return resposta.json();
+async function loadJson(path) {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`Falha ao carregar ${path}`);
+  return response.json();
 }
 
 /** Lista completa, ordenada por nome. Carrega uma vez e reusa. */
-export function carregar() {
-  if (!catalogoPromise) {
-    catalogoPromise = carregarJson('./data/catalogo.json').then((itens) => {
-      for (const item of itens) {
+export function load() {
+  if (!catalogPromise) {
+    catalogPromise = loadJson('./data/catalogo.json').then((items) => {
+      for (const item of items) {
         // Chave de busca pre-computada: filtrar 873 strings a cada tecla custa
         // menos de 1ms, mas normalizar as 873 a cada tecla nao.
-        item.chaveBusca = normalizarNome(
+        item.searchKey = normalizeName(
           `${item.nome} ${item.nomeEn} ${item.equipamento} ${item.grupo}`,
         );
       }
-      itens.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-      porSlug = new Map(itens.map((i) => [i.slug, i]));
-      return itens;
-    }).catch((erro) => {
+      items.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      bySlug = new Map(items.map((i) => [i.slug, i]));
+      return items;
+    }).catch((error) => {
       // Sem isso um erro de rede envenenaria a promessa para sempre.
-      catalogoPromise = null;
-      throw erro;
+      catalogPromise = null;
+      throw error;
     });
   }
-  return catalogoPromise;
+  return catalogPromise;
 }
 
-export async function buscar(termo, { limite = 80 } = {}) {
-  const itens = await carregar();
-  const q = normalizarNome(termo || '');
-  if (!q) return { itens: itens.slice(0, limite), total: itens.length };
+export async function search(term, { limit = 80 } = {}) {
+  const items = await load();
+  const q = normalizeName(term || '');
+  if (!q) return { items: items.slice(0, limit), total: items.length };
 
-  const achados = itens.filter((i) => i.chaveBusca.includes(q));
-  return { itens: achados.slice(0, limite), total: achados.length };
+  const matches = items.filter((i) => i.searchKey.includes(q));
+  return { items: matches.slice(0, limit), total: matches.length };
 }
 
 export async function get(slug) {
-  await carregar();
-  return porSlug.get(slug) || null;
+  await load();
+  return bySlug.get(slug) || null;
 }
 
 /** Passo a passo. Fica em arquivo separado porque so o detalhe usa, e junta-lo
  *  ao catalogo faria toda busca pagar 600 KB a mais. */
-export async function instrucoes(slug) {
-  if (!instrucoesPromise) {
-    instrucoesPromise = carregarJson('./data/instrucoes.json').catch((erro) => {
-      instrucoesPromise = null;
-      throw erro;
+export async function instructions(slug) {
+  if (!instructionsPromise) {
+    instructionsPromise = loadJson('./data/instrucoes.json').catch((error) => {
+      instructionsPromise = null;
+      throw error;
     });
   }
-  const todos = await instrucoesPromise;
-  return todos[slug] || null;
+  const all = await instructionsPromise;
+  return all[slug] || null;
 }
