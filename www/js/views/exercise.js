@@ -3,16 +3,16 @@
 
 import * as db from '../db.js';
 import {
-  bests, prSetIds, sessionSummaries, bestSessionVolume, progressPct,
+  bests, prSetIds, sessionSummaries, bestSessionVolume, bestSessionDuracao, isTempoSet, progressPct,
 } from '../models.js';
-import { GRUPOS, agruparPorGrupo, grupoLabel } from '../seed.js';
+import { GRUPOS, agruparPorGrupo, grupoLabel, usaTempo } from '../seed.js';
 import { lineChart } from '../charts.js';
 import * as catalogo from '../catalog.js';
 import { thumbHtml, criarAnimacao } from '../media.js';
 import { t, tn, idioma } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, ICON_GRUPO, toast, openSheet, closeSheet, confirmSheet,
-  fmtNum, fmtRelativeDay, fmtDate, semAcento, refresh, wireSegmented,
+  fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, semAcento, refresh, wireSegmented,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -128,7 +128,13 @@ export async function renderList(view) {
 // `curto` vai no botão (senão quebra em duas linhas na tela do celular) e
 // `rotulo` na frase de variação, onde cabe o nome inteiro. Funcao, nao const
 // de modulo: precisa reavaliar t() a cada render (idioma pode mudar em runtime).
-function metricas() {
+function metricas(tempo) {
+  if (tempo) {
+    return {
+      duracao: { curto: t('exercise.metrica.duracaoCurto'), rotulo: t('exercise.metrica.duracaoRotulo'), campo: 'melhorDuracao', decimais: 1 },
+      tempoTotal: { curto: t('exercise.metrica.tempoTotalCurto'), rotulo: t('exercise.metrica.tempoTotalRotulo'), campo: 'duracaoTotal', decimais: 1 },
+    };
+  }
   return {
     e1rm: { curto: t('exercise.metrica.e1rmCurto'), rotulo: t('exercise.metrica.e1rmRotulo'), campo: 'melhor1rm', decimais: 0 },
     peso: { curto: t('exercise.metrica.pesoCurto'), rotulo: t('exercise.metrica.pesoRotulo'), campo: 'maxPeso', decimais: 1 },
@@ -150,10 +156,12 @@ export async function renderDetail(view, exId) {
   }
 
   const unidade = db.settings().unidade;
+  const tempo = usaTempo(exercicio.grupoMuscular);
   const treinosPorId = new Map(treinos.map((w) => [w.id, w]));
   const resumos = sessionSummaries(series, treinosPorId);
   const recordes = bests(series);
   const melhorVolume = bestSessionVolume(resumos);
+  const melhorTempoTotal = bestSessionDuracao(resumos);
   const prIds = prSetIds(series);
 
   setTop({
@@ -169,7 +177,20 @@ export async function renderDetail(view, exId) {
   // abre esta tela no meio da serie quer conferir a execucao primeiro.
   if (exercicio.slug) root.append(criarAnimacao(exercicio.slug, { nome: exercicio.nome }));
 
-  root.append(node(html`
+  root.append(node(tempo ? html`
+    <div class="card">
+      <div class="stats">
+        <div class="stat stat--pr">
+          <div class="stat__val">${recordes.duracao ? fmtTempoSerie(recordes.duracao) : '—'}</div>
+          <div class="stat__label">${t('exercise.recordeTempo')}</div>
+        </div>
+        <div class="stat stat--pr">
+          <div class="stat__val">${melhorTempoTotal ? fmtTempoSerie(melhorTempoTotal) : '—'}</div>
+          <div class="stat__label">${t('exercise.tempoTotalSessao')}</div>
+        </div>
+      </div>
+    </div>
+  ` : html`
     <div class="card">
       <div class="stats">
         <div class="stat stat--pr">
@@ -200,8 +221,8 @@ export async function renderDetail(view, exId) {
     root.append(botao);
   }
 
-  root.append(secaoGrafico(resumos, unidade));
-  root.append(secaoHistorico(resumos, prIds, unidade));
+  root.append(secaoGrafico(resumos, unidade, tempo));
+  root.append(secaoHistorico(resumos, prIds, unidade, tempo));
 
   view.append(root);
 
@@ -223,8 +244,8 @@ export async function renderDetail(view, exId) {
   }
 }
 
-function secaoGrafico(resumos, unidade) {
-  const m = metricas();
+function secaoGrafico(resumos, unidade, tempo) {
+  const m = metricas(tempo);
   const card = node(html`
     <div class="card">
       <div class="card__pad" style="padding-bottom:6px">
@@ -260,13 +281,17 @@ function secaoGrafico(resumos, unidade) {
 
     const pontos = resumos.map((r) => ({
       quando: r.quando,
-      valor: r[mm.campo],
-      rotulo: `${tn('common.serie', r.series.length)} · ${t('exercise.melhorPeso', { peso: fmtNum(r.maxPeso, 2), unidade })}`,
+      // Duracao e guardada em segundos; o grafico mostra em minutos (mais
+      // legivel numa serie de sessoes) — nao afeta progressPct, que so olha razao.
+      valor: tempo ? r[mm.campo] / 60 : r[mm.campo],
+      rotulo: tempo
+        ? `${tn('common.serie', r.series.length)} · ${t('exercise.melhorDuracaoRotulo', { duracao: fmtTempoSerie(r.melhorDuracao) })}`
+        : `${tn('common.serie', r.series.length)} · ${t('exercise.melhorPeso', { peso: fmtNum(r.maxPeso, 2), unidade })}`,
     }));
 
     areaGrafico.append(lineChart({
       pontos,
-      sufixo: chave === 'e1rm' ? '' : ` ${unidade}`,
+      sufixo: tempo ? ` ${t('common.min')}` : (chave === 'e1rm' ? '' : ` ${unidade}`),
       decimais: mm.decimais,
     }));
 
@@ -285,11 +310,11 @@ function secaoGrafico(resumos, unidade) {
 
   wireSegmented(card, (botao) => desenhar(botao.dataset.m));
 
-  desenhar('e1rm');
+  desenhar(Object.keys(m)[0]);
   return card;
 }
 
-function secaoHistorico(resumos, prIds, unidade) {
+function secaoHistorico(resumos, prIds, unidade, tempo) {
   const wrap = node('<div></div>');
   wrap.append(node(`<h2 class="section-title">${t('exercise.historico.titulo')}</h2>`));
 
@@ -300,15 +325,18 @@ function secaoHistorico(resumos, prIds, unidade) {
 
   const itens = [...resumos].reverse().map((r) => {
     const series = r.series
-      .map((s) => `<span class="tnum">${fmtNum(s.peso, 2)}×${s.reps}</span>${prIds.has(s.id) ? ' 🏆' : ''}`)
+      .map((s) => `<span class="tnum">${isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)}×${s.reps}`}</span>${prIds.has(s.id) ? ' 🏆' : ''}`)
       .join('<span class="muted"> · </span>');
+    const resumoLinha = tempo
+      ? t('exercise.historico.tempoTotal', { tempo: fmtTempoSerie(r.duracaoTotal) })
+      : t('exercise.historico.volumeRm', { volume: fmtNum(r.volume, 0), unidade, rm: fmtNum(r.melhor1rm, 0) });
     return html`
       <li class="list__item">
         <a class="list__link" href="#/historico/${r.workoutId}">
           <div class="grow">
             <div style="font-weight:650">${fmtRelativeDay(r.quando)}</div>
             <div class="small" style="margin-top:2px">${raw(series)}</div>
-            <div class="muted small">${t('exercise.historico.volumeRm', { volume: fmtNum(r.volume, 0), unidade, rm: fmtNum(r.melhor1rm, 0) })}</div>
+            <div class="muted small">${resumoLinha}</div>
           </div>
           <span class="list__chev">${raw(ICON.chevron)}</span>
         </a>

@@ -16,47 +16,76 @@ export function e1rm(peso, reps) {
 
 export const setE1rm = (s) => e1rm(s.peso, s.reps);
 export const setVolume = (s) => (Number(s.peso) || 0) * (Number(s.reps) || 0);
+export const setDuracao = (s) => Number(s.duracaoSeg) || 0;
 
-/** Series que contam para estatisticas: fora aquecimento e series vazias. */
-export const workingSets = (sets) => sets.filter((s) => !s.aquecimento && s.reps > 0 && s.peso >= 0);
+/** Series de Cardio/Alongamento guardam duracaoSeg em vez de peso/reps (ver
+ *  session.js compositor()) — peso e reps ficam 0 nelas, e vice-versa. */
+export const isTempoSet = (s) => setDuracao(s) > 0;
+
+/** Series que contam para estatisticas: fora aquecimento e series vazias
+ *  (peso/reps para exercicio de forca, duracao para cardio/alongamento). */
+export const workingSets = (sets) => sets.filter((s) => !s.aquecimento && s.peso >= 0 && (s.reps > 0 || isTempoSet(s)));
 
 export const totalVolume = (sets) => workingSets(sets).reduce((acc, s) => acc + setVolume(s), 0);
+export const totalDuracao = (sets) => workingSets(sets).reduce((acc, s) => acc + setDuracao(s), 0);
 
 /* ---------- Recordes ---------- */
 
 /**
- * Melhores marcas de um conjunto de series.
- * @returns {{peso: number, e1rm: number, setPeso: object|null, setE1rm: object|null}}
+ * Melhores marcas de um conjunto de series. `duracao` e o analogo de `peso`
+ * pras series de cardio/alongamento (recorde de tempo em vez de carga).
+ * @returns {{peso: number, e1rm: number, duracao: number, setPeso: object|null, setE1rm: object|null, setDuracao: object|null}}
  */
 export function bests(sets) {
   let peso = 0;
   let melhor1rm = 0;
+  let duracao = 0;
   let setPeso = null;
   let setE1rmRef = null;
+  let setDuracaoRef = null;
 
   for (const s of workingSets(sets)) {
+    if (isTempoSet(s)) {
+      const d = setDuracao(s);
+      if (d > duracao) { duracao = d; setDuracaoRef = s; }
+      continue;
+    }
     if (s.peso > peso) { peso = s.peso; setPeso = s; }
     const v = setE1rm(s);
     if (v > melhor1rm) { melhor1rm = v; setE1rmRef = s; }
   }
-  return { peso, e1rm: melhor1rm, setPeso, setE1rm: setE1rmRef };
+  return {
+    peso, e1rm: melhor1rm, duracao, setPeso, setE1rm: setE1rmRef, setDuracao: setDuracaoRef,
+  };
 }
 
 /**
  * Verifica se `serie` bate recorde em relacao ao que veio antes dela.
  * Compara apenas com series anteriores (id menor), para que reavaliar o
- * historico inteiro produza sempre o mesmo resultado.
- * @returns {{peso: boolean, e1rm: boolean, algum: boolean}}
+ * historico inteiro produza sempre o mesmo resultado. Series de duracao so
+ * competem por recorde de tempo; series de peso/reps so por peso/e1rm.
+ * @returns {{peso: boolean, e1rm: boolean, duracao: boolean, algum: boolean}}
  */
 export function evaluatePR(serie, historico) {
-  if (serie.aquecimento || !serie.reps || serie.peso <= 0) {
-    return { peso: false, e1rm: false, algum: false };
-  }
+  if (serie.aquecimento) return { peso: false, e1rm: false, duracao: false, algum: false };
+
   const anteriores = historico.filter((s) => s.id !== serie.id && s.id < serie.id);
+
+  if (isTempoSet(serie)) {
+    const previo = bests(anteriores);
+    const pr = { peso: false, e1rm: false, duracao: setDuracao(serie) > previo.duracao };
+    pr.algum = pr.duracao;
+    return pr;
+  }
+
+  if (!serie.reps || serie.peso <= 0) {
+    return { peso: false, e1rm: false, duracao: false, algum: false };
+  }
   const previo = bests(anteriores);
   const pr = {
     peso: serie.peso > previo.peso,
     e1rm: setE1rm(serie) > previo.e1rm,
+    duracao: false,
   };
   pr.algum = pr.peso || pr.e1rm;
   return pr;
@@ -68,9 +97,17 @@ export function prSetIds(sets) {
   const ids = new Set();
   let maxPeso = 0;
   let max1rm = 0;
+  let maxDuracao = 0;
 
   for (const s of ordenadas) {
-    if (s.aquecimento || !s.reps || s.peso <= 0) continue;
+    if (s.aquecimento) continue;
+    if (isTempoSet(s)) {
+      const d = setDuracao(s);
+      if (d > maxDuracao) ids.add(s.id);
+      maxDuracao = Math.max(maxDuracao, d);
+      continue;
+    }
+    if (!s.reps || s.peso <= 0) continue;
     const v = setE1rm(s);
     if (s.peso > maxPeso || v > max1rm) ids.add(s.id);
     maxPeso = Math.max(maxPeso, s.peso);
@@ -86,7 +123,7 @@ export function prSetIds(sets) {
  * Base tanto do grafico quanto do historico da tela de exercicio.
  * @param {object[]} sets series do exercicio
  * @param {Map<number, object>} workoutsById treinos indexados por id
- * @returns {{workoutId, data, quando, maxPeso, melhor1rm, volume, series}[]} em ordem cronologica
+ * @returns {{workoutId, data, quando, maxPeso, melhor1rm, melhorDuracao, volume, duracaoTotal, series}[]} em ordem cronologica
  */
 export function sessionSummaries(sets, workoutsById) {
   const porTreino = new Map();
@@ -107,7 +144,9 @@ export function sessionSummaries(sets, workoutsById) {
       data: treino?.data || quando.slice(0, 10),
       maxPeso: b.peso,
       melhor1rm: b.e1rm,
+      melhorDuracao: b.duracao,
       volume: series.reduce((acc, s) => acc + setVolume(s), 0),
+      duracaoTotal: series.reduce((acc, s) => acc + setDuracao(s), 0),
       series,
     });
   }
@@ -119,6 +158,11 @@ export function sessionSummaries(sets, workoutsById) {
 /** Melhor volume de uma unica sessao (o terceiro tipo de recorde). */
 export function bestSessionVolume(resumos) {
   return resumos.reduce((max, r) => Math.max(max, r.volume), 0);
+}
+
+/** Equivalente a bestSessionVolume para exercicios de cardio/alongamento. */
+export function bestSessionDuracao(resumos) {
+  return resumos.reduce((max, r) => Math.max(max, r.duracaoTotal), 0);
 }
 
 /**
@@ -142,6 +186,7 @@ export function workoutSummary(sets) {
     exercicios: exercicios.size,
     volume: validas.reduce((acc, s) => acc + setVolume(s), 0),
     reps: validas.reduce((acc, s) => acc + s.reps, 0),
+    tempoTotal: validas.reduce((acc, s) => acc + setDuracao(s), 0),
   };
 }
 
@@ -185,9 +230,10 @@ export function weekMuscleGroupSummary(sets, workoutsById, exercisesById, refere
     const ex = exercisesById.get(s.exerciseId);
     if (!ex) continue;
     let g = porGrupoMap.get(ex.grupoMuscular);
-    if (!g) { g = { grupo: ex.grupoMuscular, series: 0, volume: 0 }; porGrupoMap.set(ex.grupoMuscular, g); }
+    if (!g) { g = { grupo: ex.grupoMuscular, series: 0, volume: 0, tempo: 0 }; porGrupoMap.set(ex.grupoMuscular, g); }
     g.series += 1;
     g.volume += setVolume(s);
+    g.tempo += setDuracao(s);
   }
 
   return {
@@ -219,7 +265,9 @@ export function weeklyTrend(sets, workoutsById, semanas = 8, referenceDate = new
   for (let i = semanas - 1; i >= 0; i--) {
     const d = new Date(semanaAtual);
     d.setDate(d.getDate() - i * 7);
-    baldes.set(d.getTime(), { inicio: d, treinoIds: new Set(), series: 0, volume: 0 });
+    baldes.set(d.getTime(), {
+      inicio: d, treinoIds: new Set(), series: 0, volume: 0, tempo: 0,
+    });
   }
   const primeiraJanela = [...baldes.keys()][0];
 
@@ -233,9 +281,10 @@ export function weeklyTrend(sets, workoutsById, semanas = 8, referenceDate = new
     balde.treinoIds.add(s.workoutId);
     balde.series += 1;
     balde.volume += setVolume(s);
+    balde.tempo += setDuracao(s);
   }
 
   return [...baldes.values()].map((b) => ({
-    inicio: b.inicio, treinos: b.treinoIds.size, series: b.series, volume: b.volume,
+    inicio: b.inicio, treinos: b.treinoIds.size, series: b.series, volume: b.volume, tempo: b.tempo,
   }));
 }

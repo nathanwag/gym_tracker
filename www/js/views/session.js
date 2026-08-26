@@ -8,13 +8,16 @@
  */
 
 import * as db from '../db.js';
-import { evaluatePR, prSetIds, setE1rm, workoutSummary } from '../models.js';
+import {
+  evaluatePR, prSetIds, setE1rm, isTempoSet, workoutSummary,
+} from '../models.js';
 import { thumbHtml } from '../media.js';
 import { openExercisePicker } from './exercise-picker.js';
+import { usaTempo } from '../seed.js';
 import { t, tn } from '../i18n.js';
 import {
-  setTop, html, raw, node, ICON, createStepper, toast,
-  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, buzz,
+  setTop, html, raw, node, ICON, createStepper, createDuracaoStepper, toast,
+  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, fmtTempoSerie, buzz,
 } from '../ui.js';
 
 /** Estado da tela. Recriado a cada render; as telas nao compartilham estado. */
@@ -258,11 +261,16 @@ function itemConcluido(exId) {
   return li;
 }
 
+/** Texto de uma serie na comparacao/resumo: duracao pra Cardio/Alongamento,
+ *  peso×reps pro resto — decidido pela propria serie, sem precisar olhar o
+ *  exercicio (uma serie so grava um dos dois pares, nunca os dois). */
+function textoSerie(s) {
+  return `${isTempoSet(s) ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)}×${s.reps}`}${s.aquecimento ? '*' : ''}`;
+}
+
 function textoAnterior(anterior) {
   if (!anterior) return html`<span class="muted">${t('session.primeiraVez')}</span>`;
-  const resumo = anterior.series
-    .map((s) => `${fmtNum(s.peso, 2)}×${s.reps}${s.aquecimento ? '*' : ''}`)
-    .join('   ');
+  const resumo = anterior.series.map(textoSerie).join('   ');
   return html`${t('session.ultimaVez', { data: fmtRelativeDay(anterior.quando) })} <b class="tnum">${resumo}</b>`;
 }
 
@@ -271,20 +279,21 @@ function textoAnterior(anterior) {
  *  registrar, nao mais a comparacao com o treino anterior. */
 function textoResumoSessao(aqui) {
   if (!aqui.length) return html`<span class="muted">${t('session.nenhumaSerieRegistrada')}</span>`;
-  const resumo = aqui.map((s) => `${fmtNum(s.peso, 2)}×${s.reps}${s.aquecimento ? '*' : ''}`).join('   ');
+  const resumo = aqui.map(textoSerie).join('   ');
   return html`${tn('common.serie', aqui.length)}: <b class="tnum">${resumo}</b>`;
 }
 
 function itemSerie(serie, numero, isPR, ativo) {
+  const tempo = isTempoSet(serie);
   const li = node(html`
     <li>
       <button class="setlist__item" data-set="${serie.id}" aria-current="${ativo}">
         <span class="setlist__num">${numero}</span>
-        <span class="setlist__val">${fmtNum(serie.peso, 2)} ${ctx.unidade} × ${serie.reps}</span>
+        <span class="setlist__val">${tempo ? fmtTempoSerie(serie.duracaoSeg) : `${fmtNum(serie.peso, 2)} ${ctx.unidade} × ${serie.reps}`}</span>
         ${serie.aquecimento ? raw(`<span class="setlist__warm">${t('history.aquec')}</span>`) : ''}
         ${isPR ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
         <span class="grow"></span>
-        ${serie.aquecimento ? '' : raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(serie), 0)}</span>`)}
+        ${(!serie.aquecimento && !tempo) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(serie), 0)}</span>`) : ''}
       </button>
     </li>
   `);
@@ -301,24 +310,37 @@ function itemSerie(serie, numero, isPR, ativo) {
 /* ---------- Compositor: onde a serie e digitada ---------- */
 
 function compositor(exId, emEdicao, aqui, anterior) {
+  const tempo = usaTempo(ctx.exercicios.get(exId)?.grupoMuscular);
+
   // Pre-preenchimento, em ordem de preferencia: a serie sendo editada, a
   // ultima serie deste treino, a primeira serie do treino anterior.
   const base = emEdicao
     || aqui[aqui.length - 1]
     || anterior?.series?.[0]
-    || { peso: 20, reps: 10, aquecimento: false };
-
-  const peso = createStepper({
-    label: t('session.peso'), suffix: ctx.unidade, value: base.peso,
-    step: ctx.incPeso, min: 0, max: 1000, decimals: 1,
-  });
-  const reps = createStepper({
-    label: t('session.repeticoes'), value: base.reps,
-    step: ctx.incReps, min: 0, max: 300, decimals: 0,
-  });
+    || (tempo ? { duracaoSeg: 60, aquecimento: false } : { peso: 20, reps: 10, aquecimento: false });
 
   const wrap = node('<div class="composer"></div>');
-  wrap.append(peso.el, reps.el);
+
+  let peso = null;
+  let reps = null;
+  let duracao = null;
+
+  if (tempo) {
+    duracao = createDuracaoStepper({ value: base.duracaoSeg || 0 });
+    wrap.append(duracao.el);
+  } else {
+    peso = createStepper({
+      label: t('session.peso'), suffix: ctx.unidade, value: base.peso,
+      step: ctx.incPeso, min: 0, max: 1000, decimals: 1,
+    });
+    reps = createStepper({
+      label: t('session.repeticoes'), value: base.reps,
+      step: ctx.incReps, min: 0, max: 300, decimals: 0,
+    });
+    wrap.append(peso.el, reps.el);
+  }
+
+  const valores = () => (tempo ? { duracaoSeg: duracao.get() } : { peso: peso.get(), reps: reps.get() });
 
   let aquecimento = Boolean(base.aquecimento);
   const acoes = node('<div class="composer__actions"></div>');
@@ -332,7 +354,7 @@ function compositor(exId, emEdicao, aqui, anterior) {
       ctx.editando.delete(exId);
       rebuildCard(exId);
     };
-    salvar.onclick = () => salvarEdicao(exId, emEdicao, peso.get(), reps.get());
+    salvar.onclick = () => salvarEdicao(exId, emEdicao, valores());
     excluir.onclick = () => excluirSerie(exId, emEdicao);
 
     acoes.append(excluir, cancelar, salvar);
@@ -347,7 +369,7 @@ function compositor(exId, emEdicao, aqui, anterior) {
       chip.setAttribute('aria-pressed', String(aquecimento));
       chip.classList.toggle('btn--ghost', !aquecimento);
     };
-    addBtn.onclick = () => adicionarSerie(exId, peso.get(), reps.get(), aquecimento);
+    addBtn.onclick = () => adicionarSerie(exId, valores(), aquecimento);
 
     acoes.append(chip, addBtn);
   }
@@ -358,14 +380,17 @@ function compositor(exId, emEdicao, aqui, anterior) {
 
 /* ---------- Mutacoes ---------- */
 
-async function adicionarSerie(exId, pesoValor, repsValor, aquecimento) {
-  if (repsValor <= 0) { toast(t('session.informeRepeticoes')); return; }
+async function adicionarSerie(exId, valores, aquecimento) {
+  const tempo = 'duracaoSeg' in valores;
+  if (tempo ? valores.duracaoSeg <= 0 : valores.reps <= 0) {
+    toast(tempo ? t('session.informeDuracao') : t('session.informeRepeticoes'));
+    return;
+  }
 
   const serie = await db.addSet({
     workoutId: ctx.workout.id,
     exerciseId: exId,
-    peso: pesoValor,
-    reps: repsValor,
+    ...valores,
     aquecimento,
   });
   ctx.todasSeries.push(serie);
@@ -375,15 +400,19 @@ async function adicionarSerie(exId, pesoValor, repsValor, aquecimento) {
   atualizarResumo();
   buzz(18);
 
-  if (pr.peso) toast(t('session.recordeCarga'));
+  if (pr.duracao) toast(t('session.recordeTempo'));
+  else if (pr.peso) toast(t('session.recordeCarga'));
   else if (pr.e1rm) toast(t('session.recordeForca'));
 }
 
-async function salvarEdicao(exId, serie, pesoValor, repsValor) {
-  if (repsValor <= 0) { toast(t('session.informeRepeticoes')); return; }
-  await db.updateSet(serie.id, { peso: pesoValor, reps: repsValor });
-  serie.peso = pesoValor;
-  serie.reps = repsValor;
+async function salvarEdicao(exId, serie, valores) {
+  const tempo = 'duracaoSeg' in valores;
+  if (tempo ? valores.duracaoSeg <= 0 : valores.reps <= 0) {
+    toast(tempo ? t('session.informeDuracao') : t('session.informeRepeticoes'));
+    return;
+  }
+  await db.updateSet(serie.id, valores);
+  Object.assign(serie, valores);
   ctx.editando.delete(exId);
   rebuildCard(exId);
   atualizarResumo();

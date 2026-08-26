@@ -333,12 +333,15 @@ export function deleteWorkout(id) {
 
 /* ---------- Series ---------- */
 
-export async function addSet({ workoutId, exerciseId, peso, reps, aquecimento = false }) {
+export async function addSet({
+  workoutId, exerciseId, peso, reps, duracaoSeg, aquecimento = false,
+}) {
   const registro = {
     workoutId: Number(workoutId),
     exerciseId: Number(exerciseId),
     peso: Number(peso) || 0,
     reps: Math.max(0, Math.round(Number(reps) || 0)),
+    duracaoSeg: Math.max(0, Math.round(Number(duracaoSeg) || 0)),
     aquecimento: Boolean(aquecimento),
     criadoEm: new Date().toISOString(),
   };

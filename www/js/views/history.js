@@ -1,12 +1,14 @@
 /* Historico: lista de treinos e o detalhe de um treino. */
 
 import * as db from '../db.js';
-import { workoutSummary, prSetIds, setE1rm, totalVolume } from '../models.js';
+import {
+  workoutSummary, prSetIds, setE1rm, totalVolume, totalDuracao, isTempoSet,
+} from '../models.js';
 import { thumbHtml } from '../media.js';
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet,
-  fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration,
+  fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration, fmtTempoSerie,
 } from '../ui.js';
 
 const mesAno = (iso) => new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(new Date(iso));
@@ -163,18 +165,22 @@ export async function renderWorkout(view, workoutId) {
     const ex = porId.get(exId);
     const prIds = prSetIds(todasSeries.filter((s) => s.exerciseId === exId));
 
-    const linhas = doExercicio.map((s, i) => html`
+    const linhas = doExercicio.map((s, i) => {
+      const tempo = isTempoSet(s);
+      return html`
       <li class="list__item">
         <div class="setlist__item" style="cursor:default">
           <span class="setlist__num">${i + 1}</span>
-          <span class="setlist__val">${fmtNum(s.peso, 2)} ${unidade} × ${s.reps}</span>
+          <span class="setlist__val">${tempo ? fmtTempoSerie(s.duracaoSeg) : `${fmtNum(s.peso, 2)} ${unidade} × ${s.reps}`}</span>
           ${s.aquecimento ? raw(`<span class="setlist__warm">${t('history.aquec')}</span>`) : ''}
           ${prIds.has(s.id) ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
           <span class="grow"></span>
-          ${s.aquecimento ? '' : raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(s), 0)}</span>`)}
+          ${(!s.aquecimento && !tempo) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(s), 0)}</span>`) : ''}
         </div>
       </li>
-    `);
+    `;
+    });
+    const tempoExercicio = isTempoSet(doExercicio[0]);
 
     root.append(node(html`
       <div class="card">
@@ -184,7 +190,7 @@ export async function renderWorkout(view, workoutId) {
             <h2 class="exercise__name">${ex?.nome || t('history.exercicioRemovido')}</h2>
             <div class="exercise__meta">
               ${tn('common.serie', doExercicio.length)} ·
-              ${fmtNum(totalVolume(doExercicio), 0)} ${unidade}
+              ${tempoExercicio ? fmtTempoSerie(totalDuracao(doExercicio)) : `${fmtNum(totalVolume(doExercicio), 0)} ${unidade}`}
             </div>
           </div>
           ${ex ? raw(`<a class="icon-btn" href="#/exercicios/${ex.id}" aria-label="${t('history.verEvolucao')}">${ICON.chevron}</a>`) : ''}

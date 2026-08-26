@@ -37,6 +37,14 @@ export const GRUPOS = [
   'Outros',
 ];
 
+// Cardio e alongamento nao usam peso/repeticoes: a serie e registrada como
+// duracao (ver session.js/models.js). Esses dois grupos sao um conjunto
+// fechado (mesmo tratamento especial que ja recebem em build_catalog.py e
+// no ICON_GRUPO abaixo), entao um helper puro basta — sem campo novo em
+// `exercises`.
+export const GRUPOS_TEMPO = ['Cardio', 'Alongamento'];
+export const usaTempo = (grupoMuscular) => GRUPOS_TEMPO.includes(grupoMuscular);
+
 // Nome de exibicao em ingles pros 17 grupos. So pra exibicao — o valor gravado
 // no IndexedDB, as chaves de ICON_GRUPO e o campo `grupo` do catalogo
 // continuam sempre em portugues (ver grupoLabel() abaixo).

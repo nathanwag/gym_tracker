@@ -148,6 +148,7 @@ export function validar(payload) {
       exerciseId: numero(s.exerciseId),
       peso: numero(s.peso),
       reps: Math.round(numero(s.reps)),
+      duracaoSeg: Math.round(numero(s.duracaoSeg)),
       aquecimento: Boolean(s.aquecimento),
       criadoEm: s.criadoEm || new Date().toISOString(),
     })),

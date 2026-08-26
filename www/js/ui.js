@@ -207,6 +207,19 @@ export function fmtDuration(startIso, endIso) {
   return rest ? `${h}${sufHora} ${rest}${sufMin}` : `${h}${sufHora}`;
 }
 
+/** Duracao de uma serie de Cardio/Alongamento (segundos) em "12min 30s" /
+ *  "45s". Diferente de fmtDuration: aqui a entrada ja e a duracao guardada
+ *  na serie, nao dois timestamps ISO pra subtrair. */
+export function fmtTempoSerie(segundos) {
+  const s = Math.max(0, Math.round(Number(segundos) || 0));
+  const min = Math.floor(s / 60);
+  const rest = s % 60;
+  const sufMin = t('common.min');
+  const sufSeg = t('common.seg');
+  if (min <= 0) return `${rest}${sufSeg}`;
+  return rest ? `${min}${sufMin} ${rest}${sufSeg}` : `${min}${sufMin}`;
+}
+
 /* ---------- Diversos ---------- */
 
 export const ICON = {
@@ -342,6 +355,40 @@ export function createStepper({ label, value = 0, step = 1, min = 0, max = 9999,
   input.addEventListener('focus', () => input.select());
 
   return { el: wrap, get, set, focus: () => input.focus() };
+}
+
+/**
+ * Par de steppers min+seg pra series de Cardio/Alongamento (ver GRUPOS_TEMPO
+ * em seed.js), que guardam duracao em vez de peso/reps. Mesmo contrato de
+ * createStepper — get()/set() trabalham em segundos totais — pra nao exigir
+ * tratamento especial nos call sites que hoje esperam {el, get, set, focus}.
+ * @param {{value?: number}} opts value em segundos
+ * @returns {{el: HTMLElement, get: () => number, set: (v: number) => void, focus: () => void}}
+ */
+export function createDuracaoStepper({ value = 0 } = {}) {
+  const totalIni = Math.max(0, Math.round(Number(value) || 0));
+  const minutos = createStepper({
+    label: t('session.duracaoMin'), value: Math.floor(totalIni / 60), step: 1, min: 0, max: 600, decimals: 0,
+  });
+  const segundos = createStepper({
+    label: t('session.duracaoSeg'), value: totalIni % 60, step: 5, min: 0, max: 59, decimals: 0,
+  });
+
+  const wrap = node('<div class="composer__duracao"></div>');
+  wrap.append(minutos.el, segundos.el);
+
+  const set = (v) => {
+    const total = Math.max(0, Math.round(Number(v) || 0));
+    minutos.set(Math.floor(total / 60));
+    segundos.set(total % 60);
+  };
+
+  return {
+    el: wrap,
+    get: () => minutos.get() * 60 + segundos.get(),
+    set,
+    focus: () => minutos.focus(),
+  };
 }
 
 /** Liga um grupo `.segmented` (N botoes, um ativo): clique troca o
