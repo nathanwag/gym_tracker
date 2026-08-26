@@ -18,13 +18,20 @@ import { normalizarNome as normalizar } from '../text.js';
    Lista
    ========================================================================== */
 
+// Lembra a secao aberta e o texto buscado entre visitas ao catalogo nesta
+// sessao — sem isso, voltar de um exercicio sempre reabria a lista do zero
+// (grupo fechado, busca vazia). Escopo de modulo, nao da funcao: sobrevive a
+// renderList() rodar de novo a cada navegacao pro #/catalogo.
+const abertos = new Set();
+let busca = '';
+
 export async function renderList(view) {
   setTop({ title: t('catalog.titulo'), back: '#/exercicios' });
 
   const root = node(html`
     <div class="stack">
       <input class="input" data-busca type="search" placeholder="${t('catalog.buscarPlaceholder')}"
-             autocomplete="off" autocapitalize="none" autocorrect="off">
+             autocomplete="off" autocapitalize="none" autocorrect="off" value="${busca}">
       <div data-lista><div class="card card__pad muted">${t('catalog.carregando')}</div></div>
     </div>
   `);
@@ -48,8 +55,6 @@ export async function renderList(view) {
 
   // Quem ja esta na biblioteca aparece marcado, para nao adicionar duas vezes.
   const meus = new Set((await db.listExercises()).map((e) => e.slug).filter(Boolean));
-  const abertos = new Set();
-  let busca = '';
 
   const linha = (item) => html`
     <li class="list__item">

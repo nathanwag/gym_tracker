@@ -11,6 +11,12 @@ export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel
  *  telas importem app.js (que importa as telas) e criem um ciclo de modulos. */
 export const refresh = () => window.dispatchEvent(new Event('app:refresh'));
 
+/** Pede ao app.js pra voltar: se a navegacao atual tiver historico de
+ *  verdade dentro do app nesta sessao, volta pra tela anterior real (de onde
+ *  a pessoa veio); senao cai no destino fixo `fallback`. Evento pelo mesmo
+ *  motivo de refresh() acima — sem ciclo de modulos com app.js. */
+export const voltar = (fallback) => window.dispatchEvent(new CustomEvent('app:voltar', { detail: fallback }));
+
 /* ---------- HTML seguro ----------
  * Nomes de exercicio e notas sao digitados pelo usuario, entao toda
  * interpolacao e escapada por padrao. Use raw() para injetar HTML de proposito. */
@@ -68,7 +74,7 @@ export function setTop({ title, back = null, actions = '', barra = true }) {
   titleEl.textContent = title;
   document.title = title === 'Treino' ? 'Treino' : `${title} · Treino`;
   backEl.hidden = !back;
-  backEl.onclick = back ? () => { location.hash = back; } : null;
+  backEl.onclick = back ? () => voltar(back) : null;
   actionsEl.innerHTML = actions;
 
   topbarEl.hidden = !barra;

@@ -19,6 +19,14 @@ import {
    Lista
    ========================================================================== */
 
+// Lembram o filtro (meus/todos) e o texto buscado da biblioteca entre
+// visitas nesta sessao — mesmo motivo do catalogo (catalog.js): sem isso,
+// voltar de um exercicio sempre reabria a lista filtrada do zero.
+// `modoLembrado` nao pode nascer com valor fixo porque seu padrao depende de
+// `temHistorico`, so conhecido em runtime — null = ainda nao decidido.
+let modoLembrado = null;
+let busca = '';
+
 export async function renderList(view) {
   const [exercicios, series] = await Promise.all([db.listExercises(), db.listAllSets()]);
   const unidade = db.settings().unidade;
@@ -34,18 +42,17 @@ export async function renderList(view) {
   }
 
   const temHistorico = resumos.size > 0;
-  let modo = temHistorico ? 'meus' : 'todos';
-  let busca = '';
+  if (modoLembrado === null) modoLembrado = temHistorico ? 'meus' : 'todos';
 
   setTop({ title: t('exercise.listaTitulo'), barra: false });
 
   const root = node(html`
     <div class="stack">
       <input class="input" data-busca type="search" placeholder="${t('exercise.buscarPlaceholder')}"
-             autocomplete="off" autocapitalize="none" autocorrect="off">
+             autocomplete="off" autocapitalize="none" autocorrect="off" value="${busca}">
       <div class="segmented" ${raw(temHistorico ? '' : 'hidden')}>
-        <button class="segmented__btn" data-modo="meus" aria-pressed="true">${t('exercise.filtro.comRegistro')}</button>
-        <button class="segmented__btn" data-modo="todos" aria-pressed="false">${t('exercise.filtro.todos')}</button>
+        <button class="segmented__btn" data-modo="meus" aria-pressed="${String(modoLembrado === 'meus')}">${t('exercise.filtro.comRegistro')}</button>
+        <button class="segmented__btn" data-modo="todos" aria-pressed="${String(modoLembrado === 'todos')}">${t('exercise.filtro.todos')}</button>
       </div>
       <a class="btn btn--block btn--ghost" href="#/catalogo">
         ${raw(ICON.plus)} ${t('exercise.buscarCatalogo')}
@@ -63,7 +70,7 @@ export async function renderList(view) {
   const desenhar = () => {
     const q = semAcento(busca.trim());
     let itens = exercicios;
-    if (modo === 'meus') itens = itens.filter((e) => resumos.has(e.id));
+    if (modoLembrado === 'meus') itens = itens.filter((e) => resumos.has(e.id));
     if (q) itens = itens.filter((e) => semAcento(e.nome).includes(q) || semAcento(e.grupoMuscular).includes(q));
 
     lista.innerHTML = '';
@@ -71,7 +78,7 @@ export async function renderList(view) {
       lista.append(node(html`
         <div class="card"><div class="empty">
           ${raw(ICON.dumbbell)}
-          <p>${modo === 'meus' && !q ? t('exercise.semRegistroVazio') : t('exercise.nenhumEncontrado')}</p>
+          <p>${modoLembrado === 'meus' && !q ? t('exercise.semRegistroVazio') : t('exercise.nenhumEncontrado')}</p>
         </div></div>
       `));
       return;
@@ -113,7 +120,7 @@ export async function renderList(view) {
   });
 
   wireSegmented(root, (botao) => {
-    modo = botao.dataset.modo;
+    modoLembrado = botao.dataset.modo;
     desenhar();
   });
 

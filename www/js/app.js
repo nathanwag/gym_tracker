@@ -70,11 +70,31 @@ function initFab() {
 
 let renderToken = 0;
 
+// Pilha de navegacao dentro do app nesta sessao, pra "voltar" (ver voltar()
+// em ui.js) retornar pra tela de onde a pessoa realmente veio, em vez do
+// destino fixo hardcoded em cada setTop({back}). Mantida por nos mesmos, nao
+// pelo historico real do navegador: popstate nao e sinal confiavel de "essa
+// troca de hash foi um voltar" (neste Chrome ele dispara tambem numa
+// atribuicao direta de location.hash) — entao so empilha quando a navegacao
+// NAO veio do nosso proprio botao voltar (`isGoingBack`, setado bem antes de
+// disparar o hashchange que o consome).
+let previousPath = null;
+const backStack = [];
+let isGoingBack = false;
+
 async function router() {
   const path = currentPath();
   const rota = ROUTES.find(([re]) => re.test(path));
 
   if (!rota) { location.hash = '#/'; return; }
+
+  // Ignora refresh-in-place (app:refresh chama router() com o mesmo path) e
+  // trata o primeiro render do boot como base, sem empilhar.
+  if (previousPath !== null && path !== previousPath && !isGoingBack) {
+    backStack.push(previousPath);
+  }
+  isGoingBack = false;
+  previousPath = path;
 
   const token = ++renderToken;
   closeSheet();
@@ -187,6 +207,14 @@ async function boot() {
   initFab();
   window.addEventListener('hashchange', router);
   window.addEventListener('app:refresh', router);
+  window.addEventListener('app:voltar', (e) => {
+    if (backStack.length) {
+      isGoingBack = true;
+      location.hash = backStack.pop();
+    } else {
+      location.hash = e.detail;
+    }
+  });
 
   try {
     await db.init();

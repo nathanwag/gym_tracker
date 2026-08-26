@@ -73,22 +73,26 @@ function tituloSemana(offset) {
 // literatura de dose-resposta usa (Schoenfeld/Baz-Valle), e o app ja tinha
 // o dado (grupoMuscular por exercicio) sem expor essa leitura.
 //
+// Escopo de modulo, nao da funcao: sobrevive a abrir um treino em "ultimos
+// treinos" (ou qualquer outra tela) e voltar — sem isso a home sempre
+// reabria em "essa semana", perdendo a semana que a pessoa estava vendo.
+let offsetSemana = 0; // semanas para tras; 0 = semana atual
+
 // Card com estado proprio (offset de semanas), no molde de createStepper em
 // ui.js: navegar entre semanas so troca o referenceDate passado pra
 // weekMuscleGroupSummary e redesenha o card — series/treinos/exercicios ja
 // estao todos em memoria, sem consulta nova ao banco por clique.
 function cardSemana(series, treinosPorId, exerciciosPorId, unidade, primeiraSemana) {
-  let offset = 0; // semanas para tras; 0 = semana atual
   const el = node('<div class="card"></div>');
 
   function desenhar() {
     const ref = new Date();
-    ref.setDate(ref.getDate() - offset * 7);
+    ref.setDate(ref.getDate() - offsetSemana * 7);
     const { inicio, fim, treinos, series: totalSeries, volume, porGrupo } =
       weekMuscleGroupSummary(series, treinosPorId, exerciciosPorId, ref);
 
     const podeVoltar = primeiraSemana != null && inicio > primeiraSemana;
-    const podeAvancar = offset > 0;
+    const podeAvancar = offsetSemana > 0;
     const maxSeries = porGrupo.reduce((m, g) => Math.max(m, g.series), 0);
 
     const linhasGrupo = porGrupo.map((g) => html`
@@ -104,7 +108,7 @@ function cardSemana(series, treinosPorId, exerciciosPorId, unidade, primeiraSema
       <div class="card__pad row row--between" style="${porGrupo.length ? 'padding-bottom:10px' : ''}">
         <button class="icon-btn semana-nav__voltar" data-voltar aria-label="${t('home.semana.anterior')}" ${podeVoltar ? '' : 'disabled'}>${raw(ICON.chevron)}</button>
         <div style="text-align:center">
-          <h2 style="font-size:1rem">${tituloSemana(offset)}</h2>
+          <h2 style="font-size:1rem">${tituloSemana(offsetSemana)}</h2>
           <p class="muted small" style="margin:2px 0 0">${fmtDateRange(inicio, fim)}</p>
         </div>
         <button class="icon-btn" data-avancar aria-label="${t('home.semana.proxima')}" ${podeAvancar ? '' : 'disabled'}>${raw(ICON.chevron)}</button>
@@ -126,8 +130,8 @@ function cardSemana(series, treinosPorId, exerciciosPorId, unidade, primeiraSema
       ${porGrupo.length ? raw(`<div class="mgrupo card__pad">${linhasGrupo}</div>`) : ''}
     `;
 
-    el.querySelector('[data-voltar]').onclick = () => { offset += 1; desenhar(); };
-    el.querySelector('[data-avancar]').onclick = () => { offset -= 1; desenhar(); };
+    el.querySelector('[data-voltar]').onclick = () => { offsetSemana += 1; desenhar(); };
+    el.querySelector('[data-avancar]').onclick = () => { offsetSemana -= 1; desenhar(); };
   }
 
   desenhar();
