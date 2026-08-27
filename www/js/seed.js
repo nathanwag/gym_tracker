@@ -20,7 +20,7 @@ export const MUSCLE_GROUPS = [
   'Peito',
   'Costas',
   'Lombar',
-  'Deltoides',
+  'Ombros',
   'Trapézio',
   'Pescoço',
   'Bíceps',
@@ -51,7 +51,7 @@ const GROUP_LABELS_EN = {
   'Peito': 'Chest',
   'Costas': 'Back',
   'Lombar': 'Lower back',
-  'Deltoides': 'Shoulders',
+  'Ombros': 'Shoulders',
   'Trapézio': 'Traps',
   'Pescoço': 'Neck',
   'Bíceps': 'Biceps',
@@ -104,7 +104,7 @@ export const SEED_EXERCISES = {
   'Lombar': [
     { name: 'Levantamento terra', slug: 'barbell-deadlift' },
   ],
-  'Deltoides': [
+  'Ombros': [
     { name: 'Desenvolvimento com barra', slug: 'standing-military-press' },
     { name: 'Desenvolvimento com halteres', slug: 'seated-dumbbell-press' },
     { name: 'Desenvolvimento na máquina', slug: 'machine-shoulder-military-press' },

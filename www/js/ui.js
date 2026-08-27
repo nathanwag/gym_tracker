@@ -279,7 +279,7 @@ export const ICON = {
  * desenho de dorsal vira borrao. Todos partem da mesma silhueta (cabeca, tronco,
  * membros) — a silhueta fica esmaecida e uma mancha cheia na cor de destaque
  * marca a regiao. Um traco fino (versao anterior) sumia entre grupos vizinhos
- * como Deltoides/Trapezio; a mancha preenchida da o contraste que faltava sem
+ * como Ombros/Trapezio; a mancha preenchida da o contraste que faltava sem
  * abandonar o mono-acento do resto do app.
  *
  * Sem fill/stroke inline no traco da silhueta: a regra global de styles.css
@@ -301,8 +301,8 @@ export const ICON_GROUPS = {
   // Abaixo de Costas na silhueta, perto do quadril: hiperextensao/terra e
   // cadeia posterior, nao puxada -- por isso saiu de Costas.
   'Lombar': body([12, 12.9, 1.3]),
-  'Deltoides': body([8.4, 8.2, 1.3], [15.6, 8.2, 1.3]),
-  // Logo abaixo do pescoço, mais estreito que a mancha de Deltoides: e onde
+  'Ombros': body([8.4, 8.2, 1.3], [15.6, 8.2, 1.3]),
+  // Logo abaixo do pescoço, mais estreito que a mancha de Ombros: e onde
   // o trapezio fica na silhueta (base do pescoço ate o topo do ombro).
   'Trapézio': body([12, 7.5, 1.15]),
   'Pescoço': body([12, 5.3, 1]),
