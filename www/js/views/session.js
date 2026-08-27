@@ -14,10 +14,10 @@ import {
 import { thumbHtml } from '../media.js';
 import { openExercisePicker } from './exercise-picker.js';
 import { openShareSheet } from '../share-image.js';
-import { usesDuration } from '../seed.js';
+import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn } from '../i18n.js';
 import {
-  setTop, html, raw, node, ICON, createStepper, createDurationStepper, toast,
+  setTop, html, raw, node, ICON, toast,
   confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, fmtSet, fmtSetWithUnit, buzz,
 } from '../ui.js';
 
@@ -235,7 +235,22 @@ function exerciseCard(exId) {
     here.forEach((s, i) => ul.append(setItem(s, i + 1, prIds.has(s.id), s.id === editingId)));
     card.append(ul);
   }
-  card.append(composer(exId, editing, here, previous));
+  card.append(createSetComposer({
+    exercise: ex,
+    unit: ctx.unit,
+    weightStep: ctx.weightStep,
+    repsStep: ctx.repsStep,
+    editing,
+    // Pre-preenchimento, em ordem de preferencia: a serie sendo editada, a
+    // ultima serie deste treino, a primeira serie do treino anterior.
+    base: editing || here[here.length - 1] || previous?.sets?.[0] || null,
+    onAdd: (values, warmup) => addSet(exId, values, warmup),
+    onSave: (values) => saveEdit(exId, editing, values),
+    onDelete: () => deleteSet(exId, editing),
+    // So no modo edicao a sessao mostra Cancelar; ao adicionar, o compositor
+    // fica sempre visivel e nao ha o que cancelar.
+    onCancel: editing ? () => { ctx.editing.delete(exId); rebuildCard(exId); } : undefined,
+  }));
   return card;
 }
 
@@ -307,106 +322,7 @@ function setItem(set, number, isPR, active) {
   return li;
 }
 
-/* ---------- Compositor: onde a serie e digitada ---------- */
-
-function composer(exId, editing, here, previous) {
-  const timeBased = usesDuration(ctx.exercises.get(exId)?.muscleGroup);
-  const unilateral = !timeBased && Boolean(ctx.exercises.get(exId)?.unilateral);
-
-  // Pre-preenchimento, em ordem de preferencia: a serie sendo editada, a
-  // ultima serie deste treino, a primeira serie do treino anterior.
-  const base = editing
-    || here[here.length - 1]
-    || previous?.sets?.[0]
-    || (timeBased ? { durationSec: 60, warmup: false }
-      : unilateral ? { weight: 20, repsLeft: 10, repsRight: 10, warmup: false }
-        : { weight: 20, reps: 10, warmup: false });
-
-  const wrap = node('<div class="composer"></div>');
-
-  let weight = null;
-  let reps = null;
-  let repsLeft = null;
-  let repsRight = null;
-  let duration = null;
-
-  if (timeBased) {
-    duration = createDurationStepper({ value: base.durationSec || 0 });
-    wrap.append(duration.el);
-  } else {
-    weight = createStepper({
-      label: t('session.weight'), suffix: ctx.unit, value: base.weight,
-      step: ctx.weightStep, min: 0, max: 1000, decimals: 1,
-    });
-    if (unilateral) {
-      weight.el.classList.add('composer__full');
-      repsRight = createStepper({
-        label: t('session.repsRight'), value: base.repsRight,
-        step: ctx.repsStep, min: 0, max: 300, decimals: 0,
-      });
-      repsLeft = createStepper({
-        label: t('session.repsLeft'), value: base.repsLeft,
-        step: ctx.repsStep, min: 0, max: 300, decimals: 0,
-      });
-      wrap.append(weight.el, repsRight.el, repsLeft.el);
-    } else {
-      reps = createStepper({
-        label: t('session.reps'), value: base.reps,
-        step: ctx.repsStep, min: 0, max: 300, decimals: 0,
-      });
-      wrap.append(weight.el, reps.el);
-    }
-  }
-
-  const values = () => {
-    if (timeBased) return { durationSec: duration.get() };
-    if (unilateral) return { weight: weight.get(), repsLeft: repsLeft.get(), repsRight: repsRight.get() };
-    return { weight: weight.get(), reps: reps.get() };
-  };
-
-  let warmup = Boolean(base.warmup);
-  const actions = node('<div class="composer__actions"></div>');
-
-  if (editing) {
-    const deleteBtn = node(html`<button class="btn btn--sm btn--chip btn--danger" data-delete aria-label="${t('session.deleteSet')}">${raw(ICON.trash)}</button>`);
-    const cancelBtn = node(html`<button class="btn btn--ghost" data-cancel>${t('common.cancel')}</button>`);
-    const saveBtn = node(html`<button class="btn btn--primary" data-save>${t('common.save')}</button>`);
-
-    cancelBtn.onclick = () => {
-      ctx.editing.delete(exId);
-      rebuildCard(exId);
-    };
-    saveBtn.onclick = () => saveEdit(exId, editing, values());
-    deleteBtn.onclick = () => deleteSet(exId, editing);
-
-    actions.append(deleteBtn, cancelBtn, saveBtn);
-  } else {
-    const chip = node(html`
-      <button class="btn btn--sm btn--chip btn--ghost" data-warmup aria-pressed="${warmup}">${t('session.warmupAbbrev')}</button>
-    `);
-    const addBtn = node(html`<button class="btn btn--primary" data-add>${t('session.addSet')}</button>`);
-
-    chip.onclick = () => {
-      warmup = !warmup;
-      chip.setAttribute('aria-pressed', String(warmup));
-      chip.classList.toggle('btn--ghost', !warmup);
-    };
-    addBtn.onclick = () => addSet(exId, values(), warmup);
-
-    actions.append(chip, addBtn);
-  }
-
-  wrap.append(actions);
-  return wrap;
-}
-
 /* ---------- Mutacoes ---------- */
-
-function isEmptySet(values) {
-  if ('durationSec' in values) return values.durationSec <= 0;
-  if ('repsLeft' in values) return values.repsLeft <= 0 && values.repsRight <= 0;
-  return values.reps <= 0;
-}
 
 async function addSet(exId, values, warmup) {
   if (isEmptySet(values)) {

@@ -12,7 +12,7 @@
  * GitHub Pages quanto na origem local do WebView nativo.
  */
 
-const VERSION = 'treino-v9';
+const VERSION = 'treino-v10';
 
 // Dois caches de proposito. O do app e versionado e descartavel: bumpar VERSION
 // e como se deploya. O de midia NAO e versionado — sao dezenas de MB de fotos
@@ -51,6 +51,7 @@ const ASSETS = [
   './js/charts.js',
   './js/catalog.js',
   './js/media.js',
+  './js/set-composer.js',
   './js/views/home.js',
   './js/views/session.js',
   './js/views/exercise-picker.js',
