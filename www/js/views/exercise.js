@@ -682,6 +682,10 @@ function exerciseForm(exercise = null) {
             `<option value="${g}"${g === exercise?.muscleGroup ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
         </select>
       </label>
+      <label class="field field--check">
+        <input type="checkbox" data-unilateral${exercise?.unilateral ? ' checked' : ''}>
+        <span>${t('exercise.form.unilateral')}</span>
+      </label>
       <button class="btn btn--primary btn--block" data-save>${exercise ? t('exercise.form.save') : t('exercise.form.create')}</button>
     </div>
   `);
@@ -690,10 +694,11 @@ function exerciseForm(exercise = null) {
   body.querySelector('[data-save]').onclick = async () => {
     const name = body.querySelector('[data-name]').value.trim();
     const muscleGroup = body.querySelector('[data-group]').value;
+    const unilateral = body.querySelector('[data-unilateral]').checked;
     if (!name) { toast(t('exercise.form.giveItAName')); return; }
 
-    if (exercise) await db.updateExercise(exercise.id, { name, muscleGroup });
-    else await db.addExercise({ name, muscleGroup });
+    if (exercise) await db.updateExercise(exercise.id, { name, muscleGroup, unilateral });
+    else await db.addExercise({ name, muscleGroup, unilateral });
 
     closeSheet();
     toast(exercise ? t('exercise.form.toastUpdated') : t('exercise.form.toastCreated'));

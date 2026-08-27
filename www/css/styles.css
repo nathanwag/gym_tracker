@@ -273,6 +273,16 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .input:focus, .select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .field { display: block; }
+.field--check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.field--check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
 .field__label {
   display: block;
   margin-bottom: 6px;
@@ -296,6 +306,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 /* display:contents: os dois .field (min/seg) caem direto nas 2 colunas do
    grid do .composer, como se nao houvesse wrapper -- mesmo layout de peso/reps. */
 .composer__duration { display: contents; }
+.composer__full { grid-column: 1 / -1; }
 .composer__actions { grid-column: 1 / -1; display: flex; gap: 8px; }
 .composer__actions .btn { flex: 1; }
 .composer__actions .btn--chip { flex: 0 0 auto; }

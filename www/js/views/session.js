@@ -311,18 +311,23 @@ function setItem(set, number, isPR, active) {
 
 function composer(exId, editing, here, previous) {
   const timeBased = usesDuration(ctx.exercises.get(exId)?.muscleGroup);
+  const unilateral = !timeBased && Boolean(ctx.exercises.get(exId)?.unilateral);
 
   // Pre-preenchimento, em ordem de preferencia: a serie sendo editada, a
   // ultima serie deste treino, a primeira serie do treino anterior.
   const base = editing
     || here[here.length - 1]
     || previous?.sets?.[0]
-    || (timeBased ? { durationSec: 60, warmup: false } : { weight: 20, reps: 10, warmup: false });
+    || (timeBased ? { durationSec: 60, warmup: false }
+      : unilateral ? { weight: 20, repsLeft: 10, repsRight: 10, warmup: false }
+        : { weight: 20, reps: 10, warmup: false });
 
   const wrap = node('<div class="composer"></div>');
 
   let weight = null;
   let reps = null;
+  let repsLeft = null;
+  let repsRight = null;
   let duration = null;
 
   if (timeBased) {
@@ -333,14 +338,31 @@ function composer(exId, editing, here, previous) {
       label: t('session.weight'), suffix: ctx.unit, value: base.weight,
       step: ctx.weightStep, min: 0, max: 1000, decimals: 1,
     });
-    reps = createStepper({
-      label: t('session.reps'), value: base.reps,
-      step: ctx.repsStep, min: 0, max: 300, decimals: 0,
-    });
-    wrap.append(weight.el, reps.el);
+    if (unilateral) {
+      weight.el.classList.add('composer__full');
+      repsRight = createStepper({
+        label: t('session.repsRight'), value: base.repsRight,
+        step: ctx.repsStep, min: 0, max: 300, decimals: 0,
+      });
+      repsLeft = createStepper({
+        label: t('session.repsLeft'), value: base.repsLeft,
+        step: ctx.repsStep, min: 0, max: 300, decimals: 0,
+      });
+      wrap.append(weight.el, repsRight.el, repsLeft.el);
+    } else {
+      reps = createStepper({
+        label: t('session.reps'), value: base.reps,
+        step: ctx.repsStep, min: 0, max: 300, decimals: 0,
+      });
+      wrap.append(weight.el, reps.el);
+    }
   }
 
-  const values = () => (timeBased ? { durationSec: duration.get() } : { weight: weight.get(), reps: reps.get() });
+  const values = () => {
+    if (timeBased) return { durationSec: duration.get() };
+    if (unilateral) return { weight: weight.get(), repsLeft: repsLeft.get(), repsRight: repsRight.get() };
+    return { weight: weight.get(), reps: reps.get() };
+  };
 
   let warmup = Boolean(base.warmup);
   const actions = node('<div class="composer__actions"></div>');
@@ -380,10 +402,15 @@ function composer(exId, editing, here, previous) {
 
 /* ---------- Mutacoes ---------- */
 
+function isEmptySet(values) {
+  if ('durationSec' in values) return values.durationSec <= 0;
+  if ('repsLeft' in values) return values.repsLeft <= 0 && values.repsRight <= 0;
+  return values.reps <= 0;
+}
+
 async function addSet(exId, values, warmup) {
-  const timeBased = 'durationSec' in values;
-  if (timeBased ? values.durationSec <= 0 : values.reps <= 0) {
-    toast(timeBased ? t('session.enterDuration') : t('session.enterReps'));
+  if (isEmptySet(values)) {
+    toast('durationSec' in values ? t('session.enterDuration') : t('session.enterReps'));
     return;
   }
 
@@ -406,9 +433,8 @@ async function addSet(exId, values, warmup) {
 }
 
 async function saveEdit(exId, set, values) {
-  const timeBased = 'durationSec' in values;
-  if (timeBased ? values.durationSec <= 0 : values.reps <= 0) {
-    toast(timeBased ? t('session.enterDuration') : t('session.enterReps'));
+  if (isEmptySet(values)) {
+    toast('durationSec' in values ? t('session.enterDuration') : t('session.enterReps'));
     return;
   }
   await db.updateSet(set.id, values);

@@ -292,13 +292,14 @@ export async function getExercise(id) {
  *  guarda, adicionar o mesmo exercicio pelo catalogo e pelo seletor criaria
  *  duas linhas e o historico de carga ficaria dividido entre elas. */
 export async function addExercise({
-  name, muscleGroup, slug = null, custom = true,
+  name, muscleGroup, slug = null, custom = true, unilateral = false,
 }) {
   const record = {
     name: String(name).trim(),
     muscleGroup: muscleGroup || 'Outros',
     slug: slug || null,
     custom,
+    unilateral: Boolean(unilateral),
     createdAt: new Date().toISOString(),
   };
 
@@ -478,13 +479,15 @@ export function deleteWorkout(id) {
 /* ---------- Series ---------- */
 
 export async function addSet({
-  workoutId, exerciseId, weight, reps, durationSec, warmup = false,
+  workoutId, exerciseId, weight, reps, repsLeft, repsRight, durationSec, warmup = false,
 }) {
   const record = {
     workoutId: Number(workoutId),
     exerciseId: Number(exerciseId),
     weight: Number(weight) || 0,
     reps: Math.max(0, Math.round(Number(reps) || 0)),
+    repsLeft: Math.max(0, Math.round(Number(repsLeft) || 0)),
+    repsRight: Math.max(0, Math.round(Number(repsRight) || 0)),
     durationSec: Math.max(0, Math.round(Number(durationSec) || 0)),
     warmup: Boolean(warmup),
     createdAt: new Date().toISOString(),

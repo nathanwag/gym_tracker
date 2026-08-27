@@ -3,7 +3,7 @@
  * idioma ativo (ver i18n.js). */
 
 import { t, tn, locale } from './i18n.js';
-import { isDurationSet } from './models.js';
+import { isDurationSet, isUnilateralSet } from './models.js';
 import { groupBy, groupLabel } from './seed.js';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -244,13 +244,17 @@ export function fmtTempoSerie(seconds) {
  *  resumo do que ja foi feito). Concentra num lugar so a decisao que antes
  *  se repetia igual em cada tela que lista series. */
 export function fmtSet(s) {
-  return isDurationSet(s) ? fmtTempoSerie(s.durationSec) : `${fmtNum(s.weight, 2)}×${s.reps}`;
+  if (isDurationSet(s)) return fmtTempoSerie(s.durationSec);
+  if (isUnilateralSet(s)) return `${fmtNum(s.weight, 2)}×${s.repsRight}/${s.repsLeft}`;
+  return `${fmtNum(s.weight, 2)}×${s.reps}`;
 }
 
 /** Mesma decisao que fmtSet, com unidade de peso e espacada — usado quando
  *  a serie aparece sozinha numa linha (lista de series de um treino). */
 export function fmtSetWithUnit(s, unit) {
-  return isDurationSet(s) ? fmtTempoSerie(s.durationSec) : `${fmtNum(s.weight, 2)} ${unit} × ${s.reps}`;
+  if (isDurationSet(s)) return fmtTempoSerie(s.durationSec);
+  if (isUnilateralSet(s)) return `${fmtNum(s.weight, 2)} ${unit} × ${s.repsRight}/${s.repsLeft}`;
+  return `${fmtNum(s.weight, 2)} ${unit} × ${s.reps}`;
 }
 
 /* ---------- Diversos ---------- */

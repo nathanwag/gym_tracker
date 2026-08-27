@@ -14,9 +14,22 @@ export function e1rm(weight, reps) {
   return r === 1 ? w : w * (1 + r / 30);
 }
 
-export const setE1rm = (s) => e1rm(s.weight, s.reps);
-export const setVolume = (s) => (Number(s.weight) || 0) * (Number(s.reps) || 0);
 export const setDuration = (s) => Number(s.durationSec) || 0;
+
+/** Series de exercicio unilateral guardam repsLeft/repsRight em vez de reps
+ *  (ver session.js compositor()) — peso e o mesmo dos dois lados. */
+export const isUnilateralSet = (s) => (Number(s.repsLeft) || 0) > 0 || (Number(s.repsRight) || 0) > 0;
+
+export const totalReps = (s) => (isUnilateralSet(s)
+  ? (Number(s.repsLeft) || 0) + (Number(s.repsRight) || 0)
+  : Number(s.reps) || 0);
+
+/** e1RM/PR de serie unilateral usa a media dos lados arredondada pra baixo:
+ *  mais conservador que somar, sem descartar o lado que rendeu mais. */
+export const effectiveReps = (s) => (isUnilateralSet(s) ? Math.floor(totalReps(s) / 2) : Number(s.reps) || 0);
+
+export const setE1rm = (s) => e1rm(s.weight, effectiveReps(s));
+export const setVolume = (s) => (Number(s.weight) || 0) * totalReps(s);
 
 /** Series de Cardio/Alongamento guardam durationSec em vez de peso/reps (ver
  *  session.js compositor()) — peso e reps ficam 0 nelas, e vice-versa. */
@@ -24,7 +37,7 @@ export const isDurationSet = (s) => setDuration(s) > 0;
 
 /** Series que contam para estatisticas: fora aquecimento e series vazias
  *  (peso/reps para exercicio de forca, duracao para cardio/alongamento). */
-export const workingSets = (sets) => sets.filter((s) => !s.warmup && s.weight >= 0 && (s.reps > 0 || isDurationSet(s)));
+export const workingSets = (sets) => sets.filter((s) => !s.warmup && s.weight >= 0 && (totalReps(s) > 0 || isDurationSet(s)));
 
 export const totalVolume = (sets) => workingSets(sets).reduce((acc, s) => acc + setVolume(s), 0);
 export const totalDuration = (sets) => workingSets(sets).reduce((acc, s) => acc + setDuration(s), 0);
@@ -81,7 +94,7 @@ export function evaluatePR(set, history) {
     return pr;
   }
 
-  if (!set.reps || set.weight <= 0) {
+  if (!totalReps(set) || set.weight <= 0) {
     return {
       weight: false, e1rm: false, duration: false, any: false,
     };
@@ -112,7 +125,7 @@ export function prSetIds(sets) {
       maxDuration = Math.max(maxDuration, d);
       continue;
     }
-    if (!s.reps || s.weight <= 0) continue;
+    if (!totalReps(s) || s.weight <= 0) continue;
     const v = setE1rm(s);
     if (s.weight > maxWeight || v > max1rm) ids.add(s.id);
     maxWeight = Math.max(maxWeight, s.weight);
@@ -190,7 +203,7 @@ export function workoutSummary(sets) {
     sets: valid.length,
     exercises: exercises.size,
     volume: valid.reduce((acc, s) => acc + setVolume(s), 0),
-    reps: valid.reduce((acc, s) => acc + s.reps, 0),
+    reps: valid.reduce((acc, s) => acc + totalReps(s), 0),
     totalDuration: valid.reduce((acc, s) => acc + setDuration(s), 0),
   };
 }

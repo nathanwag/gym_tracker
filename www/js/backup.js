@@ -194,6 +194,7 @@ export async function validate(payload) {
       muscleGroup: String(e.muscleGroup ?? e.grupoMuscular ?? 'Outros'),
       slug: e.slug ?? slugByName().get(normalizeName(e.name ?? e.nome ?? '')) ?? null,
       custom: Boolean(e.custom ?? e.personalizado),
+      unilateral: Boolean(e.unilateral),
       createdAt: e.createdAt ?? e.criadoEm ?? new Date().toISOString(),
     })),
     workouts: workouts.map((w) => ({
@@ -213,6 +214,8 @@ export async function validate(payload) {
       exerciseId: toNumber(s.exerciseId),
       weight: toNumber(s.weight ?? s.peso),
       reps: Math.round(toNumber(s.reps)),
+      repsLeft: Math.round(toNumber(s.repsLeft)),
+      repsRight: Math.round(toNumber(s.repsRight)),
       durationSec: Math.round(toNumber(s.durationSec ?? s.duracaoSeg)),
       warmup: Boolean(s.warmup ?? s.aquecimento),
       createdAt: s.createdAt ?? s.criadoEm ?? new Date().toISOString(),
