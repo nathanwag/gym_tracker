@@ -20,7 +20,8 @@ import { normalizeName } from './text.js';
 const DB_NAME = 'treino';
 // v2: campo `slug` no exercicio, ligando-o as figuras de www/img/ex/.
 // v3: nomes de campo em ingles (exercises/workouts/sets/settings).
-const DB_VERSION = 3;
+// v4: store `exerciseImages`, fotos personalizadas (posicao inicial/final).
+const DB_VERSION = 4;
 
 export const DEFAULT_SETTINGS = {
   unit: 'kg',
@@ -189,6 +190,14 @@ export function open() {
           cursor.continue();
         };
       }
+
+      if (event.oldVersion < 4) {
+        // Chave composta: da unicidade por (exercicio, posicao) sem precisar
+        // do padrao get-then-put que addExercise usa pro slug, e permite
+        // buscar as duas fotos de um exercicio com um range direto na chave
+        // primaria (ver getExerciseImages), sem indice extra.
+        db.createObjectStore('exerciseImages', { keyPath: ['exerciseId', 'slot'] });
+      }
     };
 
     request.onsuccess = () => {
@@ -339,12 +348,50 @@ export async function deleteExercise(id) {
   if (uses > 0) {
     throw new Error(`Este exercício tem ${uses} série(s) registrada(s). Apague o histórico dele antes.`);
   }
-  await tx('exercises', 'readwrite', (s) => s.delete(Number(id)));
+  await tx(['exercises', 'exerciseImages'], 'readwrite', (ex, images) => {
+    ex.delete(Number(id));
+    // Delete de chave inexistente nao da erro — nao precisa checar antes se
+    // o exercicio tinha foto em cada posicao.
+    images.delete([Number(id), 0]);
+    images.delete([Number(id), 1]);
+  });
   exerciseCache = null;
 }
 
 export function countSetsByExercise(id) {
   return tx('sets', 'readonly', (s) => req(s.index('by_exercise').count(Number(id))));
+}
+
+/* ---------- Fotos personalizadas ----------
+ * Ficam fora do registro do exercicio (e do exerciseCache) de proposito: sao
+ * Blobs pesados lidos so quando a tela de detalhe ou o editor de fotos
+ * precisa deles, nao a cada listagem — mesma logica que ja separa
+ * catalogo.json (leve, lido toda hora) de instrucoes.json (pesado, sob
+ * demanda) em catalog.js. */
+
+/** As duas fotos de um exercicio, na ordem [posicao inicial, posicao final].
+ *  `null` no lugar de um Blob significa "sem foto personalizada nesse slot". */
+export async function getExerciseImages(id) {
+  const rows = await tx('exerciseImages', 'readonly', (s) =>
+    req(s.getAll(IDBKeyRange.bound([Number(id), 0], [Number(id), 1]))));
+  const bySlot = new Map(rows.map((r) => [r.slot, r.blob]));
+  return [bySlot.get(0) ?? null, bySlot.get(1) ?? null];
+}
+
+export async function saveExerciseImage(id, slot, blob) {
+  await tx('exerciseImages', 'readwrite', (s) => req(s.put({
+    exerciseId: Number(id), slot, blob, createdAt: new Date().toISOString(),
+  })));
+}
+
+export async function removeExerciseImage(id, slot) {
+  await tx('exerciseImages', 'readwrite', (s) => req(s.delete([Number(id), slot])));
+}
+
+/** Todas as fotos personalizadas de todos os exercicios, cru — usado pelo
+ *  cache de miniaturas (media.js) e pelo backup (dumpAll). */
+export function listAllExerciseImages() {
+  return tx('exerciseImages', 'readonly', (s) => req(s.getAll()));
 }
 
 /* ---------- Treinos ---------- */
@@ -480,35 +527,37 @@ export async function listAllSets() {
 
 /** Copia integral do banco, usada por backup.js para gerar o JSON. */
 export async function dumpAll() {
-  const [exercises, workouts, sets, settingsRows] = await Promise.all([
+  const [exercises, workouts, sets, settingsRows, images] = await Promise.all([
     tx('exercises', 'readonly', (s) => req(s.getAll())),
     tx('workouts', 'readonly', (s) => req(s.getAll())),
     tx('sets', 'readonly', (s) => req(s.getAll())),
     tx('settings', 'readonly', (s) => req(s.getAll())),
+    tx('exerciseImages', 'readonly', (s) => req(s.getAll())),
   ]);
   return {
-    exercises, workouts, sets, settings: settingsRows,
+    exercises, workouts, sets, settings: settingsRows, images,
   };
 }
 
 /** Substitui todo o conteudo do banco (restauracao de backup). */
 export async function replaceAll({
-  exercises = [], workouts = [], sets = [], settings: settingsRows = [],
+  exercises = [], workouts = [], sets = [], settings: settingsRows = [], images = [],
 }) {
-  await tx(['exercises', 'workouts', 'sets', 'settings'], 'readwrite', (ex, wo, se, st) => {
-    ex.clear(); wo.clear(); se.clear(); st.clear();
+  await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages'], 'readwrite', (ex, wo, se, st, im) => {
+    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear();
     for (const row of exercises) ex.put(row);
     for (const row of workouts) wo.put(row);
     for (const row of sets) se.put(row);
     for (const row of settingsRows) st.put(row);
+    for (const row of images) im.put(row);
   });
   exerciseCache = null;
 }
 
 /** Apaga tudo, incluindo a biblioteca de exercicios. */
 export async function resetAll() {
-  await tx(['exercises', 'workouts', 'sets', 'settings'], 'readwrite', (ex, wo, se, st) => {
-    ex.clear(); wo.clear(); se.clear(); st.clear();
+  await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages'], 'readwrite', (ex, wo, se, st, im) => {
+    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear();
   });
   exerciseCache = null;
 }

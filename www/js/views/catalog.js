@@ -7,7 +7,9 @@
 import * as catalog from '../catalog.js';
 import * as db from '../db.js';
 import { MUSCLE_GROUPS, groupLabel } from '../seed.js';
-import { thumbHtml, createAnimation, prefetchPhotos } from '../media.js';
+import {
+  thumbHtml, createAnimation, prefetchPhotos, fullUrl,
+} from '../media.js';
 import { t, language } from '../i18n.js';
 import {
   ICON, html, node, raw, setTop, toast, refresh, groupedList, listInCard,
@@ -135,7 +137,9 @@ export async function renderDetail(view, slug) {
   const root = node('<div class="stack"></div>');
 
   // A animacao e o "videozinho": as duas fotos alternando mostram o movimento.
-  root.append(createAnimation(slug, { name: catalog.displayName(item) }));
+  root.append(createAnimation({
+    frameA: fullUrl(slug, 0), frameB: fullUrl(slug, 1), name: catalog.displayName(item),
+  }));
 
   root.append(node(html`
     <div class="card card__pad stack--sm">

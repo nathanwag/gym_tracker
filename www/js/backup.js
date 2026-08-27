@@ -48,6 +48,24 @@ function remapSetting(row) {
   return { key: newKey, value };
 }
 
+// Blob nao sobrevive a JSON.stringify — o backup e um arquivo de texto, entao
+// as fotos personalizadas viajam como data URL (base64) e voltam a ser Blob
+// na importacao. Deixa o backup maior quando ha fotos, mas e a unica forma de
+// nao perde-las ao trocar de aparelho ou limpar dados.
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function dataUrlToBlob(dataUrl) {
+  const response = await fetch(dataUrl);
+  return response.blob();
+}
+
 /**
  * Monta o backup. Deve ser chamado ANTES do toque do usuario sempre que
  * possivel: o Safari exige que navigator.share() aconteca durante o gesto, e
@@ -55,6 +73,12 @@ function remapSetting(row) {
  */
 export async function prepareBackup() {
   const data = await db.dumpAll();
+  const images = await Promise.all(data.images.map(async (row) => ({
+    exerciseId: row.exerciseId,
+    slot: row.slot,
+    dataUrl: await blobToDataUrl(row.blob),
+    createdAt: row.createdAt,
+  })));
   const payload = {
     format: FORMAT,
     version: VERSION,
@@ -63,6 +87,7 @@ export async function prepareBackup() {
     workouts: data.workouts,
     sets: data.sets,
     settings: data.settings,
+    images,
   };
 
   const json = JSON.stringify(payload);
@@ -131,7 +156,7 @@ export async function readFile(file) {
   return validate(payload);
 }
 
-export function validate(payload) {
+export async function validate(payload) {
   if (!payload || typeof payload !== 'object') throw new Error(t('backup.error.emptyOrInvalid'));
 
   const { exercises, workouts, sets, settings = [] } = payload;
@@ -148,6 +173,15 @@ export function validate(payload) {
   }
 
   const toNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+  const images = await Promise.all(
+    (Array.isArray(payload.images) ? payload.images : []).map(async (row) => ({
+      exerciseId: toNumber(row.exerciseId),
+      slot: row.slot === 1 ? 1 : 0,
+      blob: await dataUrlToBlob(row.dataUrl),
+      createdAt: row.createdAt ?? new Date().toISOString(),
+    })),
+  );
 
   return {
     // A restauracao chama db.replaceAll(), que grava direto e NAO passa pela
@@ -184,6 +218,7 @@ export function validate(payload) {
       createdAt: s.createdAt ?? s.criadoEm ?? new Date().toISOString(),
     })),
     settings: Array.isArray(settings) ? settings.filter((s) => s && s.key).map(remapSetting) : [],
+    images,
   };
 }
 

@@ -18,3 +18,8 @@ export const stripAccents = (s) =>
  *  aparelho antes do catalogo existir. */
 export const normalizeName = (s) =>
   stripAccents(s).replace(/[^a-z0-9]+/g, ' ').trim();
+
+/** Apara cada passo do editor de passo a passo e descarta os vazios,
+ *  preservando a ordem em que o usuario os deixou. */
+export const cleanSteps = (steps) =>
+  steps.map((s) => String(s).trim()).filter(Boolean);

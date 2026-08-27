@@ -9,7 +9,7 @@
 import * as db from '../db.js';
 import * as catalog from '../catalog.js';
 import { MUSCLE_GROUPS, groupLabel } from '../seed.js';
-import { thumbHtml, prefetchPhotos } from '../media.js';
+import { thumbHtml, prefetchPhotos, preloadCustomThumbs } from '../media.js';
 import { t } from '../i18n.js';
 import {
   html, raw, node, ICON, toast, openSheet, closeSheet, stripAccents, groupedList, listInCard,
@@ -91,6 +91,9 @@ export function openExercisePicker({ exercises, alreadyChosenIds, onChoose }) {
 
   searchInput.addEventListener('input', draw);
   draw();
+  // Mesmo padrao de exercise.js:renderList — nao atrasa a primeira pintura
+  // do seletor, so redesenha se (e quando) o cache terminar de carregar.
+  preloadCustomThumbs().then(() => { if (results.isConnected) draw(); }).catch(() => {});
 }
 
 /** Sugestoes do catalogo dentro do seletor.

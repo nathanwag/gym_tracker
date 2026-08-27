@@ -26,6 +26,32 @@ export const MEDIA_CACHE = 'workout-media';
 export const thumbUrl = (slug) => `./img/ex/thumb/${slug}.webp`;
 export const fullUrl = (slug, i) => `./img/ex/full/${slug}-${i}.webp`;
 
+// Mapa exerciseId -> URL de objeto da foto personalizada (posicao inicial, so
+// slot 0 — e o que aparece em miniatura). Mesmo espirito do exerciseCache de
+// db.js: carrega uma vez, reusa, e e derrubado por qualquer escrita.
+let customThumbCache = null;
+
+/** Carrega (uma vez) as fotos personalizadas de posicao inicial de todos os
+ *  exercicios, para thumbHtml poder usa-las de forma sincrona. Quem monta
+ *  lista em lote (renderList, exercise-picker) chama isto antes, do mesmo
+ *  jeito que ja da `await db.listExercises()`. */
+export async function preloadCustomThumbs() {
+  if (customThumbCache) return;
+  const rows = await db.listAllExerciseImages();
+  customThumbCache = new Map(
+    rows.filter((r) => r.slot === 0).map((r) => [r.exerciseId, URL.createObjectURL(r.blob)]),
+  );
+}
+
+/** Chamado depois de salvar/remover uma foto personalizada: as URLs de
+ *  objeto guardadas ficariam apontando para um Blob que pode nao bater mais
+ *  com o que esta no banco. */
+export function invalidateCustomThumbs() {
+  if (!customThumbCache) return;
+  for (const url of customThumbCache.values()) URL.revokeObjectURL(url);
+  customThumbCache = null;
+}
+
 /** Miniatura de um exercicio, com o icone do grupo por tras.
  *
  *  O icone nao e alternativa, e camada de fundo: aparece enquanto a foto
@@ -43,8 +69,14 @@ export function thumbHtml(ex, { className = '' } = {}) {
   // item cru do catalogo (fora de escopo, nome de campo continua em pt).
   const group = ex.muscleGroup || ex.grupo || 'Outros';
   const icon = ICON_GROUPS[group] || ICON_GROUPS['Outros'];
-  const photo = ex.slug
-    ? html`<img class="thumb__img" src="${thumbUrl(ex.slug)}" alt="" loading="lazy"
+  // Foto personalizada tem prioridade sobre a do catalogo. Se o cache ainda
+  // nao foi carregado (customThumbCache null), cai no comportamento de
+  // sempre — quem quer a foto personalizada aqui precisa ter chamado
+  // preloadCustomThumbs() antes.
+  const customUrl = customThumbCache?.get(ex.id);
+  const src = customUrl || (ex.slug ? thumbUrl(ex.slug) : null);
+  const photo = src
+    ? html`<img class="thumb__img" src="${src}" alt="" loading="lazy"
                 decoding="async" onerror="this.hidden=true">`
     : '';
 
@@ -92,18 +124,41 @@ export async function precacheMedia({ force = false } = {}) {
   return true;
 }
 
+/** Le um arquivo escolhido pelo usuario e devolve um Blob comprimido, pronto
+ *  para guardar como foto personalizada de um exercicio.
+ *
+ *  Fotos de catalogo (geradas offline, curadas) chegam com ~12 KB; uma foto
+ *  de celular sem tratamento nenhum passaria de 1-2 MB facil, o que pesa
+ *  demais pro IndexedDB e pro backup em JSON (fotos viajam em base64 la —
+ *  ver blobToDataUrl em backup.js). Reduz pro mesmo tamanho maximo das fotos
+ *  do catalogo e reusa o padrao canvas.toBlob ja usado em share-image.js. */
+export async function compressImage(file, { maxDim = 1080, quality = 0.82 } = {}) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+}
+
 /** Alterna as duas fotos em loop, mostrando o movimento.
  *
  *  A alternancia e CSS puro (ver .flip em styles.css). Sem setInterval: o
  *  navegador ja pausa animacao fora da tela e nao ha timer para vazar quando a
  *  view troca. Aqui so ficam a espera da decodificacao e o botao de pausa —
- *  comecar antes das duas imagens prontas faz o primeiro ciclo piscar em branco. */
-export function createAnimation(slug, { name = '' } = {}) {
+ *  comecar antes das duas imagens prontas faz o primeiro ciclo piscar em branco.
+ *
+ *  Recebe as duas URLs de frame ja resolvidas (nao um slug): quem chama decide
+ *  se elas vem do catalogo (fullUrl) ou de uma foto personalizada
+ *  (URL.createObjectURL) — ver exercise.js:renderDetail. */
+export function createAnimation({ frameA, frameB, name = '' } = {}) {
   const el = document.createElement('div');
   el.className = 'flip';
   el.innerHTML = html`
-    <img class="flip__frame" src="${fullUrl(slug, 0)}" alt="${name ? t('media.startPosition', { name }) : ''}">
-    <img class="flip__frame flip__frame--b" src="${fullUrl(slug, 1)}" alt="" aria-hidden="true">
+    <img class="flip__frame" src="${frameA}" alt="${name ? t('media.startPosition', { name }) : ''}">
+    <img class="flip__frame flip__frame--b" src="${frameB}" alt="" aria-hidden="true">
     <button class="flip__toggle" type="button" aria-label="${t('media.pauseAnimation')}" hidden></button>
   `;
 

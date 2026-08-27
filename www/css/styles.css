@@ -743,6 +743,27 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .steps li { margin-top: 8px; font-size: .92rem; line-height: 1.5; }
 .steps li:first-child { margin-top: 0; }
 
+/* ---------- Editor de passo a passo ---------- */
+
+.step-row { display: flex; gap: 6px; align-items: flex-start; }
+.step-row .input { resize: vertical; min-height: var(--tap); padding-top: 10px; }
+.step-row__actions { display: flex; flex-direction: column; flex: 0 0 auto; }
+.step-row__actions .icon-btn svg { width: 18px; height: 18px; }
+
+/* ---------- Editor de fotos personalizadas ---------- */
+
+.photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo-slot { display: flex; flex-direction: column; gap: 8px; }
+.photo-slot__preview {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.photo-slot__preview img { width: 100%; height: 100%; object-fit: cover; }
+.photo-slot__label { font-size: .82rem; font-weight: 600; }
+
 .stack--sm > * + * { margin-top: 10px; }
 
 @media (prefers-reduced-motion: reduce) {

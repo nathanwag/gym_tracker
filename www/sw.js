@@ -12,7 +12,7 @@
  * GitHub Pages quanto na origem local do WebView nativo.
  */
 
-const VERSION = 'treino-v8';
+const VERSION = 'treino-v9';
 
 // Dois caches de proposito. O do app e versionado e descartavel: bumpar VERSION
 // e como se deploya. O de midia NAO e versionado — sao dezenas de MB de fotos

@@ -2,11 +2,13 @@
   "name": "treino",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Registro de cargas e repeticoes com graficos de progressao e recordes.",
   "license": "MIT",
   "scripts": {
     "dev": "python tools/dev_server.py 8000",
     "icons": "python tools/make_icons.py",
+    "test": "node --test",
     "cap:ios": "cap add ios",
     "cap:android": "cap add android",
     "cap:sync": "cap sync"

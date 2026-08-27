@@ -10,10 +10,14 @@ import {
 } from '../seed.js';
 import { lineChart } from '../charts.js';
 import * as catalog from '../catalog.js';
-import { thumbHtml, createAnimation, prefetchPhotos } from '../media.js';
-import { t, tn, language } from '../i18n.js';
 import {
-  setTop, html, raw, node, ICON, ICON_GROUPS, toast, openSheet, closeSheet, confirmSheet,
+  thumbHtml, createAnimation, prefetchPhotos, fullUrl,
+  preloadCustomThumbs, invalidateCustomThumbs, compressImage,
+} from '../media.js';
+import { t, tn, language } from '../i18n.js';
+import { cleanSteps } from '../text.js';
+import {
+  setTop, html, raw, node, ICON, ICON_GROUPS, toast, openSheet, closeSheet, confirmSheet, onSheetClose,
   fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, fmtSet, stripAccents, refresh, wireSegmented,
 } from '../ui.js';
 
@@ -132,6 +136,10 @@ export async function renderList(view) {
   });
 
   draw();
+  // Miniaturas personalizadas nao atrasam a primeira pintura: desenha de
+  // novo so quando (e se) o cache terminar de carregar, igual ao passo a
+  // passo do detalhe (linha ~253) — mesmo motivo, arquivo/leitura separada.
+  preloadCustomThumbs().then(() => { if (list.isConnected) draw(); }).catch(() => {});
   view.append(root);
 }
 
@@ -167,11 +175,12 @@ function metrics(timeBased) {
 }
 
 export async function renderDetail(view, exId) {
-  const [exercise, sets, workouts, active] = await Promise.all([
+  const [exercise, sets, workouts, active, images] = await Promise.all([
     db.getExercise(exId),
     db.listSetsByExercise(exId),
     db.listWorkouts(),
     db.getActiveWorkout(),
+    db.getExerciseImages(exId),
   ]);
 
   if (!exercise) {
@@ -193,13 +202,15 @@ export async function renderDetail(view, exId) {
     back: '#/exercicios',
     actions: `<button class="btn btn--sm btn--ghost" data-menu aria-label="${t('exercise.options')}">···</button>`,
   });
-  document.querySelector('[data-menu]').onclick = () => exerciseMenu(exercise, sets.length);
+  document.querySelector('[data-menu]').onclick = () => exerciseMenu(exercise, sets.length, images);
 
   const root = node('<div class="stack"></div>');
 
   // As duas fotos alternando mostram o movimento. Fica antes dos numeros: quem
   // abre esta tela no meio da serie quer conferir a execucao primeiro.
-  if (exercise.slug) root.append(createAnimation(exercise.slug, { name: exercise.name }));
+  revokeDetailPhotoUrls();
+  const photos = photoSection(exercise, images);
+  if (photos) root.append(photos);
 
   root.append(node(timeBased ? html`
     <div class="card">
@@ -250,22 +261,73 @@ export async function renderDetail(view, exId) {
 
   view.append(root);
 
-  // Depois do append: o passo a passo vem de um arquivo separado e nao deve
-  // atrasar o resto da tela, que e o motivo principal de estar aqui.
-  if (exercise.slug) {
+  // `exercise.steps` (personalizado pelo usuario) tem prioridade sobre o
+  // passo a passo do catalogo. So cai no catalogo quando o campo nunca foi
+  // salvo (`undefined`) — uma edicao resultando em lista vazia e um override
+  // explicito de "sem passo a passo", nao volta a mostrar o do catalogo.
+  if (Array.isArray(exercise.steps)) {
+    if (exercise.steps.length) root.append(stepsCard(exercise.steps));
+  } else if (exercise.slug) {
+    // Depois do append: o passo a passo vem de um arquivo separado e nao deve
+    // atrasar o resto da tela, que e o motivo principal de estar aqui.
     catalog.instructions(exercise.slug)
       .then((info) => {
         const steps = info?.[language()];
         if (!steps?.length || !root.isConnected) return;
-        root.append(node(html`
-          <div class="card card__pad">
-            <h2 class="section-title" style="margin-top:0">${t('exercise.howTo')}</h2>
-            <ol class="steps">${raw(steps.map((p) => html`<li>${p}</li>`).join(''))}</ol>
-          </div>
-        `));
+        root.append(stepsCard(steps));
       })
       .catch(() => { /* offline e sem o arquivo em cache: a tela segue util */ });
   }
+}
+
+function stepsCard(steps) {
+  return node(html`
+    <div class="card card__pad">
+      <h2 class="section-title" style="margin-top:0">${t('exercise.howTo')}</h2>
+      <ol class="steps">${raw(steps.map((p) => html`<li>${p}</li>`).join(''))}</ol>
+    </div>
+  `);
+}
+
+/* ---------- Fotos personalizadas (posicao inicial/final) ---------- */
+
+// URLs de objeto da tela de detalhe aberta no momento — revogadas na proxima
+// abertura (ou troca de exercicio) para nao vazar memoria numa sessao longa.
+let detailPhotoUrls = [];
+
+function revokeDetailPhotoUrls() {
+  for (const url of detailPhotoUrls) URL.revokeObjectURL(url);
+  detailPhotoUrls = [];
+}
+
+/** Decide o que mostrar no lugar da animacao flip: foto(s) personalizada(s)
+ *  se houver alguma, senao a do catalogo (slug), senao nada.
+ *
+ *  Uma vez que existe QUALQUER foto personalizada, a tela para de misturar
+ *  com a foto do catalogo no outro slot — evita uma animacao com dois
+ *  enquadramentos/pessoas diferentes piscando junto. Slot que falta vira uma
+ *  dica pra completar em vez de uma foto emprestada. */
+function photoSection(exercise, [blob0, blob1]) {
+  if (blob0 || blob1) {
+    const url0 = blob0 ? URL.createObjectURL(blob0) : null;
+    const url1 = blob1 ? URL.createObjectURL(blob1) : null;
+    detailPhotoUrls.push(...[url0, url1].filter(Boolean));
+
+    if (url0 && url1) return createAnimation({ frameA: url0, frameB: url1, name: exercise.name });
+
+    const missing = url0 ? t('exercise.photos.endLabel') : t('exercise.photos.startLabel');
+    return node(html`
+      <div class="stack">
+        <div class="photo-slot__preview"><img src="${url0 || url1}" alt=""></div>
+        <p class="muted small" style="margin:0">${t('exercise.photos.missingHint', { slot: missing })}</p>
+      </div>
+    `);
+  }
+
+  if (exercise.slug) {
+    return createAnimation({ frameA: fullUrl(exercise.slug, 0), frameB: fullUrl(exercise.slug, 1), name: exercise.name });
+  }
+  return null;
 }
 
 function chartSection(summaries, unit, timeBased) {
@@ -374,12 +436,17 @@ function historySection(summaries, prIds, unit, timeBased) {
 
 /* ---------- Criar / editar / apagar ---------- */
 
-function exerciseMenu(exercise, totalSets) {
+function exerciseMenu(exercise, totalSets, images) {
+  const hasCustomPhotos = images.some(Boolean);
   const body = node(html`
     <div class="stack">
       <button class="btn btn--block" data-rename>${t('exercise.menu.rename')}</button>
       <button class="btn btn--block" data-image>
         ${exercise.slug ? t('exercise.menu.changePhoto') : t('exercise.menu.choosePhotoFromCatalog')}
+      </button>
+      <button class="btn btn--block" data-steps>${t('exercise.menu.editSteps')}</button>
+      <button class="btn btn--block" data-photos>
+        ${hasCustomPhotos ? t('exercise.menu.editPhotos') : t('exercise.menu.addPhotos')}
       </button>
       <button class="btn btn--block btn--danger" data-delete>${t('exercise.menu.delete')}</button>
       <p class="muted small" style="margin:0">
@@ -391,6 +458,8 @@ function exerciseMenu(exercise, totalSets) {
 
   body.querySelector('[data-rename]').onclick = () => exerciseForm(exercise);
   body.querySelector('[data-image]').onclick = () => chooseImage(exercise);
+  body.querySelector('[data-steps]').onclick = () => stepsForm(exercise);
+  body.querySelector('[data-photos]').onclick = () => photosForm(exercise, images);
   body.querySelector('[data-delete]').onclick = async () => {
     closeSheet();
     const ok = await confirmSheet({
@@ -469,6 +538,134 @@ function chooseImage(exercise) {
   draw().catch(() => {
     results.innerHTML = `<p class="muted small">${t('exercise.photo.loadError')}</p>`;
   });
+}
+
+/** Editor do passo a passo. Pre-preenche com o passo a passo atual do
+ *  catalogo (se o exercicio tem slug e ainda nao tem override) — editar a
+ *  partir dali em vez de comecar em branco. Sem precedente de lista
+ *  reordenavel no projeto: usa botoes ↑/↓ por linha em vez de
+ *  drag-and-drop, no mesmo estilo minimalista do resto do app. */
+async function stepsForm(exercise) {
+  const catalogSteps = Array.isArray(exercise.steps)
+    ? null
+    : (exercise.slug ? (await catalog.instructions(exercise.slug).catch(() => null))?.[language()] : null);
+  const list = exercise.steps ?? catalogSteps ?? [];
+
+  const body = node(html`
+    <div class="stack">
+      <div class="stack--sm" data-rows></div>
+      <button class="btn btn--block btn--ghost" data-add>${raw(ICON.plus)} ${t('exercise.steps.addStep')}</button>
+      <button class="btn btn--primary btn--block" data-save>${t('common.save')}</button>
+    </div>
+  `);
+  openSheet(t('exercise.steps.sheetTitle'), body);
+
+  const rows = body.querySelector('[data-rows]');
+
+  const drawRows = () => {
+    rows.innerHTML = '';
+    list.forEach((value, i) => {
+      const row = node(html`
+        <div class="step-row">
+          <textarea class="input" rows="2" aria-label="${t('exercise.steps.stepLabel', { n: i + 1 })}">${value}</textarea>
+          <div class="step-row__actions">
+            <button class="icon-btn" type="button" data-up aria-label="${t('exercise.steps.moveUp')}" ${raw(i === 0 ? 'disabled' : '')}>${raw(ICON.up)}</button>
+            <button class="icon-btn" type="button" data-down aria-label="${t('exercise.steps.moveDown')}" ${raw(i === list.length - 1 ? 'disabled' : '')}>${raw(ICON.down)}</button>
+            <button class="icon-btn" type="button" data-remove aria-label="${t('exercise.steps.removeStep')}">${raw(ICON.trash)}</button>
+          </div>
+        </div>
+      `);
+      row.querySelector('textarea').addEventListener('input', (e) => { list[i] = e.target.value; });
+      row.querySelector('[data-up]').onclick = () => {
+        if (i === 0) return;
+        [list[i - 1], list[i]] = [list[i], list[i - 1]];
+        drawRows();
+      };
+      row.querySelector('[data-down]').onclick = () => {
+        if (i === list.length - 1) return;
+        [list[i + 1], list[i]] = [list[i], list[i + 1]];
+        drawRows();
+      };
+      row.querySelector('[data-remove]').onclick = () => { list.splice(i, 1); drawRows(); };
+      rows.append(row);
+    });
+  };
+  drawRows();
+
+  body.querySelector('[data-add]').onclick = () => {
+    list.push('');
+    drawRows();
+    rows.lastElementChild.querySelector('textarea').focus();
+  };
+
+  body.querySelector('[data-save]').onclick = async () => {
+    await db.updateExercise(exercise.id, { steps: cleanSteps(list) });
+    closeSheet();
+    toast(t('exercise.steps.toastSaved'));
+    refresh();
+  };
+}
+
+/** Editor das duas fotos personalizadas (posicao inicial/final). Cada slot
+ *  aplica na hora que uma foto e escolhida (sem botao "Salvar" separado) —
+ *  mesmo padrao ja usado por chooseImage() acima. A pre-visualizacao mostra a
+ *  foto do catalogo como referencia enquanto nao ha foto personalizada
+ *  naquele slot, mas isso e so exibicao: nao conta como "salvo". */
+function photosForm(exercise, initialImages) {
+  const labels = [t('exercise.photos.startLabel'), t('exercise.photos.endLabel')];
+  const catalogUrls = exercise.slug ? [fullUrl(exercise.slug, 0), fullUrl(exercise.slug, 1)] : [null, null];
+  const urls = initialImages.map((blob) => (blob ? URL.createObjectURL(blob) : null));
+
+  const grid = node('<div class="photo-grid"></div>');
+  openSheet(t('exercise.photos.sheetTitle'), grid);
+  onSheetClose(() => {
+    for (const url of urls) if (url) URL.revokeObjectURL(url);
+    invalidateCustomThumbs();
+    refresh();
+  });
+
+  const drawSlot = (slot) => {
+    const preview = urls[slot] || catalogUrls[slot];
+    const previewHtml = preview ? html`<img src="${preview}" alt="">` : '';
+    const el = node(html`
+      <div class="photo-slot">
+        <span class="photo-slot__label">${labels[slot]}</span>
+        <div class="photo-slot__preview">${raw(previewHtml)}</div>
+        <label class="btn btn--block btn--ghost btn--sm">
+          ${t('exercise.photos.choose')}
+          <input type="file" accept="image/*" capture="environment" hidden data-file>
+        </label>
+        <button class="btn btn--block btn--sm" data-remove ${raw(urls[slot] ? '' : 'hidden')}>${t('exercise.photos.remove')}</button>
+      </div>
+    `);
+
+    el.querySelector('[data-file]').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const blob = await compressImage(file);
+        await db.saveExerciseImage(exercise.id, slot, blob);
+        if (urls[slot]) URL.revokeObjectURL(urls[slot]);
+        urls[slot] = URL.createObjectURL(blob);
+        toast(t('exercise.photos.toastSaved'));
+        redraw(slot);
+      } catch {
+        toast(t('exercise.photos.processError'));
+      }
+    });
+    el.querySelector('[data-remove]').onclick = async () => {
+      await db.removeExerciseImage(exercise.id, slot);
+      if (urls[slot]) URL.revokeObjectURL(urls[slot]);
+      urls[slot] = null;
+      toast(t('exercise.photos.toastRemoved'));
+      redraw(slot);
+    };
+    return el;
+  };
+
+  const redraw = (slot) => grid.replaceChild(drawSlot(slot), grid.children[slot]);
+
+  grid.append(drawSlot(0), drawSlot(1));
 }
 
 function exerciseForm(exercise = null) {
