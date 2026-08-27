@@ -168,6 +168,15 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 .stack > * + * { margin-top: 12px; }
 
+.share-preview img {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
 .section-title {
   margin: 22px 0 10px;
   font-size: .78rem;

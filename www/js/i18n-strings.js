@@ -232,6 +232,7 @@ export const DICT = {
     'history.genericTitle': 'Treino',
     'history.notFound': 'Treino não encontrado.',
     'history.delete': 'Apagar treino',
+    'history.share': 'Compartilhar imagem',
     'history.confirmDelete.title': 'Apagar este treino?',
     'history.confirmDelete.message': 'Todas as séries dele serão removidas do histórico e dos gráficos.',
     'history.toastDeleted': 'Treino apagado.',
@@ -243,6 +244,16 @@ export const DICT = {
     'history.removedExercise': 'Exercício removido',
     'history.seeProgress': 'Ver evolução',
     'history.warmup': 'aquec.',
+
+    // ---------- share-image.js ----------
+    'shareImage.title': 'Compartilhar treino',
+    'shareImage.exercisesTitle': 'Exercícios treinados',
+    'shareImage.share': 'Compartilhar',
+    'shareImage.save': 'Salvar imagem',
+    'shareImage.close': 'Fechar',
+    'shareImage.toastShared': 'Compartilhado!',
+    'shareImage.toastDownloaded': 'Imagem baixada.',
+    'shareImage.toastSaveManually': 'Toque e segure a imagem para salvar.',
 
     // ---------- views/session.js ----------
     'session.title': 'Treino em andamento',
@@ -522,6 +533,7 @@ export const DICT = {
     'history.genericTitle': 'Workout',
     'history.notFound': 'Workout not found.',
     'history.delete': 'Delete workout',
+    'history.share': 'Share image',
     'history.confirmDelete.title': 'Delete this workout?',
     'history.confirmDelete.message': 'All of its sets will be removed from history and charts.',
     'history.toastDeleted': 'Workout deleted.',
@@ -533,6 +545,16 @@ export const DICT = {
     'history.removedExercise': 'Removed exercise',
     'history.seeProgress': 'See progress',
     'history.warmup': 'warm-up',
+
+    // ---------- share-image.js ----------
+    'shareImage.title': 'Share workout',
+    'shareImage.exercisesTitle': 'Exercises trained',
+    'shareImage.share': 'Share',
+    'shareImage.save': 'Save image',
+    'shareImage.close': 'Close',
+    'shareImage.toastShared': 'Shared!',
+    'shareImage.toastDownloaded': 'Image downloaded.',
+    'shareImage.toastSaveManually': 'Tap and hold the image to save it.',
 
     // ---------- views/session.js ----------
     'session.title': 'Workout in progress',

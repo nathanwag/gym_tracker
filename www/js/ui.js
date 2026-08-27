@@ -103,6 +103,12 @@ export function toast(message, ms = 2200) {
 
 let sheetOnClose = null;
 
+/** Registra um callback pra ser chamado na proxima vez que o sheet fechar
+ *  (por qualquer via: backdrop, X, Escape ou closeSheet() direto). Usado por
+ *  quem abre um sheet fora de confirmSheet() e precisa saber quando ele
+ *  fecha (ver share-image.js). */
+export function onSheetClose(cb) { sheetOnClose = cb; }
+
 export function openSheet(title, content) {
   const sheet = $('#sheet');
   $('#sheet-title').textContent = title;

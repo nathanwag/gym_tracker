@@ -5,6 +5,7 @@ import {
   workoutSummary, prSetIds, setE1rm, totalVolume, totalDuration, isDurationSet,
 } from '../models.js';
 import { thumbHtml } from '../media.js';
+import { openShareSheet } from '../share-image.js';
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet,
@@ -101,7 +102,13 @@ export async function renderWorkout(view, workoutId) {
   setTop({
     title: fmtDate(workout.startedAt),
     back: '#/historico',
-    actions: `<button class="btn btn--sm btn--ghost" data-delete aria-label="${t('history.delete')}">${t('common.delete')}</button>`,
+    actions: `
+      ${workout.finishedAt ? `<button class="icon-btn" data-share aria-label="${t('history.share')}">${ICON.image}</button>` : ''}
+      <button class="btn btn--sm btn--ghost" data-delete aria-label="${t('history.delete')}">${t('common.delete')}</button>
+    `,
+  });
+  document.querySelector('[data-share]')?.addEventListener('click', () => {
+    openShareSheet(workout, sets, byId, unit);
   });
   document.querySelector('[data-delete]').onclick = async () => {
     const ok = await confirmSheet({

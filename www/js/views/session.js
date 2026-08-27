@@ -13,6 +13,7 @@ import {
 } from '../models.js';
 import { thumbHtml } from '../media.js';
 import { openExercisePicker } from './exercise-picker.js';
+import { openShareSheet } from '../share-image.js';
 import { usesDuration } from '../seed.js';
 import { t, tn } from '../i18n.js';
 import {
@@ -476,6 +477,8 @@ async function finish() {
 
   await db.finishWorkout(ctx.workout.id);
   toast(t('session.toastFinished'));
+  const workout = await db.getWorkout(ctx.workout.id);
+  await openShareSheet(workout, sets, ctx.exercises, ctx.unit);
   location.hash = `#/historico/${ctx.workout.id}`;
 }
 
