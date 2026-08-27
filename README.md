@@ -9,21 +9,18 @@ Funciona offline, guarda tudo no próprio aparelho e não depende de nenhum serv
 
 ## Como rodar na máquina
 
+Sirva a pasta `www/` por HTTP a partir da raiz:
+
 ```bash
-python tools/dev_server.py 8000
+python -m http.server 8000 -d www
 ```
 
 Abra <http://localhost:8000>. Não precisa instalar nada — o app é HTML, CSS e JavaScript puro, sem
 dependências e sem etapa de build.
 
-> Use este servidor em vez de `python -m http.server`: ele desliga o cache do navegador e responde
-> em paralelo. Com o `http.server` padrão, uma alteração de CSS pode simplesmente não aparecer.
-
-Para regerar os ícones depois de mudar cor ou desenho:
-
-```bash
-python tools/make_icons.py
-```
+> O `http.server` padrão não desliga o cache do navegador e responde `304`: uma alteração de CSS/JS
+> pode não aparecer no reload. Force refresh (Ctrl+Shift+R) ou use um servidor estático com no-cache
+> (ex.: `npx serve www`). Veja `CLAUDE.md` para o detalhe.
 
 ---
 
@@ -121,7 +118,6 @@ www/                     o app (e o webDir do Capacitor)
    ├─ backup.js          exportar/importar JSON
    ├─ charts.js          gráfico de linha em SVG puro
    └─ views/             uma tela por arquivo
-tools/                   servidor de dev e geradores (Python)
 ```
 
 ### Figuras dos exercícios
@@ -132,51 +128,15 @@ disco; o wger tem 78 vídeos no acervo inteiro), e duas fotos resolvem o problem
 execução, offline e sem requisição externa.
 
 A fonte é o [free-exercise-db](https://github.com/yuhonas/free-exercise-db) — domínio público
-(Unlicense), 873 exercícios. O commit usado fica fixado em `UPSTREAM_REF` no gerador.
+(Unlicense), 873 exercícios. `www/data/catalogo.json` (nomes + grupos) e `www/data/instrucoes.json`
+(passo a passo) foram gerados offline a partir dessa base e são **commitados**; os geradores não
+ficam no repo. Editá-los à mão é o fluxo normal hoje. As figuras em `www/img/ex/` (miniatura de
+~2,4 KB embutida para os 873, fotos grandes de ~12 KB baixadas sob demanda) foram convertidas para
+WebP no mesmo processo.
 
-```bash
-pip install "pillow>=12"          # só para gerar; o app não usa nenhuma dependência
-python tools/build_catalog.py     # baixa, converte para WebP e gera os .json
-python tools/traduzir_nomes.py    # gera tools/data/nomes_pt.json
-```
-
-O resultado é commitado, então quem só mexe no app nunca precisa rodar isso. Reexecutar sem
-`--forcar` tem de deixar o `git status` limpo: cada arquivo é comparado byte a byte antes de ser
-escrito, o que impede o repositório de dobrar de tamanho a cada regeração.
-
-Os dois arquivos em `tools/data/` são **entrada**, não saída — editá-los é definitivo, porque o
-gerador preserva o que já está lá:
-
-- `nomes_pt.json` — nomes em português. Os de `seed.js` têm prioridade sobre a tradução automática.
-- `instrucoes_pt.json` — passo a passo escrito à mão, dos 74 exercícios da biblioteca inicial. Não é
-  tradução literal: o texto original é prolixo e cheio de detalhe que não ajuda quem está em pé com
-  a barra na mão. A regra é 3 a 5 passos, do setup ao movimento, com o erro mais comum no fim.
-
-O que não tem versão em português aparece em inglês com um selo `EN` — estado suportado, não
-quebrado.
-
-#### Traduzir o que falta
-
-O volume é grande demais para uma sessão só, então a tradução é feita em lotes por agentes e
-`tools/traduzir_lotes.py` é o portão de qualidade — nenhum lote entra sem passar por ele:
-
-```bash
-python tools/traduzir_lotes.py criar      # gera os lotes do que ainda falta
-                                          # (agentes escrevem em lotes/saida/)
-python tools/traduzir_lotes.py validar    # aprova ou reprova, por exercício
-python tools/traduzir_lotes.py merge      # junta os aprovados nos arquivos acima
-python tools/traduzir_lotes.py refazer    # novos lotes só com o que foi reprovado
-python tools/traduzir_lotes.py amostra    # lê uma amostra do resultado
-```
-
-`criar` calcula o que falta a partir de `www/data/`, então **retomar em outra máquina é só clonar e
-rodar `criar`** — a pasta `tools/data/lotes/` não é versionada de propósito.
-
-A validação é por exercício, não por lote: um agente que erra 1 de 50 não faz os outros 49 serem
-descartados. Ela existe porque modelos truncam a saída e dizem que terminaram — na primeira rodada
-um lote entregou 53 de 98 nomes e relatou sucesso. Ela também barra resíduo de inglês, enchimento do
-texto original e **nome duplicado**, que é o pior defeito possível aqui: dois exercícios com o mesmo
-nome viram duas linhas idênticas na busca.
+Passo a passo em português: os 74 exercícios da biblioteca inicial têm texto escrito à mão, não
+tradução literal — a regra é 3 a 5 passos, do setup ao movimento, com o erro mais comum no fim. O
+que não tem versão em português aparece em inglês com um selo `EN` — estado suportado, não quebrado.
 
 ### Regras que mantêm o projeto empacotável
 

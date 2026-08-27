@@ -1,6 +1,9 @@
 node_modules/
 __pycache__/
 
+# Config local do Claude Code — nao faz parte do projeto.
+.claude/
+
 # Saidas de build dos projetos nativos. As pastas android/ e ios/ em si devem
 # ser commitadas: sao os projetos nativos que o Capacitor gera uma unica vez.
 android/app/build/
