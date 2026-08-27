@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
+  orderedWorkoutExercises,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -66,6 +67,19 @@ test('prSetIds marca serie unilateral valida (sem campo reps) como recorde', () 
     id: 1, weight: 20, repsLeft: 8, repsRight: 10, warmup: false,
   }];
   assert.deepEqual(prSetIds(sets), new Set([1]));
+});
+
+test('orderedWorkoutExercises mantem a ordem salva em exerciseIds', () => {
+  assert.deepEqual(orderedWorkoutExercises([3, 1, 2], []), [3, 1, 2]);
+});
+
+test('orderedWorkoutExercises anexa no fim exercicio com serie fora de exerciseIds', () => {
+  const sets = [{ exerciseId: 1 }, { exerciseId: 9 }, { exerciseId: 9 }];
+  assert.deepEqual(orderedWorkoutExercises([1, 2], sets), [1, 2, 9]);
+});
+
+test('orderedWorkoutExercises lida com exerciseIds nulo', () => {
+  assert.deepEqual(orderedWorkoutExercises(null, [{ exerciseId: 5 }, { exerciseId: 5 }]), [5]);
 });
 
 test('workoutSummary soma reps de serie normal e unilateral no mesmo treino', () => {

@@ -195,6 +195,15 @@ export function progressPct(summaries, field = 'bestE1rm') {
   return ((end - start) / start) * 100;
 }
 
+/** Ordem de exibicao dos exercicios de um treino: primeiro a ordem gravada em
+ *  `exerciseIds`; quem tem serie mas ficou de fora dela (dado antigo ou
+ *  importado) entra no fim, sem repetir. */
+export function orderedWorkoutExercises(exerciseIds, sets) {
+  const order = [...(exerciseIds || [])];
+  for (const s of sets) if (!order.includes(s.exerciseId)) order.push(s.exerciseId);
+  return order;
+}
+
 /** Resumo de um treino inteiro para os cartoes de historico. */
 export function workoutSummary(sets) {
   const valid = workingSets(sets);
