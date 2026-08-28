@@ -14,13 +14,16 @@ e também o `webDir` do Capacitor (empacota como iOS/Android sem reescrever nada
 npm run dev      # browser-sync: live reload + URL de rede pro celular
 ```
 
-Serve `www/` e abre `http://localhost:3000/phone` (app num iframe do tamanho de
-um celular; `localhost:3000` direto = tamanho cheio). A *External URL* impressa
+Abre no Opera (se achar o executável; senão navegador padrão) em
+`http://localhost:3000/phone` — app num iframe do tamanho de um celular;
+`localhost:3000` direto = tamanho cheio. A *External URL* impressa
 (`http://192.168.x.x:3000`) abre no celular na mesma WiFi, sem commit/push.
 `bs-config.cjs` (raiz, fora de `www/`, não empacotado) é o config; `.cjs` porque
 `package.json` é `type: module`. Duas rotas só de dev: `/phone` (viewport de
-celular) e `/seed` (popula o IndexedDB local com treinos de exemplo — usa
-`js/db.js`/`js/seed.js` reais; treino gerado leva `notes: 'seed'`).
+celular) e `/seed` (popula o IndexedDB local com treinos de exemplo — `js/db.js`/
+`js/seed.js` reais; treino gerado leva `notes: 'seed'`; `/seed?auto` gera sozinho
+ao abrir). IndexedDB é por navegador — a 1ª vez em cada um precisa passar no
+`/seed`.
 
 Fallback sem Node — `python -m http.server 8000 -d www`. Armadilha do
 `http.server` padrão: não manda `Cache-Control` e responde `304` a

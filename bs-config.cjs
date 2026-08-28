@@ -12,6 +12,21 @@
 //             continuam sendo testados no GitHub Pages.
 //   /seed   — popula o IndexedDB local com treinos de exemplo pra ver o app
 //             com historico. Usa os modulos reais (js/db.js, js/seed.js).
+//
+// Abre no Opera (se achar o executavel) e ja em /phone. Cada navegador tem seu
+// proprio IndexedDB, entao a primeira vez em cada um: abrir /seed e clicar.
+
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const OPERA = [
+  path.join(os.homedir(), 'AppData/Local/Programs/Opera/opera.exe'),
+  path.join(os.homedir(), 'AppData/Local/Programs/Opera GX/opera.exe'),
+  'C:/Program Files/Opera/launcher.exe',
+  '/Applications/Opera.app/Contents/MacOS/Opera',
+  '/usr/bin/opera',
+].find((p) => { try { return fs.existsSync(p); } catch { return false; } });
 
 const PHONE = `<!doctype html><meta charset="utf-8">
 <title>Treino — moldura</title>
@@ -137,6 +152,12 @@ document.getElementById('clear').onclick = async (e) => {
     e.target.disabled = false;
   }
 };
+
+// /seed?auto — dispara o seed sozinho ao abrir (pra popular um navegador novo
+// sem clique).
+if (new URLSearchParams(location.search).has('auto')) {
+  document.getElementById('seed').click();
+}
 </script>`;
 
 const PAGES = {
@@ -149,7 +170,7 @@ module.exports = {
     baseDir: 'www',
     middleware: [
       (req, res, next) => {
-        const page = PAGES[req.url.replace(/\/$/, '')];
+        const page = PAGES[req.url.split('?')[0].replace(/\/$/, '')];
         if (page) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           return res.end(page);
@@ -159,8 +180,9 @@ module.exports = {
     ],
   },
   files: 'www/**/*',
-  startPath: '/phone',
+  startPath: '/phone',           // abre no formato de celular
   open: 'local',
+  browser: OPERA || 'default',   // Opera se achou; senao navegador padrao do SO
   ghostMode: false, // nao espelhar clique/scroll entre desktop e celular
   notify: false,
   ui: false,
