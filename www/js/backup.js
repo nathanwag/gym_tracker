@@ -188,15 +188,22 @@ export async function validate(payload) {
     // migracao do banco. Sem o backfill abaixo (nome de campo, slug, chave de
     // ajuste), importar um backup antigo perderia figura de exercicio ou
     // voltaria unidade/tema/idioma pro padrao de fabrica, sem erro nenhum.
-    exercises: exercises.map((e) => ({
-      id: toNumber(e.id),
-      name: String(e.name ?? e.nome ?? 'Exercício'),
-      muscleGroup: String(e.muscleGroup ?? e.grupoMuscular ?? 'Outros'),
-      slug: e.slug ?? slugByName().get(normalizeName(e.name ?? e.nome ?? '')) ?? null,
-      custom: Boolean(e.custom ?? e.personalizado),
-      unilateral: Boolean(e.unilateral),
-      createdAt: e.createdAt ?? e.criadoEm ?? new Date().toISOString(),
-    })),
+    exercises: exercises.map((e) => {
+      const rec = {
+        id: toNumber(e.id),
+        name: String(e.name ?? e.nome ?? 'Exercício'),
+        muscleGroup: String(e.muscleGroup ?? e.grupoMuscular ?? 'Outros'),
+        slug: e.slug ?? slugByName().get(normalizeName(e.name ?? e.nome ?? '')) ?? null,
+        custom: Boolean(e.custom ?? e.personalizado),
+        unilateral: Boolean(e.unilateral),
+        createdAt: e.createdAt ?? e.criadoEm ?? new Date().toISOString(),
+      };
+      // Passo a passo editado pelo usuario: so vem a chave se era um array no
+      // backup, pra preservar os 3 estados (ausente = herda catalogo, [] =
+      // "sem passo a passo", preenchido = override).
+      if (Array.isArray(e.steps)) rec.steps = e.steps.map((s) => String(s));
+      return rec;
+    }),
     workouts: workouts.map((w) => ({
       id: toNumber(w.id),
       date: w.date ?? w.data ?? String(w.startedAt ?? w.iniciadoEm ?? '').slice(0, 10),

@@ -15,9 +15,9 @@ import {
   preloadCustomThumbs, invalidateCustomThumbs, compressImage,
 } from '../media.js';
 import { t, tn, language } from '../i18n.js';
-import { cleanSteps } from '../text.js';
+import { cleanSteps, sameSteps } from '../text.js';
 import {
-  setTop, html, raw, node, ICON, ICON_GROUPS, toast, openSheet, closeSheet, confirmSheet, onSheetClose,
+  setTop, html, raw, node, ICON, ICON_GROUPS, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, fmtSet, stripAccents, refresh, wireSegmented,
 } from '../ui.js';
 
@@ -200,9 +200,8 @@ export async function renderDetail(view, exId) {
   setTop({
     title: exercise.name,
     back: '#/exercicios',
-    actions: `<button class="btn btn--sm btn--ghost" data-menu aria-label="${t('exercise.options')}">···</button>`,
+    actions: `<a class="btn btn--sm btn--ghost" href="#/exercicios/${exercise.id}/editar">${t('exercise.editScreen.action')}</a>`,
   });
-  document.querySelector('[data-menu]').onclick = () => exerciseMenu(exercise, sets.length, images);
 
   const root = node('<div class="stack"></div>');
 
@@ -298,6 +297,15 @@ let detailPhotoUrls = [];
 function revokeDetailPhotoUrls() {
   for (const url of detailPhotoUrls) URL.revokeObjectURL(url);
   detailPhotoUrls = [];
+}
+
+// Mesma ideia de detailPhotoUrls, para a tela de edicao: as previas das fotos
+// pendentes viram object URLs revogadas ao entrar, ao salvar e ao descartar.
+let editPhotoUrls = [];
+
+function revokeEditPhotoUrls() {
+  for (const url of editPhotoUrls) URL.revokeObjectURL(url);
+  editPhotoUrls = [];
 }
 
 /** Decide o que mostrar no lugar da animacao flip: foto(s) personalizada(s)
@@ -434,34 +442,269 @@ function historySection(summaries, prIds, unit, timeBased) {
   return wrap;
 }
 
-/* ---------- Criar / editar / apagar ---------- */
+/* ==========================================================================
+   Editar: uma tela so para nome, grupo, unilateral, figura, fotos e passo a
+   passo. Nada grava ate o "Salvar" — inclusive as fotos, que ficam como Blob
+   em memoria (pendingPhotos) e sao aplicadas na ordem do handler.
+   ========================================================================== */
 
-function exerciseMenu(exercise, totalSets, images) {
-  const hasCustomPhotos = images.some(Boolean);
-  const body = node(html`
-    <div class="stack">
-      <button class="btn btn--block" data-rename>${t('exercise.menu.rename')}</button>
-      <button class="btn btn--block" data-image>
-        ${exercise.slug ? t('exercise.menu.changePhoto') : t('exercise.menu.choosePhotoFromCatalog')}
+export async function renderEdit(view, exId) {
+  revokeEditPhotoUrls();
+
+  const [exercise, images] = await Promise.all([
+    db.getExercise(exId),
+    db.getExerciseImages(exId),
+  ]);
+
+  if (!exercise) {
+    setTop({ title: t('exercise.form.editTitle'), back: '#/exercicios' });
+    view.append(node(`<div class="card card__pad">${t('exercise.notFound')}</div>`));
+    return;
+  }
+
+  const totalSets = await db.countSetsByExercise(exId);
+  const detailHash = `#/exercicios/${exId}`;
+
+  // Prefill do passo a passo: override do usuario > passo a passo do catalogo
+  // (se tem slug) > vazio. Mesmo criterio que renderDetail usa para exibir.
+  const catalogSteps = Array.isArray(exercise.steps)
+    ? null
+    : (exercise.slug ? (await catalog.instructions(exercise.slug).catch(() => null))?.[language()] : null);
+  const initialSteps = exercise.steps ?? catalogSteps ?? [];
+
+  // ---- estado pendente ----
+  const originalSlug = exercise.slug ?? null;
+  let pendingSlug = originalSlug;
+  const pendingPhotos = [undefined, undefined]; // undefined=manter, null=remover, Blob=nova
+  const previewUrls = images.map((blob) => {
+    if (!blob) return null;
+    const url = URL.createObjectURL(blob);
+    editPhotoUrls.push(url);
+    return url;
+  });
+  let dirty = false;
+  const stepsEditor = createStepsEditor(initialSteps);
+  const isDirty = () => dirty || stepsEditor.isDirty();
+
+  setTop({ title: t('exercise.form.editTitle'), back: detailHash });
+
+  const leave = () => { revokeEditPhotoUrls(); goBack(detailHash); };
+
+  // Guarda de descarte: sobrescreve o handler que o setTop pos no botao voltar.
+  // So cobre o botao <- ; troca de aba ou gesto do navegador descartam calado,
+  // como no resto do app.
+  const backBtn = document.querySelector('#topbar-back');
+  if (backBtn) {
+    backBtn.onclick = async () => {
+      if (isDirty()) {
+        const ok = await confirmSheet({
+          title: t('exercise.editScreen.discardTitle'),
+          message: t('exercise.editScreen.discardMessage'),
+          confirmLabel: t('exercise.editScreen.discardConfirm'),
+          danger: true,
+        });
+        if (!ok) return;
+      }
+      leave();
+    };
+  }
+
+  const root = node('<div class="stack"></div>');
+
+  /* --- A. Nome / grupo / unilateral --- */
+  const basics = node(html`
+    <div class="card card__pad stack--sm">
+      <label class="field">
+        <span class="field__label">${t('exercise.form.name')}</span>
+        <input class="input" data-name value="${exercise.name}" autocapitalize="sentences">
+      </label>
+      <label class="field">
+        <span class="field__label">${t('exercise.form.muscleGroup')}</span>
+        <select class="select" data-group>
+          ${raw(MUSCLE_GROUPS.map((g) =>
+            `<option value="${g}"${g === exercise.muscleGroup ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
+        </select>
+      </label>
+      <label class="field field--check">
+        <input type="checkbox" data-unilateral${exercise.unilateral ? ' checked' : ''}>
+        <span>${t('exercise.form.unilateral')}</span>
+      </label>
+    </div>
+  `);
+  const nameInput = basics.querySelector('[data-name]');
+  const groupSelect = basics.querySelector('[data-group]');
+  const uniCheckbox = basics.querySelector('[data-unilateral]');
+  nameInput.addEventListener('input', () => { dirty = true; });
+  uniCheckbox.addEventListener('change', () => { dirty = true; });
+  groupSelect.addEventListener('change', () => { dirty = true; drawFigureCard(); });
+
+  /* --- B. Figura do catalogo --- */
+  const figureCard = node('<div class="card card__pad stack--sm"></div>');
+  let figureName = null;
+
+  function drawFigureCard() {
+    figureCard.innerHTML = html`
+      <h2 class="section-title" style="margin-top:0">${t('exercise.editScreen.figureTitle')}</h2>
+      <div class="row">
+        ${raw(thumbHtml({ slug: pendingSlug, muscleGroup: groupSelect.value }, { className: 'thumb--lg' }))}
+        <div class="grow muted small">${pendingSlug ? (figureName || pendingSlug) : t('exercise.editScreen.figureNone')}</div>
+      </div>
+      <button class="btn btn--block btn--ghost" data-figure>
+        ${pendingSlug ? t('exercise.menu.changePhoto') : t('exercise.menu.choosePhotoFromCatalog')}
       </button>
-      <button class="btn btn--block" data-steps>${t('exercise.menu.editSteps')}</button>
-      <button class="btn btn--block" data-photos>
-        ${hasCustomPhotos ? t('exercise.menu.editPhotos') : t('exercise.menu.addPhotos')}
-      </button>
+      ${pendingSlug ? raw(`<button class="btn btn--block btn--ghost" data-figure-clear>${t('exercise.photo.remove')}</button>`) : ''}
+    `;
+    figureCard.querySelector('[data-figure]').onclick = () => openFigurePicker({
+      name: nameInput.value,
+      currentSlug: pendingSlug,
+      onPick: (slug) => {
+        pendingSlug = slug;
+        figureName = null;
+        dirty = true;
+        drawFigureCard();
+        resolveFigureName();
+        drawPhotoSlots();
+      },
+    });
+    figureCard.querySelector('[data-figure-clear]')?.addEventListener('click', () => {
+      pendingSlug = null;
+      figureName = null;
+      dirty = true;
+      drawFigureCard();
+      drawPhotoSlots();
+    });
+  }
+
+  function resolveFigureName() {
+    if (!pendingSlug) return;
+    const want = pendingSlug;
+    catalog.get(pendingSlug)
+      .then((item) => {
+        if (item && pendingSlug === want) { figureName = catalog.displayName(item); drawFigureCard(); }
+      })
+      .catch(() => {});
+  }
+
+  /* --- C. Passo a passo --- */
+  const stepsCardEl = node(html`
+    <div class="card card__pad">
+      <h2 class="section-title" style="margin-top:0">${t('exercise.steps.sheetTitle')}</h2>
+    </div>
+  `);
+  stepsCardEl.append(stepsEditor.el);
+
+  /* --- D. Fotos personalizadas --- */
+  const photosCardEl = node(html`
+    <div class="card card__pad">
+      <h2 class="section-title" style="margin-top:0">${t('exercise.photos.sheetTitle')}</h2>
+      <div class="photo-grid" data-photo-grid></div>
+    </div>
+  `);
+  const photoGrid = photosCardEl.querySelector('[data-photo-grid]');
+  const photoLabels = [t('exercise.photos.startLabel'), t('exercise.photos.endLabel')];
+
+  function drawPhotoSlot(slot) {
+    const custom = previewUrls[slot];
+    const removed = pendingPhotos[slot] === null;
+    // Foto do catalogo entra so como referencia esmaecida enquanto nao ha foto
+    // personalizada nem remocao pendente — nao conta como "salvo".
+    const reference = (!custom && !removed && pendingSlug) ? fullUrl(pendingSlug, slot) : null;
+    const src = custom || reference;
+    const el = node(html`
+      <div class="photo-slot">
+        <span class="photo-slot__label">${photoLabels[slot]}</span>
+        <div class="photo-slot__preview">${raw(src ? `<img src="${src}" alt=""${custom ? '' : ' style="opacity:.5"'}>` : '')}</div>
+        <label class="btn btn--block btn--ghost btn--sm">
+          ${t('exercise.photos.choose')}
+          <input type="file" accept="image/*" capture="environment" hidden data-file>
+        </label>
+        <button class="btn btn--block btn--sm" data-remove ${raw(custom ? '' : 'hidden')}>${t('exercise.photos.remove')}</button>
+      </div>
+    `);
+    el.querySelector('[data-file]').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const blob = await compressImage(file);
+        if (previewUrls[slot]) URL.revokeObjectURL(previewUrls[slot]);
+        pendingPhotos[slot] = blob;
+        previewUrls[slot] = URL.createObjectURL(blob);
+        editPhotoUrls.push(previewUrls[slot]);
+        dirty = true;
+        redrawPhotoSlot(slot);
+      } catch {
+        toast(t('exercise.photos.processError'));
+      }
+    });
+    el.querySelector('[data-remove]').onclick = () => {
+      if (previewUrls[slot]) URL.revokeObjectURL(previewUrls[slot]);
+      previewUrls[slot] = null;
+      pendingPhotos[slot] = null;
+      dirty = true;
+      redrawPhotoSlot(slot);
+    };
+    return el;
+  }
+
+  function redrawPhotoSlot(slot) {
+    photoGrid.replaceChild(drawPhotoSlot(slot), photoGrid.children[slot]);
+  }
+
+  function drawPhotoSlots() {
+    photoGrid.innerHTML = '';
+    photoGrid.append(drawPhotoSlot(0), drawPhotoSlot(1));
+  }
+
+  /* --- E. Salvar --- */
+  const saveBtn = node(html`<button class="btn btn--primary btn--block" data-save>${t('common.save')}</button>`);
+  saveBtn.onclick = async () => {
+    const name = nameInput.value.trim();
+    if (!name) { toast(t('exercise.form.giveItAName')); nameInput.focus(); return; }
+
+    const patch = {
+      name,
+      muscleGroup: groupSelect.value,
+      unilateral: uniCheckbox.checked,
+      slug: pendingSlug,
+    };
+    // So grava `steps` se o usuario mexeu: senao, renomear promoveria o passo a
+    // passo do catalogo a um override congelado e sem idioma.
+    if (stepsEditor.isDirty()) patch.steps = stepsEditor.getSteps();
+
+    try {
+      await db.updateExercise(exId, patch);
+
+      let photosTouched = false;
+      for (const slot of [0, 1]) {
+        const p = pendingPhotos[slot];
+        if (p === undefined) continue;
+        photosTouched = true;
+        if (p === null) await db.removeExerciseImage(exId, slot);
+        else await db.saveExerciseImage(exId, slot, p);
+      }
+
+      if (patch.slug && patch.slug !== originalSlug) prefetchPhotos(patch.slug);
+      if (photosTouched) invalidateCustomThumbs();
+
+      revokeEditPhotoUrls();
+      dirty = false;
+      toast(t('exercise.form.toastUpdated'));
+      goBack(detailHash);
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+
+  /* --- F. Apagar --- */
+  const deleteZone = node(html`
+    <div class="card card__pad stack--sm">
       <button class="btn btn--block btn--danger" data-delete>${t('exercise.menu.delete')}</button>
       <p class="muted small" style="margin:0">
         ${totalSets ? t('exercise.menu.hasSets', { sets: tn('common.set', totalSets) }) : t('exercise.menu.noSets')}
       </p>
     </div>
   `);
-  openSheet(exercise.name, body);
-
-  body.querySelector('[data-rename]').onclick = () => exerciseForm(exercise);
-  body.querySelector('[data-image]').onclick = () => chooseImage(exercise);
-  body.querySelector('[data-steps]').onclick = () => stepsForm(exercise);
-  body.querySelector('[data-photos]').onclick = () => photosForm(exercise, images);
-  body.querySelector('[data-delete]').onclick = async () => {
-    closeSheet();
+  deleteZone.querySelector('[data-delete]').onclick = async () => {
     const ok = await confirmSheet({
       title: t('exercise.menu.confirmDelete.title', { name: exercise.name }),
       confirmLabel: t('common.delete'),
@@ -469,98 +712,35 @@ function exerciseMenu(exercise, totalSets, images) {
     });
     if (!ok) return;
     try {
-      await db.deleteExercise(exercise.id);
+      await db.deleteExercise(exId);
       toast(t('exercise.menu.toastDeleted'));
       location.hash = '#/exercicios';
     } catch (err) {
       toast(err.message);
     }
   };
+
+  drawFigureCard();
+  resolveFigureName();
+  drawPhotoSlots();
+
+  root.append(basics, figureCard, stepsCardEl, photosCardEl, saveBtn, deleteZone);
+  view.append(root);
 }
 
-/** Liga um exercicio a uma figura do catalogo.
- *
- *  Saida para os dois casos que a migracao automatica nao cobre: exercicio
- *  renomeado (o nome deixou de casar) e exercicio criado a mao. */
-function chooseImage(exercise) {
-  const body = node(html`
-    <div class="stack">
-      <input class="input" data-search type="search" value="${exercise.name}"
-             placeholder="${t('exercise.photo.searchPlaceholder')}" autocomplete="off" autocapitalize="none" autocorrect="off">
-      <div data-results><p class="muted small">${t('exercise.photo.loadingCatalog')}</p></div>
-      ${exercise.slug ? raw(`<button class="btn btn--block btn--ghost" data-clear>${t('exercise.photo.remove')}</button>`) : ''}
-    </div>
-  `);
-  openSheet(t('exercise.photo.sheetTitle'), body);
+/* ---------- Criar / editar / apagar ---------- */
 
-  const searchInput = body.querySelector('[data-search]');
-  const results = body.querySelector('[data-results]');
+function createStepsEditor(initial) {
+  // Copia `initial` (pode ser o array do exerciseCache) e guarda um baseline
+  // para dizer se o usuario realmente mexeu — e o que decide, no Salvar, se
+  // grava `steps` ou se o exercicio segue herdando o passo a passo do catalogo.
+  const list = (initial || []).map((s) => String(s));
+  const baseline = cleanSteps(list);
 
-  const apply = async (slug) => {
-    await db.setExerciseImage(exercise.id, slug);
-    if (slug) prefetchPhotos(slug);
-    closeSheet();
-    toast(slug ? t('exercise.photo.toastUpdated') : t('exercise.photo.toastRemoved'));
-    refresh();
-  };
-
-  body.querySelector('[data-clear]')?.addEventListener('click', () => apply(null));
-
-  const draw = async () => {
-    const { items } = await catalog.search(searchInput.value, { limit: 12 });
-    results.innerHTML = '';
-
-    if (!items.length) {
-      results.append(node(`<p class="muted small">${t('exercise.photo.noneFound')}</p>`));
-      return;
-    }
-
-    const card = node(html`<div class="card"><ul class="list">${raw(items.map((item) => html`
-      <li class="list__item">
-        <button class="list__link" data-slug="${item.slug}">
-          ${raw(thumbHtml(item))}
-          <div class="grow">
-            <div style="font-weight:600">${catalog.displayName(item)}</div>
-            <div class="muted small">${item.nomeEn}</div>
-          </div>
-          ${item.slug === exercise.slug ? raw(`<span class="badge">${t('exercise.photo.current')}</span>`) : ''}
-        </button>
-      </li>
-    `).join(''))}</ul></div>`);
-
-    for (const button of card.querySelectorAll('[data-slug]')) {
-      button.onclick = () => apply(button.dataset.slug);
-    }
-    results.append(card);
-  };
-
-  searchInput.addEventListener('input', () => { draw().catch(() => {}); });
-  draw().catch(() => {
-    results.innerHTML = `<p class="muted small">${t('exercise.photo.loadError')}</p>`;
-  });
-}
-
-/** Editor do passo a passo. Pre-preenche com o passo a passo atual do
- *  catalogo (se o exercicio tem slug e ainda nao tem override) — editar a
- *  partir dali em vez de comecar em branco. Sem precedente de lista
- *  reordenavel no projeto: usa botoes ↑/↓ por linha em vez de
- *  drag-and-drop, no mesmo estilo minimalista do resto do app. */
-async function stepsForm(exercise) {
-  const catalogSteps = Array.isArray(exercise.steps)
-    ? null
-    : (exercise.slug ? (await catalog.instructions(exercise.slug).catch(() => null))?.[language()] : null);
-  const list = exercise.steps ?? catalogSteps ?? [];
-
-  const body = node(html`
-    <div class="stack">
-      <div class="stack--sm" data-rows></div>
-      <button class="btn btn--block btn--ghost" data-add>${raw(ICON.plus)} ${t('exercise.steps.addStep')}</button>
-      <button class="btn btn--primary btn--block" data-save>${t('common.save')}</button>
-    </div>
-  `);
-  openSheet(t('exercise.steps.sheetTitle'), body);
-
-  const rows = body.querySelector('[data-rows]');
+  const el = node('<div class="stack--sm"></div>');
+  const rows = node('<div class="stack--sm" data-rows></div>');
+  const addBtn = node(html`<button class="btn btn--block btn--ghost" data-add>${raw(ICON.plus)} ${t('exercise.steps.addStep')}</button>`);
+  el.append(rows, addBtn);
 
   const drawRows = () => {
     rows.innerHTML = '';
@@ -592,116 +772,108 @@ async function stepsForm(exercise) {
   };
   drawRows();
 
-  body.querySelector('[data-add]').onclick = () => {
+  addBtn.onclick = () => {
     list.push('');
     drawRows();
     rows.lastElementChild.querySelector('textarea').focus();
   };
 
-  body.querySelector('[data-save]').onclick = async () => {
-    await db.updateExercise(exercise.id, { steps: cleanSteps(list) });
-    closeSheet();
-    toast(t('exercise.steps.toastSaved'));
-    refresh();
+  return {
+    el,
+    getSteps: () => cleanSteps(list),
+    isDirty: () => !sameSteps(list, baseline),
   };
 }
 
-/** Editor das duas fotos personalizadas (posicao inicial/final). Cada slot
- *  aplica na hora que uma foto e escolhida (sem botao "Salvar" separado) —
- *  mesmo padrao ja usado por chooseImage() acima. A pre-visualizacao mostra a
- *  foto do catalogo como referencia enquanto nao ha foto personalizada
- *  naquele slot, mas isso e so exibicao: nao conta como "salvo". */
-function photosForm(exercise, initialImages) {
-  const labels = [t('exercise.photos.startLabel'), t('exercise.photos.endLabel')];
-  const catalogUrls = exercise.slug ? [fullUrl(exercise.slug, 0), fullUrl(exercise.slug, 1)] : [null, null];
-  const urls = initialImages.map((blob) => (blob ? URL.createObjectURL(blob) : null));
+/** Escolhe (ou remove) a figura do catalogo. Nao grava nada — devolve a escolha
+ *  por callback; quem chama decide o que fazer com ela. */
+function openFigurePicker({ name, currentSlug, onPick }) {
+  const body = node(html`
+    <div class="stack">
+      <input class="input" data-search type="search" value="${name}"
+             placeholder="${t('exercise.photo.searchPlaceholder')}" autocomplete="off" autocapitalize="none" autocorrect="off">
+      <div data-results><p class="muted small">${t('exercise.photo.loadingCatalog')}</p></div>
+      ${currentSlug ? raw(`<button class="btn btn--block btn--ghost" data-clear>${t('exercise.photo.remove')}</button>`) : ''}
+    </div>
+  `);
+  openSheet(t('exercise.photo.sheetTitle'), body);
 
-  const grid = node('<div class="photo-grid"></div>');
-  openSheet(t('exercise.photos.sheetTitle'), grid);
-  onSheetClose(() => {
-    for (const url of urls) if (url) URL.revokeObjectURL(url);
-    invalidateCustomThumbs();
-    refresh();
+  const searchInput = body.querySelector('[data-search]');
+  const results = body.querySelector('[data-results]');
+  const pick = (slug) => { closeSheet(); onPick(slug); };
+
+  body.querySelector('[data-clear]')?.addEventListener('click', () => pick(null));
+
+  const draw = async () => {
+    const { items } = await catalog.search(searchInput.value, { limit: 12 });
+    results.innerHTML = '';
+
+    if (!items.length) {
+      results.append(node(`<p class="muted small">${t('exercise.photo.noneFound')}</p>`));
+      return;
+    }
+
+    const card = node(html`<div class="card"><ul class="list">${raw(items.map((item) => html`
+      <li class="list__item">
+        <button class="list__link" data-slug="${item.slug}">
+          ${raw(thumbHtml(item))}
+          <div class="grow">
+            <div style="font-weight:600">${catalog.displayName(item)}</div>
+            <div class="muted small">${item.nomeEn}</div>
+          </div>
+          ${item.slug === currentSlug ? raw(`<span class="badge">${t('exercise.photo.current')}</span>`) : ''}
+        </button>
+      </li>
+    `).join(''))}</ul></div>`);
+
+    for (const button of card.querySelectorAll('[data-slug]')) {
+      button.onclick = () => pick(button.dataset.slug);
+    }
+    results.append(card);
+  };
+
+  searchInput.addEventListener('input', () => { draw().catch(() => {}); });
+  draw().catch(() => {
+    results.innerHTML = `<p class="muted small">${t('exercise.photo.loadError')}</p>`;
   });
-
-  const drawSlot = (slot) => {
-    const preview = urls[slot] || catalogUrls[slot];
-    const previewHtml = preview ? html`<img src="${preview}" alt="">` : '';
-    const el = node(html`
-      <div class="photo-slot">
-        <span class="photo-slot__label">${labels[slot]}</span>
-        <div class="photo-slot__preview">${raw(previewHtml)}</div>
-        <label class="btn btn--block btn--ghost btn--sm">
-          ${t('exercise.photos.choose')}
-          <input type="file" accept="image/*" capture="environment" hidden data-file>
-        </label>
-        <button class="btn btn--block btn--sm" data-remove ${raw(urls[slot] ? '' : 'hidden')}>${t('exercise.photos.remove')}</button>
-      </div>
-    `);
-
-    el.querySelector('[data-file]').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      try {
-        const blob = await compressImage(file);
-        await db.saveExerciseImage(exercise.id, slot, blob);
-        if (urls[slot]) URL.revokeObjectURL(urls[slot]);
-        urls[slot] = URL.createObjectURL(blob);
-        toast(t('exercise.photos.toastSaved'));
-        redraw(slot);
-      } catch {
-        toast(t('exercise.photos.processError'));
-      }
-    });
-    el.querySelector('[data-remove]').onclick = async () => {
-      await db.removeExerciseImage(exercise.id, slot);
-      if (urls[slot]) URL.revokeObjectURL(urls[slot]);
-      urls[slot] = null;
-      toast(t('exercise.photos.toastRemoved'));
-      redraw(slot);
-    };
-    return el;
-  };
-
-  const redraw = (slot) => grid.replaceChild(drawSlot(slot), grid.children[slot]);
-
-  grid.append(drawSlot(0), drawSlot(1));
 }
 
-function exerciseForm(exercise = null) {
+/** Sheet de criar exercicio (nome + grupo + unilateral). Editar um exercicio
+ *  que ja existe e a tela cheia `renderEdit`. */
+function exerciseForm() {
   const body = node(html`
     <div class="stack">
       <label class="field">
         <span class="field__label">${t('exercise.form.name')}</span>
-        <input class="input" data-name value="${exercise?.name || ''}" autocapitalize="sentences">
+        <input class="input" data-name value="" autocapitalize="sentences">
       </label>
       <label class="field">
         <span class="field__label">${t('exercise.form.muscleGroup')}</span>
         <select class="select" data-group>
-          ${raw(MUSCLE_GROUPS.map((g) =>
-            `<option value="${g}"${g === exercise?.muscleGroup ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
+          ${raw(MUSCLE_GROUPS.map((g) => `<option value="${g}">${groupLabel(g)}</option>`).join(''))}
         </select>
       </label>
       <label class="field field--check">
-        <input type="checkbox" data-unilateral${exercise?.unilateral ? ' checked' : ''}>
+        <input type="checkbox" data-unilateral>
         <span>${t('exercise.form.unilateral')}</span>
       </label>
-      <button class="btn btn--primary btn--block" data-save>${exercise ? t('exercise.form.save') : t('exercise.form.create')}</button>
+      <button class="btn btn--primary btn--block" data-save>${t('exercise.form.create')}</button>
     </div>
   `);
-  openSheet(exercise ? t('exercise.form.editTitle') : t('exercise.form.newTitle'), body);
+  openSheet(t('exercise.form.newTitle'), body);
 
   body.querySelector('[data-save]').onclick = async () => {
     const name = body.querySelector('[data-name]').value.trim();
-    const muscleGroup = body.querySelector('[data-group]').value;
-    const unilateral = body.querySelector('[data-unilateral]').checked;
     if (!name) { toast(t('exercise.form.giveItAName')); return; }
 
-    if (exercise) await db.updateExercise(exercise.id, { name, muscleGroup, unilateral });
-    else await db.addExercise({ name, muscleGroup, unilateral });
+    await db.addExercise({
+      name,
+      muscleGroup: body.querySelector('[data-group]').value,
+      unilateral: body.querySelector('[data-unilateral]').checked,
+    });
 
     closeSheet();
-    toast(exercise ? t('exercise.form.toastUpdated') : t('exercise.form.toastCreated'));
+    toast(t('exercise.form.toastCreated'));
     refresh();
   };
 }

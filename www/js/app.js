@@ -21,6 +21,7 @@ const ROUTES = [
   [/^\/historico\/(\d+)$/, (view, id) => history.renderWorkout(view, Number(id))],
   [/^\/exercicios$/, (view) => exercise.renderList(view)],
   [/^\/exercicios\/(\d+)$/, (view, id) => exercise.renderDetail(view, Number(id))],
+  [/^\/exercicios\/(\d+)\/editar$/, (view, id) => exercise.renderEdit(view, Number(id))],
   // Sem ambiguidade com /exercicios/(\d+): la o parametro e o id numerico do
   // banco, aqui e o slug do catalogo.
   [/^\/catalogo$/, (view) => catalog.renderList(view)],

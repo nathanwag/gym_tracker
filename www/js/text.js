@@ -23,3 +23,13 @@ export const normalizeName = (s) =>
  *  preservando a ordem em que o usuario os deixou. */
 export const cleanSteps = (steps) =>
   steps.map((s) => String(s).trim()).filter(Boolean);
+
+/** true se as duas listas de passos sao iguais depois de limpas — mesmo
+ *  conteudo, mesma ordem. O editor usa isto pra so gravar `steps` quando o
+ *  usuario realmente mexeu (senao renomear um exercicio congelaria o passo a
+ *  passo do catalogo num override sem idioma). */
+export const sameSteps = (a, b) => {
+  const x = cleanSteps(a);
+  const y = cleanSteps(b);
+  return x.length === y.length && x.every((step, i) => step === y[i]);
+};
