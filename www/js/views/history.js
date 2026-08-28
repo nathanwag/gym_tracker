@@ -12,7 +12,7 @@ import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet,
-  fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration, fmtTempoSerie, fmtSetWithUnit,
+  fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration, fmtTempoSerie, fmtSet, fmtSetWithUnit,
 } from '../ui.js';
 
 const monthYear = (iso) => new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(new Date(iso));
@@ -137,19 +137,25 @@ async function reloadWorkout() {
   ctx.byId = new Map(exercises.map((e) => [e.id, e]));
 }
 
-/** Topbar do detalhe: compartilhar e Editar/Concluir so em treino finalizado,
- *  apagar sempre. Refeita a cada troca de modo porque o rotulo do botao muda. */
+/** Topbar do detalhe. Em leitura: compartilhar + Editar. Em edicao: so
+ *  Concluir — nao se compartilha no meio de uma edicao.
+ *
+ *  "Apagar treino" NAO fica aqui: desce pro fim da tela (ver paintWorkout).
+ *  Tres acoes disputavam espaco com a data, e a destrutiva ficava a um toque
+ *  de distancia no modo leitura. Mesma decisao da tela de editar exercicio.
+ *  Refeita a cada troca de modo porque as acoes mudam. */
 function workoutTopbar() {
   const { workout } = ctx;
 
   setTop({
     title: fmtDate(workout.startedAt),
     back: '#/historico',
-    actions: `
-      ${workout.finishedAt ? `<button class="icon-btn" data-share aria-label="${t('history.share')}">${ICON.image}</button>` : ''}
-      ${workout.finishedAt ? `<button class="btn btn--sm btn--ghost" data-edit>${t(editMode ? 'history.doneEditing' : 'history.edit')}</button>` : ''}
-      <button class="btn btn--sm btn--ghost" data-delete aria-label="${t('history.delete')}">${t('common.delete')}</button>
-    `,
+    actions: editMode
+      ? `<button class="btn btn--sm btn--primary" data-edit>${t('history.doneEditing')}</button>`
+      : (workout.finishedAt ? `
+          <button class="icon-btn" data-share aria-label="${t('history.share')}">${ICON.image}</button>
+          <button class="btn btn--sm btn--ghost" data-edit>${t('history.edit')}</button>
+        ` : ''),
   });
 
   document.querySelector('[data-share]')?.addEventListener('click', () => {
@@ -169,7 +175,13 @@ function workoutTopbar() {
     };
   }
 
-  document.querySelector('[data-delete]').onclick = async () => {
+}
+
+/** "Apagar treino" no fim da tela. Aparece no modo de edicao (onde se mexe no
+ *  treino) e em treino ainda aberto, que nao tem modo de edicao pra entrar. */
+function deleteWorkoutButton() {
+  const button = node(html`<button class="btn btn--block btn--danger">${t('history.delete')}</button>`);
+  button.onclick = async () => {
     const ok = await confirmSheet({
       title: t('history.confirmDelete.title'),
       message: t('history.confirmDelete.message'),
@@ -181,6 +193,7 @@ function workoutTopbar() {
     toast(t('history.toastDeleted'));
     location.hash = '#/historico';
   };
+  return button;
 }
 
 /** Redesenha o corpo abaixo da topbar. Chamada a cada mutacao no modo de
@@ -216,6 +229,10 @@ function paintWorkout() {
     addEx.onclick = openWorkoutExercisePicker;
     root.append(addEx);
   }
+
+  // Treino em aberto nao tem modo de edicao pra entrar, entao o apagar precisa
+  // aparecer nele tambem.
+  if (editMode || !workout.finishedAt) root.append(deleteWorkoutButton());
 
   window.scrollTo(0, y);
 }
@@ -301,14 +318,18 @@ function workoutExerciseCard(exId, order) {
     ${(!s.warmup && !isDurationSet(s)) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(s), 0)}</span>`) : ''}
   `;
 
+  // Leitura: cada serie vira uma pastilha. Ocupam a largura em vez da altura
+  // (uma lista de 4 series gastava ~180px de tela), e o tipo da serie fica na
+  // forma: tracejada = aquecimento, acesa = recorde. O 1RM por serie sai daqui
+  // — e derivado, e a tela do exercicio ja tem o grafico dele.
   if (!editMode) {
     if (exSets.length) {
-      const rows = exSets.map((s, idx) => html`
-        <li class="list__item">
-          <div class="setlist__item" style="cursor:default">${raw(setRowInner(s, idx))}</div>
-        </li>
-      `);
-      card.append(node(html`<ul class="list">${raw(rows.join(''))}</ul>`));
+      const chips = exSets.map((s) => {
+        const pr = prIds.has(s.id);
+        const kind = s.warmup ? ' setchip--warm' : (pr ? ' setchip--pr' : '');
+        return html`<span class="setchip${kind}">${fmtSet(s)}${pr ? raw(' 🏆') : ''}</span>`;
+      });
+      card.append(node(html`<div class="setchips">${raw(chips.join(''))}</div>`));
     }
     return card;
   }

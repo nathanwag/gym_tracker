@@ -758,6 +758,33 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .steps li { margin-top: 8px; font-size: .92rem; line-height: 1.5; }
 .steps li:first-child { margin-top: 0; }
 
+/* ---------- Series de um treino, no historico ----------
+   Pastilha em vez de linha: 4 series gastavam ~180px de altura; assim ocupam
+   a largura. O tipo da serie fica na forma, nao num rotulo ao lado.
+   Nome proprio (nao `.chip`) porque aquela ja e a etiqueta do catalogo. */
+
+.setchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 12px; }
+.setchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: .84rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.setchip--warm {
+  background: transparent;
+  border-color: var(--border);
+  border-style: dashed;
+  color: var(--muted);
+  font-weight: 600;
+}
+.setchip--pr { background: var(--accent-soft); color: var(--accent); }
+
 /* ---------- Editor de passo a passo ---------- */
 
 .step-row { display: flex; gap: 6px; align-items: flex-start; }
