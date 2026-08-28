@@ -420,7 +420,9 @@ async function finish() {
   await db.finishWorkout(ctx.workout.id);
   toast(t('session.toastFinished'));
   const workout = await db.getWorkout(ctx.workout.id);
-  await openShareSheet(workout, sets, ctx.exercises, ctx.unit);
+  // O historico completo e o que permite o cartao marcar recorde.
+  const allSets = await db.listAllSets();
+  await openShareSheet(workout, sets, ctx.exercises, ctx.unit, allSets);
   location.hash = `#/historico/${ctx.workout.id}`;
 }
 

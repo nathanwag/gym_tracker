@@ -12,11 +12,11 @@
  * manifest.webmanifest.
  */
 
-import { workoutSummary, workingSets } from './models.js';
+import { workoutSummary, workoutHighlights } from './models.js';
 import { t, tn, locale } from './i18n.js';
 import {
-  html, raw, node, openSheet, closeSheet, onSheetClose, toast,
-  fmtNum, fmtDuration, isIOS, isStandalone,
+  html, raw, node, openSheet, onSheetClose, toast,
+  fmtNum, fmtDuration, fmtSetWithUnit, isIOS, isStandalone,
 } from './ui.js';
 
 const WIDTH = 1080;
@@ -31,24 +31,16 @@ const COLOR_MUTED = '#98a1b0';
 const COLOR_BORDER = 'rgba(232, 234, 239, 0.14)';
 
 const font = (weight, size) => `${weight} ${size}px Manrope, sans-serif`;
-const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /* ---------- Dados ---------- */
 
-/** Exercicios com pelo menos uma serie valida, na mesma ordem da sessao —
- *  mesma logica de agrupamento de history.js:renderWorkout. */
-function itemsForWorkout(workout, sets, exercisesById) {
-  const valid = workingSets(sets);
-  const order = [...(workout.exerciseIds || [])];
-  for (const s of valid) if (!order.includes(s.exerciseId)) order.push(s.exerciseId);
-
-  const items = [];
-  for (const exId of order) {
-    const exerciseSets = valid.filter((s) => s.exerciseId === exId);
-    if (!exerciseSets.length) continue;
-    items.push({ name: exercisesById.get(exId)?.name || t('history.removedExercise'), sets: exerciseSets.length });
-  }
-  return items;
+/** Melhor serie de cada exercicio + nome pra exibir. O calculo (ordem, melhor
+ *  serie, recorde) mora em models.js; aqui so entra o nome, que vem do banco. */
+function itemsForWorkout(workout, sets, exercisesById, allSets) {
+  return workoutHighlights(workout, sets, allSets).map((h) => ({
+    ...h,
+    name: exercisesById.get(h.exerciseId)?.name || t('history.removedExercise'),
+  }));
 }
 
 /* ---------- Desenho ---------- */
@@ -106,82 +98,108 @@ function truncate(ctx, text, maxWidth) {
   return `${cut}…`;
 }
 
-function drawHeader(ctx, workout) {
-  let y = PAD + 4;
+/** fillText com espacamento entre letras, pros rotulos em caixa alta.
+ *  `letterSpacing` e ignorado em Safari antigo — la o texto so sai mais junto. */
+function spacedText(ctx, text, x, y, spacing) {
+  ctx.letterSpacing = `${spacing}px`;
+  ctx.fillText(text, x, y);
+  ctx.letterSpacing = '0px';
+}
 
-  drawDumbbell(ctx, PAD, y - 30, 40);
+function roundedRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+function drawBrand(ctx, workout) {
+  drawDumbbell(ctx, PAD, 62, 40);
   ctx.fillStyle = COLOR_ACCENT;
   ctx.font = font(800, 32);
   ctx.textAlign = 'left';
-  ctx.fillText('TREINO', PAD + 56, y);
-  y += 96;
+  spacedText(ctx, 'TREINO', PAD + 56, 88, 4);
 
   const startedAt = new Date(workout.startedAt);
-  const weekday = capitalize(new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(startedAt));
+  const weekday = new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(startedAt);
   const longDate = new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long', year: 'numeric' }).format(startedAt);
 
-  ctx.fillStyle = COLOR_TEXT;
-  ctx.font = font(800, fitFontSize(ctx, weekday, 800, 66, WIDTH - PAD * 2));
-  ctx.fillText(weekday, PAD, y);
-  y += 54;
-
   ctx.fillStyle = COLOR_MUTED;
-  ctx.font = font(600, 34);
-  ctx.fillText(longDate, PAD, y);
-  y += 76;
-
-  return y;
+  ctx.font = font(700, 28);
+  spacedText(ctx, `${weekday} · ${longDate}`.toUpperCase(), PAD, 152, 3);
 }
 
-function drawStats(ctx, workout, summary, unit, top) {
-  const stats = [
-    { value: fmtDuration(workout.startedAt, workout.finishedAt) || '—', label: t('history.stat.duration') },
-    { value: String(summary.sets), label: t('history.stat.sets') },
-    { value: fmtNum(summary.volume, 0), label: t('history.stat.volume', { unit }) },
+/** O volume da sessao ocupando a largura toda: e o numero que da a dimensao do
+ *  treino pra quem ve o story de passagem. */
+function drawHero(ctx, summary, unit) {
+  const value = fmtNum(summary.volume, 0);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = COLOR_ACCENT;
+  ctx.font = font(800, fitFontSize(ctx, value, 800, 260, WIDTH - PAD * 2, 110));
+  ctx.fillText(value, PAD, 420);
+
+  ctx.fillStyle = COLOR_MUTED;
+  ctx.font = font(800, 36);
+  spacedText(ctx, t('shareImage.volumeLabel', { unit }).toUpperCase(), PAD, 478, 6);
+}
+
+/** Quebra "3 séries" em ["3", "séries"] pra desenhar o numero em negrito e o
+ *  rotulo apagado. Sai de tn() pra a flexao vir certa em "1 exercício". */
+function splitPlural(key, n) {
+  const text = tn(key, n);
+  const space = text.indexOf(' ');
+  return space === -1 ? [text, ''] : [text.slice(0, space), text.slice(space + 1)];
+}
+
+function drawMeta(ctx, workout, summary, exerciseCount) {
+  const segments = [
+    [fmtDuration(workout.startedAt, workout.finishedAt) || '—', t('history.stat.duration')],
+    splitPlural('common.set', summary.sets),
+    splitPlural('common.exercise', exerciseCount),
   ];
 
-  const colWidth = (WIDTH - PAD * 2) / 3;
-  ctx.textAlign = 'center';
-  stats.forEach((stat, i) => {
-    const cx = PAD + colWidth * i + colWidth / 2;
-    ctx.fillStyle = COLOR_ACCENT;
-    ctx.font = font(800, fitFontSize(ctx, stat.value, 800, 92, colWidth - 24));
-    ctx.fillText(stat.value, cx, top + 84);
+  const y = 556;
+  let x = PAD;
+  ctx.textAlign = 'left';
+  for (const [value, label] of segments) {
+    ctx.fillStyle = COLOR_TEXT;
+    ctx.font = font(800, 34);
+    ctx.fillText(value, x, y);
+    x += ctx.measureText(value).width + 10;
 
     ctx.fillStyle = COLOR_MUTED;
-    ctx.font = font(700, 24);
-    ctx.fillText(stat.label.toUpperCase(), cx, top + 122);
-  });
-  ctx.textAlign = 'left';
-
-  const lineY = top + 168;
-  ctx.strokeStyle = COLOR_BORDER;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(PAD, lineY);
-  ctx.lineTo(WIDTH - PAD, lineY);
-  ctx.stroke();
-
-  return lineY + 64;
+    ctx.font = font(700, 34);
+    ctx.fillText(label, x, y);
+    x += ctx.measureText(label).width + 40;
+  }
 }
 
-function drawList(ctx, items, top, availableHeight) {
-  ctx.fillStyle = COLOR_MUTED;
-  ctx.font = font(700, 26);
-  ctx.fillText(t('shareImage.exercisesTitle').toUpperCase(), PAD, top);
-  top += 50;
-  availableHeight -= 50;
+function drawPrBadge(ctx, x, baseline, loadSize) {
+  const h = Math.max(36, loadSize * 0.54);
+  ctx.font = font(800, h * 0.44);
+  const label = `🏆 ${t('shareImage.pr')}`;
+  const w = ctx.measureText(label).width + h * 0.8;
+  const top = baseline - h * 0.8;
 
-  if (!items.length) {
-    ctx.fillStyle = COLOR_MUTED;
-    ctx.font = font(600, 30);
-    ctx.fillText(t('history.noSets'), PAD, top + 40);
-    return;
-  }
+  ctx.fillStyle = 'rgba(45, 212, 224, 0.14)';
+  roundedRect(ctx, x, top, w, h, h / 2);
+  ctx.fill();
 
-  const MIN_HEIGHT = 56;
-  const MAX_HEIGHT = 108;
-  const maxRows = Math.max(1, Math.floor(availableHeight / MIN_HEIGHT));
+  ctx.fillStyle = COLOR_ACCENT;
+  ctx.fillText(label, x + h * 0.4, top + h * 0.68);
+}
+
+/**
+ * Um bloco por exercicio: nome em cima, melhor serie embaixo.
+ *
+ * A altura disponivel e dividida igualmente entre os blocos e o corpo do texto
+ * acompanha essa altura — e o que faz o cartao encher tanto com 3 exercicios
+ * (blocos altos, carga enorme) quanto com 10 (blocos baixos, carga menor). O
+ * layout antigo fixava a altura da linha e deixava metade do cartao vazia.
+ */
+function drawBlocks(ctx, items, unit, top, bottom) {
+  const available = bottom - top;
+  const MIN_BLOCK = 150;
+  const maxRows = Math.max(1, Math.floor(available / MIN_BLOCK));
 
   let rows = items;
   let remaining = 0;
@@ -191,55 +209,59 @@ function drawList(ctx, items, top, availableHeight) {
   }
 
   const totalRows = rows.length + (remaining ? 1 : 0);
-  const rowHeight = Math.min(MAX_HEIGHT, availableHeight / totalRows);
-  const fontSize = Math.max(24, Math.min(44, rowHeight * 0.4));
-  const totalWidth = WIDTH - PAD * 2;
+  // Teto na altura do bloco: sem ele, um treino de 1 exercicio esticaria a
+  // linha por 1150px e o vazio voltava. Com o teto, o que sobra vira respiro
+  // em cima E embaixo (a pilha fica centrada) em vez de um buraco no pe.
+  const blockHeight = Math.min(340, available / totalRows);
+  const startY = top + (available - blockHeight * totalRows) / 2;
+  const loadSize = Math.max(44, Math.min(112, blockHeight * 0.34));
+  const nameSize = Math.max(22, Math.min(34, blockHeight * 0.14));
+  const maxWidth = WIDTH - PAD * 2;
 
-  let y = top;
+  const rule = (y) => {
+    ctx.strokeStyle = COLOR_BORDER;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(PAD, y);
+    ctx.lineTo(WIDTH - PAD, y);
+    ctx.stroke();
+  };
+
+  let y = startY;
   for (const item of rows) {
-    const baseline = y + rowHeight * 0.64;
-
-    ctx.textAlign = 'right';
-    ctx.fillStyle = COLOR_MUTED;
-    ctx.font = font(600, fontSize * 0.68);
-    const setsLabel = tn('common.set', item.sets);
-    ctx.fillText(setsLabel, WIDTH - PAD, baseline);
-    const labelWidth = ctx.measureText(setsLabel).width + 28;
+    rule(y);
+    const middle = y + blockHeight / 2;
 
     ctx.textAlign = 'left';
-    ctx.fillStyle = COLOR_TEXT;
-    ctx.font = font(700, fontSize);
-    ctx.fillText(truncate(ctx, item.name, totalWidth - labelWidth), PAD, baseline);
+    ctx.fillStyle = COLOR_MUTED;
+    ctx.font = font(800, nameSize);
+    spacedText(ctx, truncate(ctx, item.name.toUpperCase(), maxWidth), PAD, middle - loadSize * 0.36, 3);
 
-    if (y + rowHeight < top + availableHeight - 4) {
-      ctx.strokeStyle = COLOR_BORDER;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(PAD, y + rowHeight);
-      ctx.lineTo(WIDTH - PAD, y + rowHeight);
-      ctx.stroke();
+    const load = fmtSetWithUnit(item.topSet, unit);
+    ctx.fillStyle = item.pr ? COLOR_ACCENT : COLOR_TEXT;
+    ctx.font = font(800, loadSize);
+    ctx.fillText(load, PAD, middle + loadSize * 0.58);
+
+    if (item.pr) {
+      drawPrBadge(ctx, PAD + ctx.measureText(load).width + 24, middle + loadSize * 0.58, loadSize);
     }
-    y += rowHeight;
+    y += blockHeight;
   }
 
   if (remaining) {
+    rule(y);
     ctx.textAlign = 'left';
     ctx.fillStyle = COLOR_MUTED;
-    ctx.font = font(700, fontSize);
-    ctx.fillText(`+ ${tn('common.exercise', remaining)}`, PAD, y + rowHeight * 0.64);
+    ctx.font = font(800, loadSize * 0.6);
+    ctx.fillText(`+ ${remaining}`, PAD, y + blockHeight * 0.62);
+    y += blockHeight;
   }
+  rule(y);
 }
 
 function drawFooter(ctx) {
-  const barY = HEIGHT - 92;
   ctx.fillStyle = COLOR_ACCENT;
-  ctx.fillRect(PAD, barY, WIDTH - PAD * 2, 5);
-
-  ctx.fillStyle = COLOR_MUTED;
-  ctx.font = font(700, 26);
-  ctx.textAlign = 'center';
-  ctx.fillText('TREINO', WIDTH / 2, barY + 46);
-  ctx.textAlign = 'left';
+  ctx.fillRect(PAD, HEIGHT - 92, WIDTH - PAD * 2, 5);
 }
 
 function drawCard(ctx, { workout, summary, unit, items }) {
@@ -257,11 +279,10 @@ function drawCard(ctx, { workout, summary, unit, items }) {
 
   ctx.textBaseline = 'alphabetic';
 
-  let y = drawHeader(ctx, workout);
-  y = drawStats(ctx, workout, summary, unit, y);
-
-  const footerReserved = 170;
-  drawList(ctx, items, y, HEIGHT - footerReserved - y);
+  drawBrand(ctx, workout);
+  drawHero(ctx, summary, unit);
+  drawMeta(ctx, workout, summary, items.length);
+  drawBlocks(ctx, items, unit, 620, HEIGHT - 150);
   drawFooter(ctx);
 }
 
@@ -272,9 +293,9 @@ function drawCard(ctx, { workout, summary, unit, items }) {
  * do fluxo de toque do usuario: navigator.share() no Safari so funciona
  * durante o gesto (mesma observacao de backup.js:prepareBackup).
  */
-export async function generateImage(workout, sets, exercisesById, unit) {
+export async function generateImage(workout, sets, exercisesById, unit, allSets = []) {
   const summary = workoutSummary(sets);
-  const items = itemsForWorkout(workout, sets, exercisesById);
+  const items = itemsForWorkout(workout, sets, exercisesById, allSets);
 
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
@@ -335,7 +356,7 @@ export async function shareImage({ file, blob, fileName }, { canDownload = true 
  * compartilhar/salvar. A Promise resolve quando o sheet fecha (por qualquer
  * via), pra quem chama poder esperar o usuario ver o cartao antes de navegar.
  */
-export function openShareSheet(workout, sets, exercisesById, unit) {
+export function openShareSheet(workout, sets, exercisesById, unit, allSets = []) {
   return new Promise((resolve) => {
     let resolved = false;
     let previewUrl = null;
@@ -346,7 +367,7 @@ export function openShareSheet(workout, sets, exercisesById, unit) {
       resolve();
     };
 
-    generateImage(workout, sets, exercisesById, unit).then(({ blob, file, fileName }) => {
+    generateImage(workout, sets, exercisesById, unit, allSets).then(({ blob, file, fileName }) => {
       // O usuario pode ter fechado (ou navegado pra longe) enquanto a imagem
       // ainda desenhava.
       if (resolved) return;
@@ -355,11 +376,13 @@ export function openShareSheet(workout, sets, exercisesById, unit) {
       const canShare = !!(file && navigator.canShare?.({ files: [file] }));
       const actionLabel = canShare ? t('shareImage.share') : t('shareImage.save');
 
+      // Sem botao "Fechar": o × do cabecalho do sheet ja fecha. A legenda diz o
+      // que vai sair dali, que a previa sozinha nao conta.
       const body = node(html`
         <div class="stack share-preview">
           ${previewUrl ? raw(`<img src="${previewUrl}" alt="">`) : ''}
+          <p class="muted small" style="margin:0;text-align:center">${t('shareImage.fileHint')}</p>
           <button class="btn btn--primary btn--block" data-action>${actionLabel}</button>
-          <button class="btn btn--ghost btn--block" data-close>${t('shareImage.close')}</button>
         </div>
       `);
 
@@ -370,7 +393,6 @@ export function openShareSheet(workout, sets, exercisesById, unit) {
         else if (result === 'downloaded') toast(t('shareImage.toastDownloaded'));
         else if (result === 'manual') toast(t('shareImage.toastSaveManually'));
       };
-      body.querySelector('[data-close]').onclick = () => closeSheet();
 
       openSheet(t('shareImage.title'), body);
       onSheetClose(finish);

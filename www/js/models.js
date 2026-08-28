@@ -204,6 +204,43 @@ export function orderedWorkoutExercises(exerciseIds, sets) {
   return order;
 }
 
+/**
+ * Melhor serie de cada exercicio do treino, na ordem da sessao — o que o cartao
+ * de compartilhar mostra.
+ *
+ * `history` sao TODAS as series do banco (de qualquer exercicio e treino), nao
+ * so as do treino: recorde so faz sentido comparando com o que veio antes. Sem
+ * ela, `pr` vem false em vez de quebrar — quem chama pode nao ter o historico
+ * em maos.
+ * @returns {{exerciseId: number, sets: number, topSet: object, pr: boolean}[]}
+ */
+export function workoutHighlights(workout, sets, history = []) {
+  const valid = workingSets(sets);
+  const out = [];
+
+  for (const exerciseId of orderedWorkoutExercises(workout?.exerciseIds, valid)) {
+    const exSets = valid.filter((s) => s.exerciseId === exerciseId);
+    if (!exSets.length) continue;
+
+    const best = bests(exSets);
+    // Cardio/alongamento nao tem carga: a serie de destaque e a mais longa.
+    const topSet = best.setWeight || best.setDuration || exSets[0];
+
+    // prSetIds() percorre a lista como se fosse de um exercicio so — por isso
+    // filtra por exercicio antes de chamar.
+    const exHistory = history.filter((s) => s.exerciseId === exerciseId);
+    const prIds = exHistory.length ? prSetIds(exHistory) : null;
+
+    out.push({
+      exerciseId,
+      sets: exSets.length,
+      topSet,
+      pr: prIds ? exSets.some((s) => prIds.has(s.id)) : false,
+    });
+  }
+  return out;
+}
+
 /** Resumo de um treino inteiro para os cartoes de historico. */
 export function workoutSummary(sets) {
   const valid = workingSets(sets);

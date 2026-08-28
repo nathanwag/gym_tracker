@@ -153,7 +153,9 @@ function workoutTopbar() {
   });
 
   document.querySelector('[data-share]')?.addEventListener('click', () => {
-    openShareSheet(ctx.workout, ctx.sets, ctx.byId, ctx.unit);
+    // ctx.allSets vai junto: o cartao marca recorde, e pra isso precisa do
+    // historico do exercicio, nao so das series deste treino.
+    openShareSheet(ctx.workout, ctx.sets, ctx.byId, ctx.unit, ctx.allSets);
   });
 
   const editBtn = document.querySelector('[data-edit]');

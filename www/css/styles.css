@@ -168,10 +168,12 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 .stack > * + * { margin-top: 12px; }
 
+/* O cartao e 9:16: a largura da previa e limitada pela ALTURA que sobra na
+   gaveta, nao pela largura dela. 300px e o maximo que cabe sem estourar. */
 .share-preview img {
   display: block;
   width: 100%;
-  max-width: 260px;
+  max-width: 300px;
   margin: 0 auto;
   border-radius: var(--radius);
   box-shadow: var(--shadow);

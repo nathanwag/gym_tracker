@@ -292,10 +292,11 @@ export const DICT = {
 
     // ---------- share-image.js ----------
     'shareImage.title': 'Compartilhar treino',
-    'shareImage.exercisesTitle': 'Exercícios treinados',
+    'shareImage.volumeLabel': '{unit} levantados',
+    'shareImage.pr': 'RECORDE',
+    'shareImage.fileHint': 'PNG 1080 × 1920 · pronto pra story',
     'shareImage.share': 'Compartilhar',
     'shareImage.save': 'Salvar imagem',
-    'shareImage.close': 'Fechar',
     'shareImage.toastShared': 'Compartilhado!',
     'shareImage.toastDownloaded': 'Imagem baixada.',
     'shareImage.toastSaveManually': 'Toque e segure a imagem para salvar.',
@@ -640,10 +641,11 @@ export const DICT = {
 
     // ---------- share-image.js ----------
     'shareImage.title': 'Share workout',
-    'shareImage.exercisesTitle': 'Exercises trained',
+    'shareImage.volumeLabel': '{unit} lifted',
+    'shareImage.pr': 'PR',
+    'shareImage.fileHint': 'PNG 1080 × 1920 · story-ready',
     'shareImage.share': 'Share',
     'shareImage.save': 'Save image',
-    'shareImage.close': 'Close',
     'shareImage.toastShared': 'Shared!',
     'shareImage.toastDownloaded': 'Image downloaded.',
     'shareImage.toastSaveManually': 'Tap and hold the image to save it.',

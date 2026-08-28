@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
-  orderedWorkoutExercises,
+  orderedWorkoutExercises, workoutHighlights,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -92,4 +92,56 @@ test('workoutSummary soma reps de serie normal e unilateral no mesmo treino', ()
     },
   ];
   assert.equal(workoutSummary(sets).reps, 28);
+});
+
+/* ---------- workoutHighlights: o que o cartao de compartilhar mostra ---------- */
+
+test('workoutHighlights devolve a melhor serie de cada exercicio na ordem da sessao', () => {
+  const sets = [
+    { id: 1, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+    { id: 2, exerciseId: 7, weight: 80, reps: 8, warmup: false },
+    { id: 3, exerciseId: 3, weight: 40, reps: 12, warmup: false },
+  ];
+  const out = workoutHighlights({ exerciseIds: [7, 3] }, sets);
+  assert.deepEqual(out.map((h) => h.exerciseId), [7, 3]);
+  assert.equal(out[0].topSet.weight, 80);
+  assert.equal(out[0].sets, 2);
+  assert.equal(out[1].topSet.weight, 40);
+});
+
+test('workoutHighlights ignora aquecimento', () => {
+  const sets = [
+    { id: 1, exerciseId: 7, weight: 100, reps: 5, warmup: true },
+    { id: 2, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+  ];
+  const out = workoutHighlights({ exerciseIds: [7] }, sets);
+  assert.equal(out[0].sets, 1);
+  assert.equal(out[0].topSet.weight, 60);
+});
+
+test('workoutHighlights marca pr quando a serie do treino bateu recorde no historico', () => {
+  const antiga = { id: 1, exerciseId: 7, weight: 70, reps: 8, warmup: false };
+  const hoje = { id: 2, exerciseId: 7, weight: 90, reps: 8, warmup: false };
+  const out = workoutHighlights({ exerciseIds: [7] }, [hoje], [antiga, hoje]);
+  assert.equal(out[0].pr, true);
+});
+
+test('workoutHighlights nao marca pr quando a carga ficou abaixo do historico', () => {
+  const antiga = { id: 1, exerciseId: 7, weight: 90, reps: 10, warmup: false };
+  const hoje = { id: 2, exerciseId: 7, weight: 70, reps: 8, warmup: false };
+  const out = workoutHighlights({ exerciseIds: [7] }, [hoje], [antiga, hoje]);
+  assert.equal(out[0].pr, false);
+});
+
+test('workoutHighlights sem historico devolve pr false em vez de quebrar', () => {
+  const sets = [{ id: 1, exerciseId: 7, weight: 90, reps: 8, warmup: false }];
+  assert.equal(workoutHighlights({ exerciseIds: [7] }, sets)[0].pr, false);
+});
+
+test('workoutHighlights deixa de fora exercicio sem serie valida', () => {
+  const sets = [
+    { id: 1, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+    { id: 2, exerciseId: 9, weight: 50, reps: 0, warmup: false },
+  ];
+  assert.deepEqual(workoutHighlights({ exerciseIds: [7, 9] }, sets).map((h) => h.exerciseId), [7]);
 });
