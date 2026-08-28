@@ -452,8 +452,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 .week-nav__back svg { transform: rotate(180deg); }
 
-.muscle-group { display: flex; flex-direction: column; gap: 10px; }
-.muscle-group__row { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 8px; }
+/* Uma grade só para todas as linhas (linha = display:contents), senão a coluna
+   `auto` do nome fica do tamanho do texto de cada linha e as barras desalinham. */
+.muscle-group { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 10px 8px; }
+.muscle-group__row { display: contents; }
 .muscle-group__icon { display: flex; color: var(--muted); }
 .muscle-group__icon svg { width: 20px; height: 20px; }
 .muscle-group__name { font-size: .84rem; white-space: nowrap; }
