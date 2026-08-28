@@ -196,13 +196,15 @@ export function fmtDateRange(start, end) {
   return `${fmt.format(new Date(start))} – ${fmt.format(new Date(end))}`;
 }
 
-/** "Hoje", "Ontem", "ha 3 dias" ou a data cheia. */
+/** "Hoje", "Ontem", "ha 3 dias" ou a data cheia.
+ *
+ *  De uma semana em diante vira data: "ha 3 semanas" nao diz que dia foi, e a
+ *  lista de treinos e justamente onde se procura o dia. */
 export function fmtRelativeDay(iso) {
   const days = daysBetween(new Date(iso), new Date());
   if (days <= 0) return t('common.today');
   if (days === 1) return t('common.yesterday');
   if (days < 7) return tn('common.daysAgo', days);
-  if (days < 30) return tn('common.weeksAgo', Math.floor(days / 7));
   return fmtDate(iso);
 }
 
