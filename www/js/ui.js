@@ -183,8 +183,11 @@ export function fmtWeight(value, unit = 'kg') {
 
 // Formatters sao recriados a cada chamada (nao memoizados em const de modulo)
 // porque o idioma pode mudar em runtime, sem reload — ver idioma:mudou em app.js.
+// Numerico (20/08/2026) e nao "20 de ago. de 2026": e a data que aparece em
+// lista, onde a versao por extenso ocupa a linha toda. A ORDEM dos campos vem
+// do locale — pt-BR da 20/08/2026 e en-US da 08/20/2026.
 export const fmtDate = (iso) =>
-  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(iso));
+  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso));
 export const fmtDateShort = (iso) =>
   new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit' }).format(new Date(iso));
 export const fmtWeekday = (iso) =>
