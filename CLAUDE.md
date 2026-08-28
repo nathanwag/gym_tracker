@@ -18,7 +18,9 @@ Serve `www/` e abre `http://localhost:3000/phone` (app num iframe do tamanho de
 um celular; `localhost:3000` direto = tamanho cheio). A *External URL* impressa
 (`http://192.168.x.x:3000`) abre no celular na mesma WiFi, sem commit/push.
 `bs-config.cjs` (raiz, fora de `www/`, não empacotado) é o config; `.cjs` porque
-`package.json` é `type: module`. A rota `/phone` é só atalho de viewport.
+`package.json` é `type: module`. Duas rotas só de dev: `/phone` (viewport de
+celular) e `/seed` (popula o IndexedDB local com treinos de exemplo — usa
+`js/db.js`/`js/seed.js` reais; treino gerado leva `notes: 'seed'`).
 
 Fallback sem Node — `python -m http.server 8000 -d www`. Armadilha do
 `http.server` padrão: não manda `Cache-Control` e responde `304` a

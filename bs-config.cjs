@@ -5,10 +5,13 @@
 //
 // Precisa ser .cjs: package.json tem "type": "module" e o config e CommonJS.
 //
-// A rota /phone e so um atalho de visualizacao no desktop: mostra o app num
-// iframe do tamanho de um celular. localhost:3000 direto = tamanho cheio.
-// O service worker nao registra em http:// (isSecureContext falso) — de
-// proposito; instalacao/offline continuam sendo testados no GitHub Pages.
+// Duas paginas so de dev, servidas por middleware (nao existem em www/):
+//   /phone  — mostra o app num iframe do tamanho de um celular. localhost:3000
+//             direto = tamanho cheio. O service worker nao registra em http://
+//             (isSecureContext falso) — de proposito; instalacao/offline
+//             continuam sendo testados no GitHub Pages.
+//   /seed   — popula o IndexedDB local com treinos de exemplo pra ver o app
+//             com historico. Usa os modulos reais (js/db.js, js/seed.js).
 
 const PHONE = `<!doctype html><meta charset="utf-8">
 <title>Treino — moldura</title>
@@ -19,14 +22,137 @@ const PHONE = `<!doctype html><meta charset="utf-8">
 </style>
 <iframe src="/index.html#/"></iframe>`;
 
+const SEED = `<!doctype html><meta charset="utf-8">
+<title>Treino — seed de histórico</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:34rem;margin:3rem auto;padding:0 1.25rem;
+       background:#0f1115;color:#e8eaed;line-height:1.55}
+  h1{font-size:1.25rem}
+  button{font:inherit;padding:.55rem 1rem;border-radius:8px;border:1px solid #333;
+         background:#1b1e27;color:inherit;cursor:pointer;margin:.4rem .4rem 0 0}
+  button.primary{background:#3b82f6;border-color:#3b82f6;color:#fff}
+  button:disabled{opacity:.5;cursor:progress}
+  code{background:#1b1e27;padding:.1em .35em;border-radius:4px}
+  #log{white-space:pre-wrap;margin-top:1rem;font-family:ui-monospace,monospace;
+       font-size:.85rem;color:#9aa0a6}
+  a{color:#8ab4f8}
+</style>
+<h1>Seed de histórico</h1>
+<p>Popula o IndexedDB local (<code>treino</code>) deste navegador com treinos de
+exemplo — 6 semanas de push/pull/legs com carga progressiva, pra ver o app com
+histórico, gráficos e recordes. Só dev; não vai pro app publicado.</p>
+<button class="primary" id="seed">Gerar 6 semanas de treino</button>
+<button id="clear">Apagar treinos gerados</button>
+<p><a href="/phone">← voltar ao app</a></p>
+<div id="log"></div>
+<script type="module">
+import * as db from '/js/db.js';
+import { SEED_EXERCISES } from '/js/seed.js';
+
+const out = document.getElementById('log');
+const log = (m) => { out.textContent += m + '\\n'; };
+const MARK = 'seed'; // workout.notes; invisível na UI, serve pra "apagar gerados"
+
+// [dia, grupo, nome (de SEED_EXERCISES), carga inicial, incremento/semana]
+const PLAN = [
+  ['push', 'Peito',       'Supino reto com barra',        60, 2.5],
+  ['push', 'Ombros',      'Desenvolvimento com halteres', 20, 1  ],
+  ['push', 'Tríceps',     'Tríceps na polia (corda)',     25, 1.5],
+  ['pull', 'Costas',      'Puxada frontal (pulley)',      45, 2.5],
+  ['pull', 'Costas',      'Remada curvada com barra',     50, 2.5],
+  ['pull', 'Bíceps',      'Rosca direta com barra',       30, 1  ],
+  ['legs', 'Quadríceps',  'Agachamento livre',            80, 5  ],
+  ['legs', 'Posterior',   'Levantamento terra romeno',    70, 5  ],
+  ['legs', 'Panturrilha', 'Panturrilha em pé',            90, 2.5],
+];
+const DAYS = ['push', 'pull', 'legs'];
+const DAY_OFFSET = { push: 4, pull: 2, legs: 0 }; // dias atrás dentro da semana
+const WEEKS = 6;
+const REPS = [10, 9, 8];
+
+const slugFor = (group, name) =>
+  (SEED_EXERCISES[group] || []).find((e) => e.name === name)?.slug ?? null;
+
+async function ensureExercises() {
+  const ids = new Map();
+  for (const [, group, name] of PLAN) {
+    if (ids.has(name)) continue;
+    const r = await db.addExercise({ name, muscleGroup: group, slug: slugFor(group, name), custom: false });
+    ids.set(name, r.id);
+  }
+  return ids;
+}
+
+document.getElementById('seed').onclick = async (e) => {
+  e.target.disabled = true;
+  out.textContent = '';
+  try {
+    await db.init();
+    const ids = await ensureExercises();
+    log(ids.size + ' exercícios prontos.');
+    let made = 0;
+    for (let w = 0; w < WEEKS; w++) {
+      for (const day of DAYS) {
+        const when = new Date();
+        when.setDate(when.getDate() - (WEEKS - 1 - w) * 7 - DAY_OFFSET[day]);
+        when.setHours(18, 30, 0, 0);
+        const started = when.toISOString();
+        const finished = new Date(when.getTime() + 55 * 60000).toISOString();
+        const workout = await db.startWorkout();
+        const order = [];
+        for (const [, group, name, base, step] of PLAN.filter(([d]) => d === day)) {
+          const exId = ids.get(name);
+          order.push(exId);
+          const weight = base + step * w;
+          await db.addSet({ workoutId: workout.id, exerciseId: exId, weight: Math.round(weight * 0.5), reps: 12, warmup: true });
+          for (const reps of REPS) await db.addSet({ workoutId: workout.id, exerciseId: exId, weight, reps });
+        }
+        await db.updateWorkout(workout.id, {
+          date: started.slice(0, 10), startedAt: started, finishedAt: finished,
+          exerciseIds: order, notes: MARK,
+        });
+        made++;
+        log('treino ' + made + '/' + (WEEKS * DAYS.length));
+      }
+    }
+    log('\\nPronto. Abra o app → Histórico.');
+  } catch (err) {
+    log('ERRO: ' + (err && err.message || err));
+  } finally {
+    e.target.disabled = false;
+  }
+};
+
+document.getElementById('clear').onclick = async (e) => {
+  e.target.disabled = true;
+  out.textContent = '';
+  try {
+    await db.init();
+    const mine = (await db.listWorkouts()).filter((w) => w.notes === MARK);
+    for (const w of mine) await db.deleteWorkout(w.id);
+    log(mine.length + ' treinos gerados apagados (exercícios mantidos).');
+  } catch (err) {
+    log('ERRO: ' + (err && err.message || err));
+  } finally {
+    e.target.disabled = false;
+  }
+};
+</script>`;
+
+const PAGES = {
+  '/phone': PHONE,
+  '/seed': SEED,
+};
+
 module.exports = {
   server: {
     baseDir: 'www',
     middleware: [
       (req, res, next) => {
-        if (req.url.replace(/\/$/, '') === '/phone') {
+        const page = PAGES[req.url.replace(/\/$/, '')];
+        if (page) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          return res.end(PHONE);
+          return res.end(page);
         }
         next();
       },
