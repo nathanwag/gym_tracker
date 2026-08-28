@@ -486,7 +486,11 @@ export async function renderEdit(view, exId) {
   const stepsEditor = createStepsEditor(initialSteps);
   const isDirty = () => dirty || stepsEditor.isDirty();
 
-  setTop({ title: t('exercise.form.editTitle'), back: detailHash });
+  setTop({
+    title: t('exercise.form.editTitle'),
+    back: detailHash,
+    actions: `<button class="btn btn--sm btn--primary" data-save>${t('common.save')}</button>`,
+  });
 
   const leave = () => { revokeEditPhotoUrls(); goBack(detailHash); };
 
@@ -511,24 +515,26 @@ export async function renderEdit(view, exId) {
 
   const root = node('<div class="stack"></div>');
 
-  /* --- A. Nome / grupo / unilateral --- */
+  /* --- Nome / grupo / unilateral: sempre visivel, e o que mais se edita --- */
   const basics = node(html`
     <div class="card card__pad stack--sm">
       <label class="field">
         <span class="field__label">${t('exercise.form.name')}</span>
         <input class="input" data-name value="${exercise.name}" autocapitalize="sentences">
       </label>
-      <label class="field">
-        <span class="field__label">${t('exercise.form.muscleGroup')}</span>
-        <select class="select" data-group>
-          ${raw(MUSCLE_GROUPS.map((g) =>
-            `<option value="${g}"${g === exercise.muscleGroup ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
-        </select>
-      </label>
-      <label class="field field--check">
-        <input type="checkbox" data-unilateral${exercise.unilateral ? ' checked' : ''}>
-        <span>${t('exercise.form.unilateral')}</span>
-      </label>
+      <div class="row" style="align-items:flex-end">
+        <label class="field grow">
+          <span class="field__label">${t('exercise.form.muscleGroup')}</span>
+          <select class="select" data-group>
+            ${raw(MUSCLE_GROUPS.map((g) =>
+              `<option value="${g}"${g === exercise.muscleGroup ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
+          </select>
+        </label>
+        <label class="field--chip" title="${t('exercise.form.unilateral')}">
+          <input type="checkbox" data-unilateral${exercise.unilateral ? ' checked' : ''}>
+          <span>${t('exercise.editScreen.unilateralShort')}</span>
+        </label>
+      </div>
     </div>
   `);
   const nameInput = basics.querySelector('[data-name]');
@@ -536,102 +542,79 @@ export async function renderEdit(view, exId) {
   const uniCheckbox = basics.querySelector('[data-unilateral]');
   nameInput.addEventListener('input', () => { dirty = true; });
   uniCheckbox.addEventListener('change', () => { dirty = true; });
-  groupSelect.addEventListener('change', () => { dirty = true; drawFigureCard(); });
+  groupSelect.addEventListener('change', () => { dirty = true; drawFrames(); });
 
-  /* --- B. Figura do catalogo --- */
-  const figureCard = node('<div class="card card__pad stack--sm"></div>');
-  let figureName = null;
-
-  function drawFigureCard() {
-    figureCard.innerHTML = html`
-      <h2 class="section-title" style="margin-top:0">${t('exercise.editScreen.figureTitle')}</h2>
-      <div class="row">
-        ${raw(thumbHtml({ slug: pendingSlug, muscleGroup: groupSelect.value }, { className: 'thumb--lg' }))}
-        <div class="grow muted small">${pendingSlug ? (figureName || pendingSlug) : t('exercise.editScreen.figureNone')}</div>
+  /* --- Secao dobravel: cabecalho com resumo + corpo que abre no lugar.
+         Nasce fechada — a tela inteira cabe numa altura so, independente de
+         quantos passos o exercicio tenha. --- */
+  function section(icon, name, body) {
+    const el = node(html`
+      <div class="card">
+        <button class="editor-sec__head" type="button" aria-expanded="false">
+          <span class="editor-sec__icon">${raw(icon)}</span>
+          <span class="editor-sec__name">${name}</span>
+          <span class="editor-sec__sum" data-sum></span>
+          <span class="editor-sec__chev">${raw(ICON.chevron)}</span>
+        </button>
       </div>
-      <button class="btn btn--block btn--ghost" data-figure>
-        ${pendingSlug ? t('exercise.menu.changePhoto') : t('exercise.menu.choosePhotoFromCatalog')}
-      </button>
-      ${pendingSlug ? raw(`<button class="btn btn--block btn--ghost" data-figure-clear>${t('exercise.photo.remove')}</button>`) : ''}
-    `;
-    figureCard.querySelector('[data-figure]').onclick = () => openFigurePicker({
-      name: nameInput.value,
-      currentSlug: pendingSlug,
-      onPick: (slug) => {
-        pendingSlug = slug;
-        figureName = null;
-        dirty = true;
-        drawFigureCard();
-        resolveFigureName();
-        drawPhotoSlots();
-      },
-    });
-    figureCard.querySelector('[data-figure-clear]')?.addEventListener('click', () => {
-      pendingSlug = null;
-      figureName = null;
-      dirty = true;
-      drawFigureCard();
-      drawPhotoSlots();
-    });
+    `);
+    const head = el.querySelector('.editor-sec__head');
+    body.classList.add('editor-sec__body');
+    body.hidden = true;
+    el.append(body);
+    head.onclick = () => {
+      const open = head.getAttribute('aria-expanded') === 'true';
+      head.setAttribute('aria-expanded', String(!open));
+      body.hidden = open;
+    };
+    return { el, summary: el.querySelector('[data-sum]') };
   }
 
-  function resolveFigureName() {
-    if (!pendingSlug) return;
-    const want = pendingSlug;
-    catalog.get(pendingSlug)
-      .then((item) => {
-        if (item && pendingSlug === want) { figureName = catalog.displayName(item); drawFigureCard(); }
-      })
-      .catch(() => {});
-  }
+  /* --- Imagem: figura do catalogo e fotos proprias sao a MESMA coisa. A
+         imagem sao dois quadros (inicial/final); o catalogo preenche os dois
+         de uma vez, a camera troca um quadro so. --- */
+  const framesGrid = node('<div class="frames"></div>');
+  const imageBody = node('<div class="stack--sm"></div>');
+  const catalogBtn = node(html`<button class="btn btn--block btn--ghost" data-catalog></button>`);
+  imageBody.append(framesGrid, catalogBtn);
+  const image = section(ICON.image, t('exercise.editScreen.imageSection'), imageBody);
 
-  /* --- C. Passo a passo --- */
-  const stepsCardEl = node(html`
-    <div class="card card__pad">
-      <h2 class="section-title" style="margin-top:0">${t('exercise.steps.sheetTitle')}</h2>
-    </div>
-  `);
-  stepsCardEl.append(stepsEditor.el);
+  // Selo curto no quadro (o espaco e pequeno); o nome inteiro fica no
+  // aria-label, que e quem o leitor de tela anuncia.
+  const frameLabels = [t('exercise.photos.startLabel'), t('exercise.photos.endLabel')];
+  const frameBadges = [t('exercise.editScreen.frameStart'), t('exercise.editScreen.frameEnd')];
 
-  /* --- D. Fotos personalizadas --- */
-  const photosCardEl = node(html`
-    <div class="card card__pad">
-      <h2 class="section-title" style="margin-top:0">${t('exercise.photos.sheetTitle')}</h2>
-      <div class="photo-grid" data-photo-grid></div>
-    </div>
-  `);
-  const photoGrid = photosCardEl.querySelector('[data-photo-grid]');
-  const photoLabels = [t('exercise.photos.startLabel'), t('exercise.photos.endLabel')];
-
-  function drawPhotoSlot(slot) {
+  function drawFrame(slot) {
     const custom = previewUrls[slot];
     const removed = pendingPhotos[slot] === null;
-    // Foto do catalogo entra so como referencia esmaecida enquanto nao ha foto
-    // personalizada nem remocao pendente — nao conta como "salvo".
+    // Foto do catalogo entra esmaecida, como referencia: e o que aquele quadro
+    // vai mostrar, mas nao e uma foto "sua" ate voce escolher uma.
     const reference = (!custom && !removed && pendingSlug) ? fullUrl(pendingSlug, slot) : null;
     const src = custom || reference;
     const el = node(html`
-      <div class="photo-slot">
-        <span class="photo-slot__label">${photoLabels[slot]}</span>
-        <div class="photo-slot__preview">${raw(src ? `<img src="${src}" alt=""${custom ? '' : ' style="opacity:.5"'}>` : '')}</div>
-        <label class="btn btn--block btn--ghost btn--sm">
-          ${t('exercise.photos.choose')}
-          <input type="file" accept="image/*" capture="environment" hidden data-file>
-        </label>
-        <button class="btn btn--block btn--sm" data-remove ${raw(custom ? '' : 'hidden')}>${t('exercise.photos.remove')}</button>
+      <div class="frame">
+        <button class="frame__pick" type="button" data-pick aria-label="${frameLabels[slot]}">
+          ${raw(src ? `<img src="${src}" alt=""${custom ? '' : ' class="frame__ref"'}>` : '')}
+          <span class="frame__label">${frameBadges[slot]}</span>
+          <span class="frame__cam">${raw(ICON.camera)}</span>
+        </button>
+        <button class="btn btn--sm btn--ghost" data-remove ${raw(custom ? '' : 'hidden')}>${t('exercise.photos.remove')}</button>
+        <input type="file" accept="image/*" capture="environment" hidden data-file>
       </div>
     `);
-    el.querySelector('[data-file]').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    const file = el.querySelector('[data-file]');
+    el.querySelector('[data-pick]').onclick = () => file.click();
+    file.addEventListener('change', async (e) => {
+      const chosen = e.target.files[0];
+      if (!chosen) return;
       try {
-        const blob = await compressImage(file);
+        const blob = await compressImage(chosen);
         if (previewUrls[slot]) URL.revokeObjectURL(previewUrls[slot]);
         pendingPhotos[slot] = blob;
         previewUrls[slot] = URL.createObjectURL(blob);
         editPhotoUrls.push(previewUrls[slot]);
         dirty = true;
-        redrawPhotoSlot(slot);
+        redrawFrame(slot);
       } catch {
         toast(t('exercise.photos.processError'));
       }
@@ -641,23 +624,79 @@ export async function renderEdit(view, exId) {
       previewUrls[slot] = null;
       pendingPhotos[slot] = null;
       dirty = true;
-      redrawPhotoSlot(slot);
+      redrawFrame(slot);
     };
     return el;
   }
 
-  function redrawPhotoSlot(slot) {
-    photoGrid.replaceChild(drawPhotoSlot(slot), photoGrid.children[slot]);
+  function redrawFrame(slot) {
+    framesGrid.replaceChild(drawFrame(slot), framesGrid.children[slot]);
+    drawImageSummary();
   }
 
-  function drawPhotoSlots() {
-    photoGrid.innerHTML = '';
-    photoGrid.append(drawPhotoSlot(0), drawPhotoSlot(1));
+  function drawFrames() {
+    framesGrid.innerHTML = '';
+    framesGrid.append(drawFrame(0), drawFrame(1));
+    catalogBtn.textContent = pendingSlug
+      ? t('exercise.menu.changePhoto')
+      : t('exercise.menu.choosePhotoFromCatalog');
+    drawImageSummary();
   }
 
-  /* --- E. Salvar --- */
-  const saveBtn = node(html`<button class="btn btn--primary btn--block" data-save>${t('common.save')}</button>`);
-  saveBtn.onclick = async () => {
+  function drawImageSummary() {
+    const hasCustom = previewUrls.some(Boolean);
+    image.summary.textContent = hasCustom
+      ? t('exercise.editScreen.imageCustom')
+      : (pendingSlug ? t('exercise.editScreen.imageFromCatalog') : t('exercise.editScreen.imageNone'));
+  }
+
+  catalogBtn.onclick = () => openFigurePicker({
+    name: nameInput.value,
+    currentSlug: pendingSlug,
+    onPick: (slug) => {
+      pendingSlug = slug;
+      dirty = true;
+      drawFrames();
+    },
+  });
+
+  /* --- Passo a passo --- */
+  const stepsBody = node('<div></div>');
+  stepsBody.append(stepsEditor.el);
+  const steps = section(ICON.steps, t('exercise.steps.sheetTitle'), stepsBody);
+  const drawStepsSummary = () => {
+    const n = stepsEditor.getSteps().length;
+    steps.summary.textContent = n ? tn('common.step', n) : t('exercise.editScreen.noSteps');
+  };
+  stepsEditor.onChange(drawStepsSummary);
+
+  /* --- Apagar --- */
+  const deleteZone = node(html`
+    <div class="card card__pad stack--sm">
+      <button class="btn btn--block btn--danger" data-delete>${t('exercise.menu.delete')}</button>
+      <p class="muted small" style="margin:0">
+        ${totalSets ? t('exercise.menu.hasSets', { sets: tn('common.set', totalSets) }) : t('exercise.menu.noSets')}
+      </p>
+    </div>
+  `);
+  deleteZone.querySelector('[data-delete]').onclick = async () => {
+    const ok = await confirmSheet({
+      title: t('exercise.menu.confirmDelete.title', { name: exercise.name }),
+      confirmLabel: t('common.delete'),
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await db.deleteExercise(exId);
+      toast(t('exercise.menu.toastDeleted'));
+      location.hash = '#/exercicios';
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+
+  /* --- Salvar: uma gravacao so para tudo (inclusive as fotos pendentes) --- */
+  document.querySelector('[data-save]').onclick = async () => {
     const name = nameInput.value.trim();
     if (!name) { toast(t('exercise.form.giveItAName')); nameInput.focus(); return; }
 
@@ -695,36 +734,10 @@ export async function renderEdit(view, exId) {
     }
   };
 
-  /* --- F. Apagar --- */
-  const deleteZone = node(html`
-    <div class="card card__pad stack--sm">
-      <button class="btn btn--block btn--danger" data-delete>${t('exercise.menu.delete')}</button>
-      <p class="muted small" style="margin:0">
-        ${totalSets ? t('exercise.menu.hasSets', { sets: tn('common.set', totalSets) }) : t('exercise.menu.noSets')}
-      </p>
-    </div>
-  `);
-  deleteZone.querySelector('[data-delete]').onclick = async () => {
-    const ok = await confirmSheet({
-      title: t('exercise.menu.confirmDelete.title', { name: exercise.name }),
-      confirmLabel: t('common.delete'),
-      danger: true,
-    });
-    if (!ok) return;
-    try {
-      await db.deleteExercise(exId);
-      toast(t('exercise.menu.toastDeleted'));
-      location.hash = '#/exercicios';
-    } catch (err) {
-      toast(err.message);
-    }
-  };
+  drawFrames();
+  drawStepsSummary();
 
-  drawFigureCard();
-  resolveFigureName();
-  drawPhotoSlots();
-
-  root.append(basics, figureCard, stepsCardEl, photosCardEl, saveBtn, deleteZone);
+  root.append(basics, image.el, steps.el, deleteZone);
   view.append(root);
 }
 
@@ -736,6 +749,9 @@ function createStepsEditor(initial) {
   // grava `steps` ou se o exercicio segue herdando o passo a passo do catalogo.
   const list = (initial || []).map((s) => String(s));
   const baseline = cleanSteps(list);
+  // Quem monta a tela usa isto pra manter o resumo do cabecalho ("4 passos")
+  // em dia sem precisar saber como o editor guarda a lista.
+  let notify = () => {};
 
   const el = node('<div class="stack--sm"></div>');
   const rows = node('<div class="stack--sm" data-rows></div>');
@@ -755,7 +771,7 @@ function createStepsEditor(initial) {
           </div>
         </div>
       `);
-      row.querySelector('textarea').addEventListener('input', (e) => { list[i] = e.target.value; });
+      row.querySelector('textarea').addEventListener('input', (e) => { list[i] = e.target.value; notify(); });
       row.querySelector('[data-up]').onclick = () => {
         if (i === 0) return;
         [list[i - 1], list[i]] = [list[i], list[i - 1]];
@@ -766,7 +782,7 @@ function createStepsEditor(initial) {
         [list[i + 1], list[i]] = [list[i], list[i + 1]];
         drawRows();
       };
-      row.querySelector('[data-remove]').onclick = () => { list.splice(i, 1); drawRows(); };
+      row.querySelector('[data-remove]').onclick = () => { list.splice(i, 1); drawRows(); notify(); };
       rows.append(row);
     });
   };
@@ -775,6 +791,7 @@ function createStepsEditor(initial) {
   addBtn.onclick = () => {
     list.push('');
     drawRows();
+    notify();
     rows.lastElementChild.querySelector('textarea').focus();
   };
 
@@ -782,6 +799,7 @@ function createStepsEditor(initial) {
     el,
     getSteps: () => cleanSteps(list),
     isDirty: () => !sameSteps(list, baseline),
+    onChange: (fn) => { notify = fn; },
   };
 }
 

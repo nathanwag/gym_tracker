@@ -763,6 +763,92 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .step-row__actions { display: flex; flex-direction: column; flex: 0 0 auto; }
 .step-row__actions .icon-btn svg { width: 18px; height: 18px; }
 
+/* ---------- Tela de editar exercicio ----------
+   Cada assunto (imagem, passo a passo) e uma secao que abre no lugar: a tela
+   inteira cabe numa altura so, independente de quantos passos o exercicio tem. */
+
+.editor-sec__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.editor-sec__head:active { background: var(--surface-2); }
+.editor-sec__icon { display: flex; flex: 0 0 auto; color: var(--accent); }
+.editor-sec__icon svg { width: 20px; height: 20px; }
+.editor-sec__name { flex: 1; min-width: 0; font-weight: 650; }
+.editor-sec__sum { flex: 0 0 auto; font-size: .84rem; color: var(--muted); }
+.editor-sec__chev { display: flex; flex: 0 0 auto; color: var(--muted); transition: transform .15s ease; }
+.editor-sec__head[aria-expanded="true"] .editor-sec__chev { transform: rotate(90deg); }
+.editor-sec__body { padding: 0 14px 14px; }
+
+/* Checkbox compacto ao lado do select de grupo, pra caber na mesma linha. */
+.field--chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: .87rem;
+}
+.field--chip input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* Os dois quadros que formam a imagem do exercicio (inicial/final). O quadro
+   inteiro e o alvo de toque; a foto do catalogo aparece esmaecida ate haver
+   uma foto propria naquele quadro. */
+.frames { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.frame { display: flex; flex-direction: column; gap: 6px; }
+.frame__pick {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.frame__pick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.frame__ref { opacity: .5; }
+.frame__label {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .62);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 650;
+}
+.frame__cam {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .62);
+  color: #fff;
+}
+.frame__cam svg { width: 15px; height: 15px; }
+
 /* ---------- Editor de fotos personalizadas ---------- */
 
 .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
