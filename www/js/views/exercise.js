@@ -26,16 +26,13 @@ import {
    Lista
    ========================================================================== */
 
-// Lembram o filtro (meus/todos) e o texto buscado da biblioteca entre
-// visitas nesta sessao — mesmo motivo do catalogo (catalog.js): sem isso,
-// voltar de um exercicio sempre reabria a lista filtrada do zero.
-// `rememberedMode` nao pode nascer com valor fixo porque seu padrao depende
-// de `hasHistory`, so conhecido em runtime — null = ainda nao decidido.
-let rememberedMode = null;
+// Lembra o texto buscado entre visitas nesta sessao — mesmo motivo do
+// catalogo (catalog.js): sem isso, voltar de um exercicio reabria a lista do
+// zero.
 let search = '';
 // Grupos que o usuario abriu. Nasce vazio: todos fechados, senao 8 cabecalhos
 // abertos gastam a tela inteira pra poucos exercicios. Escopo de modulo pelo
-// mesmo motivo de rememberedMode — sobrevive a abrir um exercicio e voltar.
+// mesmo motivo de `search` acima — sobrevive a abrir um exercicio e voltar.
 const openGroups = new Set();
 
 export async function renderList(view) {
@@ -57,9 +54,6 @@ export async function renderList(view) {
     if (!s.warmup && s.weight > r.bestWeight) r.bestWeight = s.weight;
   }
 
-  const hasHistory = summaries.size > 0;
-  if (rememberedMode === null) rememberedMode = hasHistory ? 'mine' : 'all';
-
   setTop({ title: t('exercise.listTitle'), showBar: false });
 
   const root = node(html`
@@ -68,10 +62,6 @@ export async function renderList(view) {
         <input class="input grow" data-search type="search" placeholder="${t('exercise.searchPlaceholder')}"
                autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
         <button class="btn btn--primary btn--square" data-add aria-label="${t('exercise.add.title')}">${raw(ICON.plus)}</button>
-      </div>
-      <div class="segmented" ${raw(hasHistory ? '' : 'hidden')}>
-        <button class="segmented__btn" data-mode="mine" aria-pressed="${String(rememberedMode === 'mine')}">${t('exercise.filter.logged')}</button>
-        <button class="segmented__btn" data-mode="all" aria-pressed="${String(rememberedMode === 'all')}">${t('exercise.filter.all')}</button>
       </div>
       <div data-list></div>
     </div>
@@ -101,16 +91,16 @@ export async function renderList(view) {
 
   const draw = () => {
     const q = stripAccents(search.trim());
-    let items = exercises;
-    if (rememberedMode === 'mine') items = items.filter((e) => summaries.has(e.id));
-    if (q) items = items.filter((e) => stripAccents(e.name).includes(q) || stripAccents(e.muscleGroup).includes(q));
+    const items = q
+      ? exercises.filter((e) => stripAccents(e.name).includes(q) || stripAccents(e.muscleGroup).includes(q))
+      : exercises;
 
     list.innerHTML = '';
     if (!items.length) {
       list.append(node(html`
         <div class="card"><div class="empty">
           ${raw(ICON.dumbbell)}
-          <p>${rememberedMode === 'mine' && !q ? t('exercise.noneLoggedEmpty') : t('exercise.noneFound')}</p>
+          <p>${q ? t('exercise.noneFound') : t('exercise.emptyLibrary')}</p>
         </div></div>
       `));
       return;
@@ -133,11 +123,6 @@ export async function renderList(view) {
 
   root.querySelector('[data-search]').addEventListener('input', (e) => {
     search = e.target.value;
-    draw();
-  });
-
-  wireSegmented(root, (button) => {
-    rememberedMode = button.dataset.mode;
     draw();
   });
 
