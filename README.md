@@ -9,18 +9,30 @@ Funciona offline, guarda tudo no próprio aparelho e não depende de nenhum serv
 
 ## Como rodar na máquina
 
-Sirva a pasta `www/` por HTTP a partir da raiz:
+```bash
+npm install     # uma vez
+npm run dev
+```
+
+Sobe um servidor estático de `www/` com **live reload** — salvou um arquivo, a tela recarrega
+sozinha, sem a armadilha de cache descrita abaixo. Abre `http://localhost:3000/phone` — o app num
+quadro do tamanho de um celular; `http://localhost:3000` direto é o tamanho cheio. O comando também
+imprime uma **External URL** (`http://192.168.x.x:3000`): abra-a no celular na mesma WiFi para ver
+ali, sem commit/push (o Windows pode pedir para liberar o Node na rede privada — permita; se a URL
+impressa não for a do WiFi, rode `ipconfig` e use o IP `192.168.x.x`).
+
+O service worker não registra em `http://` — instalação e offline continuam sendo testados pela URL
+do GitHub Pages (veja abaixo).
+
+Sem Node, dá para servir com Python, mas sem live reload:
 
 ```bash
 python -m http.server 8000 -d www
 ```
 
-Abra <http://localhost:8000>. Não precisa instalar nada — o app é HTML, CSS e JavaScript puro, sem
-dependências e sem etapa de build.
-
 > O `http.server` padrão não desliga o cache do navegador e responde `304`: uma alteração de CSS/JS
-> pode não aparecer no reload. Force refresh (Ctrl+Shift+R) ou use um servidor estático com no-cache
-> (ex.: `npx serve www`). Veja `CLAUDE.md` para o detalhe.
+> pode não aparecer no reload. Force refresh (Ctrl+Shift+R) ou use um servidor com no-cache. O `npm
+> run dev` não tem esse problema.
 
 ---
 

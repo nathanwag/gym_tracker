@@ -10,20 +10,24 @@ e também o `webDir` do Capacitor (empacota como iOS/Android sem reescrever nada
 
 ## Rodar o app
 
-Não há script de dev nem servidor no repo. Sirva `www/` por HTTP a partir da raiz:
-
 ```bash
-python -m http.server 8000 -d www      # abre http://localhost:8000
+npm run dev      # browser-sync: live reload + URL de rede pro celular
 ```
 
-Armadilha do `http.server` padrão: não manda `Cache-Control` e responde `304` a
-`If-Modified-Since`, então **uma mudança de CSS/JS pode não aparecer no reload** —
-force refresh (Ctrl+Shift+R) ou DevTools com "Disable cache". Um `python -m
-http.server` também é single-thread; se um módulo ES demorar a carregar, é isso.
-Qualquer servidor estático com no-cache serve (ex.: `npx serve www`).
+Serve `www/` e abre `http://localhost:3000/phone` (app num iframe do tamanho de
+um celular; `localhost:3000` direto = tamanho cheio). A *External URL* impressa
+(`http://192.168.x.x:3000`) abre no celular na mesma WiFi, sem commit/push.
+`bs-config.cjs` (raiz, fora de `www/`, não empacotado) é o config; `.cjs` porque
+`package.json` é `type: module`. A rota `/phone` é só atalho de viewport.
+
+Fallback sem Node — `python -m http.server 8000 -d www`. Armadilha do
+`http.server` padrão: não manda `Cache-Control` e responde `304` a
+`If-Modified-Since`, então **uma mudança de CSS/JS pode não aparecer no reload**
+(force refresh / DevTools "Disable cache"); é single-thread também. O `npm run
+dev` não tem nenhum dos dois problemas.
 
 O iOS só registra service worker sob HTTPS — teste de instalação/offline exige a
-URL do GitHub Pages, não o IP da rede local.
+URL do GitHub Pages, não o IP da rede local (nem o `npm run dev`, que é `http://`).
 
 ## Testes
 
