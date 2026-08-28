@@ -12,7 +12,7 @@ import {
   evaluatePR, prSetIds, setE1rm, isDurationSet, workoutSummary,
 } from '../models.js';
 import { thumbHtml } from '../media.js';
-import { openExercisePicker } from './exercise-picker.js';
+import { takeLastAdded } from './exercise-picker.js';
 import { openShareSheet } from '../share-image.js';
 import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn } from '../i18n.js';
@@ -90,6 +90,13 @@ export async function render(view) {
 
   view.append(root);
   renderList();
+
+  // Voltando do seletor: rola ate o exercicio que acabou de entrar, que fica
+  // no fim da lista e pode estar fora da tela.
+  const added = takeLastAdded();
+  if (added) {
+    document.querySelector(`[data-ex="${added}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 /** Redesenha as duas listas (ativos e concluidos) a partir do zero — chamada
@@ -429,24 +436,5 @@ async function finish() {
 /* ---------- Seletor de exercicios ---------- */
 
 function openPicker() {
-  openExercisePicker({
-    exercises: ctx.list,
-    alreadyChosenIds: new Set(ctx.workout.exerciseIds || []),
-    onChoose: addExerciseToSession,
-  });
-}
-
-/** Chamado pelo seletor com o exercicio resolvido — existente, do catalogo, ou
- *  recem-criado. A lista local e recarregada sempre: e barato (db.js cacheia
- *  em memoria e so o invalida quando algo muda) e poupa o seletor de saber se
- *  criou algo novo. */
-async function addExerciseToSession(exercise) {
-  ctx.list = await db.listExercises();
-  ctx.exercises = new Map(ctx.list.map((e) => [e.id, e]));
-
-  await db.addExerciseToWorkout(ctx.workout.id, exercise.id);
-  ctx.workout.exerciseIds = [...(ctx.workout.exerciseIds || []), exercise.id];
-
-  renderList();
-  document.querySelector(`[data-ex="${exercise.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  location.hash = `#/treino/${ctx.workout.id}/adicionar`;
 }

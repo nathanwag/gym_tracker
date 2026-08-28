@@ -1,105 +1,186 @@
-/* Sheet pra escolher um exercicio: da biblioteca, do catalogo de 873, ou
- * criado na hora — as tres saidas de "preciso de um exercicio que ainda nao
- * tenho" sem sair da tela.
+/* Tela pra escolher um exercicio e por num treino, em duas etapas: primeiro o
+ * grupo muscular (alvos grandes, pensados pra mao suada no meio da serie),
+ * depois o exercicio daquele grupo.
  *
- * So resolve (e, se preciso, cria) o exercicio; quem chama decide o que
- * "escolher" significa via onChoose. Hoje so o treino em andamento usa
- * isto, pra entrar num exercicio na sessao. */
+ * Era um bottom sheet, que na pratica ja ocupava 88% da tela — mas sem botao
+ * de voltar e com rolagem dentro de rolagem. Virou rota
+ * (#/treino/:id/adicionar) usada tanto pelo treino em andamento quanto pela
+ * edicao de um treino do historico: nos dois casos a tarefa e a mesma, "por o
+ * exercicio E no treino T".
+ *
+ * As tres saidas de "preciso de um exercicio que ainda nao tenho" continuam
+ * aqui: biblioteca, catalogo de 873 (pela busca) e criar na hora. */
 
 import * as db from '../db.js';
 import * as catalog from '../catalog.js';
-import { MUSCLE_GROUPS, groupLabel } from '../seed.js';
+import { MUSCLE_GROUPS, groupBy, groupLabel } from '../seed.js';
 import { thumbHtml, prefetchPhotos, preloadCustomThumbs } from '../media.js';
 import { t } from '../i18n.js';
 import {
-  html, raw, node, ICON, toast, openSheet, closeSheet, stripAccents, groupedList, listInCard,
+  html, raw, node, ICON, ICON_GROUPS, toast, setTop, openSheet, closeSheet, goBack,
+  stripAccents, listInCard,
 } from '../ui.js';
 
-// Lembra quais grupos ficaram abertos entre uma abertura e outra da folha
-// nesta sessao — mesmo motivo do catalogo (catalog.js): quem esta pegando
-// varios exercicios da mesma regiao (ex: dia de perna) nao quer reabrir o
-// grupo toda vez.
-const openGroups = new Set();
+// Etapa atual: null = grade de grupos; nome do grupo = lista dele.
+let openGroup = null;
+// Quem chamou usa pra rolar ate o exercicio recem-adicionado depois de voltar.
+let lastAdded = null;
 
-/**
- * @param {object[]} exercises biblioteca do usuario, no momento em que o seletor abre
- * @param {Set<number>} alreadyChosenIds ids que devem aparecer desabilitados ("no treino")
- * @param {(exercise: object) => void|Promise<void>} onChoose chamado uma vez, com o
- *   exercicio resolvido (escolhido da lista, do catalogo, ou recem-criado)
- */
-export function openExercisePicker({ exercises, alreadyChosenIds, onChoose }) {
+/** Id do exercicio adicionado na ultima passagem por aqui, consumido uma vez. */
+export function takeLastAdded() {
+  const id = lastAdded;
+  lastAdded = null;
+  return id;
+}
+
+export async function render(view, workoutId) {
+  const [workout, exercises] = await Promise.all([
+    db.getWorkout(workoutId),
+    db.listExercises(),
+  ]);
+
+  if (!workout) {
+    setTop({ title: t('picker.sheetTitle'), back: '#/historico' });
+    view.append(node(`<div class="card card__pad">${t('history.notFound')}</div>`));
+    return;
+  }
+
+  // Treino em aberto se retoma pela sessao; treino fechado vive no historico.
+  // So vale como destino de emergencia: goBack() prefere de onde a pessoa veio.
+  const backTo = workout.finishedAt ? `#/historico/${workout.id}` : '#/sessao';
+  const alreadyChosenIds = new Set(workout.exerciseIds || []);
+
+  openGroup = null;
+
   const choose = async (exercise) => {
-    closeSheet();
-    await onChoose(exercise);
+    await db.addExerciseToWorkout(workout.id, exercise.id);
+    lastAdded = exercise.id;
+    goBack(backTo);
   };
 
-  const body = node(html`
-    <div>
+  const root = node(html`
+    <div class="stack">
       <input class="input" data-search type="search" placeholder="${t('picker.searchPlaceholder')}"
              autocomplete="off" autocapitalize="none" autocorrect="off">
-      <div data-results style="margin-top:12px"></div>
+      <div data-results></div>
     </div>
   `);
-  openSheet(t('picker.sheetTitle'), body);
+  const searchInput = root.querySelector('[data-search]');
+  const results = root.querySelector('[data-results]');
 
-  const searchInput = body.querySelector('[data-search]');
-  const results = body.querySelector('[data-results]');
+  // Dica do catalogo: aparece ao tocar no bloco "Catalogo" e some assim que a
+  // pessoa digita — o catalogo nao tem tela propria aqui, ele vem pela busca.
+  let catalogHint = false;
+
+  const topbar = () => setTop({
+    title: openGroup ? groupLabel(openGroup) : t('picker.sheetTitle'),
+    back: backTo,
+    // Dentro de um grupo, voltar sobe uma etapa em vez de sair da tela.
+    actions: '',
+  });
+
+  const goUp = () => {
+    if (openGroup) { openGroup = null; topbar(); wireBack(); draw(); return; }
+    goBack(backTo);
+  };
+
+  function wireBack() {
+    const back = document.querySelector('#topbar-back');
+    if (back) back.onclick = goUp;
+  }
 
   const draw = () => {
     const q = stripAccents(searchInput.value.trim());
     results.innerHTML = '';
 
-    const filtered = q
-      ? exercises.filter((e) => stripAccents(e.name).includes(q) || stripAccents(e.muscleGroup).includes(q))
-      : exercises;
+    // Buscando: lista plana. Achar o que foi digitado importa mais que navegar
+    // por grupo nesse momento — e a busca alcanca o catalogo logo abaixo.
+    if (q) {
+      const filtered = exercises.filter((e) =>
+        stripAccents(e.name).includes(q) || stripAccents(e.muscleGroup).includes(q));
 
-    if (!filtered.length) {
-      results.append(node(html`<p class="muted small">${t('picker.noneFound')}</p>`));
-    } else if (q) {
-      // Buscando: lista plana — achar exatamente o que foi digitado importa
-      // mais que navegar por grupo nesse momento.
-      results.append(listInCard(filtered.map((ex) => exerciseItem(ex, alreadyChosenIds, choose))));
-    } else {
-      // Sem busca: por grupo muscular, colapsavel — mesmo padrao do
-      // catalogo (catalog.js), pra nao rolar a biblioteca inteira toda vez.
-      results.append(groupedList({
-        items: filtered,
-        getGroup: (e) => e.muscleGroup,
-        openGroups,
-        renderItem: (ex) => exerciseItem(ex, alreadyChosenIds, choose),
-      }));
+      if (filtered.length) {
+        results.append(listInCard(filtered.map((ex) => exerciseItem(ex, alreadyChosenIds, choose))));
+      } else {
+        results.append(node(html`<p class="muted small">${t('picker.noneFound')}</p>`));
+      }
+
+      const newName = searchInput.value.trim();
+      if (!exercises.some((e) => stripAccents(e.name) === q)) {
+        const fromCatalog = node('<div data-catalog></div>');
+        results.append(fromCatalog);
+        showCatalogSuggestions(fromCatalog, newName, exercises, choose);
+
+        const create = node(html`
+          <button class="btn btn--block" style="margin-top:12px" data-create>
+            ${raw(ICON.plus)} ${t('picker.createName', { name: newName })}
+          </button>
+        `);
+        create.onclick = () => newExerciseForm(newName, choose);
+        results.append(create);
+      }
+      return;
     }
 
-    const newName = searchInput.value.trim();
-    if (newName && !exercises.some((e) => stripAccents(e.name) === q)) {
-      // Do catalogo: e aqui que o app deixa de ter uma lista fixa. Quem esta em
-      // pe no meio do treino precisa de um exercicio que nao tem — antes a
-      // unica saida era digitar tudo a mao.
-      const fromCatalog = node('<div data-catalog></div>');
-      results.append(fromCatalog);
-      showCatalogSuggestions(fromCatalog, newName, exercises, choose);
+    if (catalogHint) {
+      results.append(node(html`
+        <div class="card"><div class="empty small">
+          ${raw(ICON.search)}
+          <p>${t('picker.catalogHint')}</p>
+        </div></div>
+      `));
+      return;
+    }
 
-      const btn = node(html`
-        <button class="btn btn--block" style="margin-top:12px" data-create>
-          ${raw(ICON.plus)} ${t('picker.createName', { name: newName })}
+    // Etapa 2: os exercicios do grupo escolhido.
+    if (openGroup) {
+      const items = exercises.filter((e) => e.muscleGroup === openGroup);
+      results.append(listInCard(items.map((ex) => exerciseItem(ex, alreadyChosenIds, choose))));
+      return;
+    }
+
+    // Etapa 1: os grupos, na ordem anatomica de MUSCLE_GROUPS.
+    const grid = node('<div class="tiles"></div>');
+    for (const { group, items } of groupBy(exercises, (e) => e.muscleGroup)) {
+      const tile = node(html`
+        <button class="tile" type="button">
+          <span class="tile__icon" aria-hidden="true">${raw(ICON_GROUPS[group] || '')}</span>
+          <span class="tile__name">${groupLabel(group)}</span>
+          <span class="tile__n">${items.length}</span>
         </button>
       `);
-      btn.onclick = () => newExerciseForm(newName, choose);
-      results.append(btn);
+      tile.onclick = () => { openGroup = group; topbar(); wireBack(); draw(); };
+      grid.append(tile);
     }
+
+    const catalogTile = node(html`
+      <button class="tile tile--catalog" type="button">
+        <span class="tile__icon" aria-hidden="true">${raw(ICON.search)}</span>
+        <span class="tile__name">${t('picker.catalogTile')}</span>
+        <span class="tile__n">873</span>
+      </button>
+    `);
+    catalogTile.onclick = () => { catalogHint = true; draw(); searchInput.focus(); };
+    grid.append(catalogTile);
+
+    results.append(grid);
   };
 
-  searchInput.addEventListener('input', draw);
+  searchInput.addEventListener('input', () => { catalogHint = false; draw(); });
+
+  topbar();
+  view.append(root);
+  wireBack();
   draw();
-  // Mesmo padrao de exercise.js:renderList — nao atrasa a primeira pintura
-  // do seletor, so redesenha se (e quando) o cache terminar de carregar.
+  // Mesmo padrao de exercise.js:renderList — nao atrasa a primeira pintura,
+  // so redesenha se (e quando) o cache de miniaturas terminar de carregar.
   preloadCustomThumbs().then(() => { if (results.isConnected) draw(); }).catch(() => {});
 }
 
 /** Sugestoes do catalogo dentro do seletor.
  *
- *  O catalogo so e carregado quando o usuario ja digitou algo, para o sheet
- *  abrir instantaneo. O arquivo esta em cache do service worker, entao mesmo
+ *  O catalogo so e carregado quando o usuario ja digitou algo, para a tela
+ *  abrir instantanea. O arquivo esta em cache do service worker, entao mesmo
  *  offline isto e leitura local. */
 async function showCatalogSuggestions(target, term, exercises, choose) {
   let items;
@@ -143,8 +224,8 @@ async function showCatalogSuggestions(target, term, exercises, choose) {
 }
 
 /** Uma linha de exercicio no seletor — usada tanto na lista plana (buscando)
- *  quanto como renderItem de groupedList (sem busca), sem embrulho de
- *  card: quem monta a lista ao redor decide isso. */
+ *  quanto na lista de um grupo, sem embrulho de card: quem monta a lista ao
+ *  redor decide isso. */
 function exerciseItem(ex, alreadyChosenIds, choose) {
   const chosen = alreadyChosenIds.has(ex.id);
   const li = node(html`
@@ -164,6 +245,8 @@ function exerciseItem(ex, alreadyChosenIds, choose) {
   return li;
 }
 
+/** Criar um exercicio sem sair do fluxo. Segue em sheet: e um formulario de
+ *  dois campos, nao merece uma tela. */
 function newExerciseForm(suggestedName, choose) {
   const body = node(html`
     <div class="stack">
@@ -187,6 +270,7 @@ function newExerciseForm(suggestedName, choose) {
     if (!name) { toast(t('exercise.form.giveItAName')); return; }
 
     const created = await db.addExercise({ name, muscleGroup: body.querySelector('[data-group]').value });
+    closeSheet();
     await choose(created);
     toast(t('exercise.form.toastCreated'));
   };

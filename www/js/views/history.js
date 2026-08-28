@@ -7,7 +7,7 @@ import {
 } from '../models.js';
 import { thumbHtml } from '../media.js';
 import { openShareSheet } from '../share-image.js';
-import { openExercisePicker } from './exercise-picker.js';
+import { takeLastAdded } from './exercise-picker.js';
 import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
@@ -121,6 +121,13 @@ export async function renderWorkout(view, workoutId) {
   workoutTopbar();
   view.append(ctx.root);
   paintWorkout();
+
+  // Voltando do seletor: avisa e rola ate o exercicio recem-adicionado.
+  const added = takeLastAdded();
+  if (added) {
+    toast(t('history.toastExerciseAdded'));
+    document.querySelector(`[data-ex="${added}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 async function reloadWorkout() {
@@ -454,15 +461,5 @@ async function addWorkoutSet(exId, values, warmup) {
 }
 
 function openWorkoutExercisePicker() {
-  openExercisePicker({
-    exercises: ctx.exercises,
-    alreadyChosenIds: new Set(orderedWorkoutExercises(ctx.workout.exerciseIds, ctx.sets)),
-    onChoose: async (exercise) => {
-      await db.addExerciseToWorkout(ctx.workout.id, exercise.id);
-      await reloadWorkout();
-      paintWorkout();
-      toast(t('history.toastExerciseAdded'));
-      document.querySelector(`[data-ex="${exercise.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    },
-  });
+  location.hash = `#/treino/${ctx.workout.id}/adicionar`;
 }

@@ -11,6 +11,7 @@ import * as home from './views/home.js';
 import * as session from './views/session.js';
 import * as history from './views/history.js';
 import * as exercise from './views/exercise.js';
+import * as picker from './views/exercise-picker.js';
 import * as catalog from './views/catalog.js';
 import * as settings from './views/settings.js';
 
@@ -22,6 +23,9 @@ const ROUTES = [
   [/^\/exercicios$/, (view) => exercise.renderList(view)],
   [/^\/exercicios\/(\d+)$/, (view, id) => exercise.renderDetail(view, Number(id))],
   [/^\/exercicios\/(\d+)\/editar$/, (view, id) => exercise.renderEdit(view, Number(id))],
+  // Escolher exercicio pra um treino — do treino em andamento ou da edicao
+  // de um treino do historico; nos dois casos e "por o exercicio no treino T".
+  [/^\/treino\/(\d+)\/adicionar$/, (view, id) => picker.render(view, Number(id))],
   // Sem ambiguidade com /exercicios/(\d+): la o parametro e o id numerico do
   // banco, aqui e o slug do catalogo.
   [/^\/catalogo$/, (view) => catalog.renderList(view)],

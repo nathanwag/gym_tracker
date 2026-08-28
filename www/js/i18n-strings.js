@@ -257,6 +257,8 @@ export const DICT = {
     'picker.fromCatalog': 'Do catálogo',
     'picker.inWorkout': 'no treino',
     'picker.createAndAdd': 'Criar e adicionar ao treino',
+    'picker.catalogTile': 'Catálogo',
+    'picker.catalogHint': 'Digite o nome do exercício — a busca alcança os 873 do catálogo.',
 
     // ---------- views/history.js ----------
     'history.title': 'Histórico',
@@ -607,6 +609,8 @@ export const DICT = {
     'picker.fromCatalog': 'From the catalog',
     'picker.inWorkout': 'in workout',
     'picker.createAndAdd': 'Create and add to workout',
+    'picker.catalogTile': 'Catalog',
+    'picker.catalogHint': 'Type the exercise name — search reaches the 873 in the catalog.',
 
     // ---------- views/history.js ----------
     'history.title': 'History',
