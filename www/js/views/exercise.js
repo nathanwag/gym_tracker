@@ -6,7 +6,7 @@ import {
   bests, prSetIds, sessionSummaries, bestSessionVolume, bestSessionDuration, progressPct,
 } from '../models.js';
 import {
-  MUSCLE_GROUPS, groupBy, groupLabel, usesDuration,
+  MUSCLE_GROUPS, groupLabel, usesDuration,
 } from '../seed.js';
 import { lineChart } from '../charts.js';
 import * as catalog from '../catalog.js';
@@ -17,8 +17,9 @@ import {
 import { t, tn, language } from '../i18n.js';
 import { cleanSteps, sameSteps } from '../text.js';
 import {
-  setTop, html, raw, node, ICON, ICON_GROUPS, toast, openSheet, closeSheet, confirmSheet, goBack,
+  setTop, html, raw, node, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, fmtSet, stripAccents, refresh, wireSegmented,
+  groupedList, listInCard,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -32,6 +33,10 @@ import {
 // de `hasHistory`, so conhecido em runtime — null = ainda nao decidido.
 let rememberedMode = null;
 let search = '';
+// Grupos que o usuario abriu. Nasce vazio: todos fechados, senao 8 cabecalhos
+// abertos gastam a tela inteira pra poucos exercicios. Escopo de modulo pelo
+// mesmo motivo de rememberedMode — sobrevive a abrir um exercicio e voltar.
+const openGroups = new Set();
 
 export async function renderList(view) {
   const [exercises, sets] = await Promise.all([db.listExercises(), db.listAllSets()]);
@@ -59,24 +64,40 @@ export async function renderList(view) {
 
   const root = node(html`
     <div class="stack">
-      <input class="input" data-search type="search" placeholder="${t('exercise.searchPlaceholder')}"
-             autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
+      <div class="row">
+        <input class="input grow" data-search type="search" placeholder="${t('exercise.searchPlaceholder')}"
+               autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
+        <button class="btn btn--primary btn--square" data-add aria-label="${t('exercise.add.title')}">${raw(ICON.plus)}</button>
+      </div>
       <div class="segmented" ${raw(hasHistory ? '' : 'hidden')}>
         <button class="segmented__btn" data-mode="mine" aria-pressed="${String(rememberedMode === 'mine')}">${t('exercise.filter.logged')}</button>
         <button class="segmented__btn" data-mode="all" aria-pressed="${String(rememberedMode === 'all')}">${t('exercise.filter.all')}</button>
       </div>
-      <a class="btn btn--block btn--ghost" href="#/catalogo">
-        ${raw(ICON.plus)} ${t('exercise.searchCatalog')}
-      </a>
-      <button class="btn btn--block btn--ghost" data-new>
-        ${raw(ICON.plus)} ${t('exercise.createExercise')}
-      </button>
       <div data-list></div>
     </div>
   `);
-  root.querySelector('[data-new]').onclick = () => exerciseForm();
+  root.querySelector('[data-add]').onclick = addExerciseSheet;
 
   const list = root.querySelector('[data-list]');
+
+  const exerciseItem = (ex) => {
+    const r = summaries.get(ex.id);
+    const detail = r
+      ? `${fmtRelativeDay(r.last)} · ${t('exercise.bestWeight', { weight: fmtNum(r.bestWeight, 2), unit })}`
+      : t('exercise.notLogged');
+    return node(html`
+      <li class="list__item">
+        <a class="list__link" href="#/exercicios/${ex.id}">
+          ${raw(thumbHtml(ex))}
+          <div class="grow">
+            <div style="font-weight:600">${ex.name}</div>
+            <div class="muted small">${detail}</div>
+          </div>
+          <span class="list__chev">${raw(ICON.chevron)}</span>
+        </a>
+      </li>
+    `);
+  };
 
   const draw = () => {
     const q = stripAccents(search.trim());
@@ -95,33 +116,18 @@ export async function renderList(view) {
       return;
     }
 
-    // Agrupado por musculo, na ordem anatomica de MUSCLE_GROUPS (nao alfabetica).
-    for (const { group, items: groupItems } of groupBy(items, (ex) => ex.muscleGroup)) {
-      list.append(node(html`
-        <h2 class="section-title section-title--icone">
-          <span class="section-title__icone" aria-hidden="true">${raw(ICON_GROUPS[group] || '')}</span>
-          ${groupLabel(group)}
-        </h2>
-      `));
-      const itemsHtml = groupItems.map((ex) => {
-        const r = summaries.get(ex.id);
-        const detail = r
-          ? `${fmtRelativeDay(r.last)} · ${t('exercise.bestWeight', { weight: fmtNum(r.bestWeight, 2), unit })}`
-          : t('exercise.notLogged');
-        return html`
-          <li class="list__item">
-            <a class="list__link" href="#/exercicios/${ex.id}">
-              ${raw(thumbHtml(ex))}
-              <div class="grow">
-                <div style="font-weight:600">${ex.name}</div>
-                <div class="muted small">${detail}</div>
-              </div>
-              <span class="list__chev">${raw(ICON.chevron)}</span>
-            </a>
-          </li>
-        `;
-      });
-      list.append(node(html`<div class="card"><ul class="list">${raw(itemsHtml.join(''))}</ul></div>`));
+    // Buscando, o agrupamento atrapalha: o resultado sai plano, como no
+    // catalogo. Sem busca, grupos fechados — 8 cabecalhos abertos gastavam a
+    // tela inteira pra 9 exercicios.
+    if (q) {
+      list.append(listInCard(items.map(exerciseItem)));
+    } else {
+      list.append(groupedList({
+        items,
+        getGroup: (ex) => ex.muscleGroup,
+        openGroups,
+        renderItem: exerciseItem,
+      }));
     }
   };
 
@@ -141,6 +147,39 @@ export async function renderList(view) {
   // passo do detalhe (linha ~253) — mesmo motivo, arquivo/leitura separada.
   preloadCustomThumbs().then(() => { if (list.isConnected) draw(); }).catch(() => {});
   view.append(root);
+}
+
+/** As duas fontes de exercicio novo. Ficavam como dois botoes no topo da lista,
+ *  antes de qualquer exercicio; aqui a escolha so aparece depois de voce
+ *  decidir adicionar, e da pra dizer no que uma difere da outra. */
+function addExerciseSheet() {
+  const body = node(html`
+    <div class="card"><ul class="list">
+      <li class="list__item">
+        <a class="list__link" href="#/catalogo">
+          <span class="editor-sec__icon">${raw(ICON.search)}</span>
+          <div class="grow">
+            <div style="font-weight:650">${t('exercise.add.catalog')}</div>
+            <div class="muted small">${t('exercise.add.catalogHint')}</div>
+          </div>
+          <span class="list__chev">${raw(ICON.chevron)}</span>
+        </a>
+      </li>
+      <li class="list__item">
+        <button class="list__link" type="button" data-create>
+          <span class="editor-sec__icon">${raw(ICON.plus)}</span>
+          <div class="grow">
+            <div style="font-weight:650">${t('exercise.add.create')}</div>
+            <div class="muted small">${t('exercise.add.createHint')}</div>
+          </div>
+          <span class="list__chev">${raw(ICON.chevron)}</span>
+        </button>
+      </li>
+    </ul></div>
+  `);
+  openSheet(t('exercise.add.title'), body);
+  // exerciseForm() reabre o sheet no lugar deste — e o mesmo elemento.
+  body.querySelector('[data-create]').onclick = () => exerciseForm();
 }
 
 /* ==========================================================================

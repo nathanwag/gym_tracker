@@ -257,6 +257,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .btn--block { display: flex; width: 100%; }
 .btn--lg { min-height: 56px; font-size: 1.05rem; }
 .btn--sm { min-height: 36px; padding: 0 12px; font-size: .87rem; }
+/* So o icone, no tamanho de um alvo de toque — o + ao lado da busca. */
+.btn--square { width: var(--tap); padding: 0; flex: 0 0 auto; }
 .btn svg { width: 20px; height: 20px; }
 
 /* ---------- Campos ---------- */
