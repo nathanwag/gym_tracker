@@ -1,32 +1,60 @@
 /* ==========================================================================
-   Treino - folha de estilo unica, mobile-first.
+   Anilha - folha de estilo unica, mobile-first.
    Sem dependencias externas: nenhuma fonte ou CSS remoto, para o app
    continuar identico offline e dentro do WebView nativo (Capacitor).
    ========================================================================== */
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #f1f0ee;
   --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --border: #dde2ea;
-  --text: #14171d;
-  --muted: #5f6875;
-  --accent: #0e7c8c;
-  --accent-soft: #e1f5f7;
+  --surface-2: #e8e7e3;
+  --border: #d6d4cf;
+  --text: #16171a;
+  --muted: #63666d;
+  --accent: #c2352b;
+  --accent-soft: #fae9e7;
   --on-accent: #ffffff;
-  --pr: #a35a00;
-  --pr-soft: #fdf0d8;
-  --danger: #c02626;
-  --success: #12764a;
+  --pr: #8a6410;
+  --pr-soft: #f9eed3;
+  --danger: #b3231b;
+  --success: #2c7a48;
 
-  /* Escala tipografica: 5 degraus com salto de verdade. Antes eram 17
-     tamanhos soltos, 13 deles entre .68 e 1.06rem — variacao, nao hierarquia.
-     O topo e pro DADO (carga, volume), que e o conteudo do app. */
-  --fs-xs: .72rem;
+  /* Cor por grupo muscular. Nao e enfeite: e a mesma legenda nas barras da
+     semana, na assinatura do treino no historico e na regua do cartao de
+     exercicio -- o que torna um dia de perna reconhecivel de um de peito sem
+     ler uma palavra. Familias por regiao do corpo (costas em azul, bracos em
+     verde/violeta, pernas em teal/rosa), escurecidas aqui pra segurar
+     contraste sobre claro. */
+  --m-peito: #c0402f;
+  --m-costas: #24559e;
+  --m-lombar: #3a6cb0;
+  --m-ombros: #a8720f;
+  --m-trapezio: #1d4a86;
+  --m-pescoco: #8a6420;
+  --m-biceps: #2f6b3c;
+  --m-triceps: #57429b;
+  --m-quadriceps: #17696d;
+  --m-posterior: #a03c6d;
+  --m-gluteos: #7d2f5c;
+  --m-panturrilha: #5c6570;
+  --m-abdomen: #b55a3c;
+  --m-antebraco: #4d8659;
+  --m-cardio: #b25b1e;
+  --m-alongamento: #6a7480;
+  --m-outros: #7a7f88;
+
+  /* Escala tipografica: o salto do rotulo ao dado e de sete vezes, nao de
+     tres. Contraste extremo e o que faz um numero parecer dado -- antes o
+     topo era 2.25rem contra um rotulo de .72rem, perto demais. */
+  --fs-xs: .68rem;
   --fs-sm: .85rem;
   --fs-md: 1rem;
   --fs-lg: 1.5rem;
-  --fs-xl: 2.25rem;
+  --fs-xl: 2.4rem;
+  --fs-hero: 4.75rem;
+
+  /* Condensada so pro dado; a Manrope segue sendo a voz da interface. */
+  --display: 'Barlow Condensed', 'Arial Narrow', 'Helvetica Neue Condensed', sans-serif;
 
   --radius: 14px;
   --radius-sm: 10px;
@@ -42,40 +70,107 @@
   color-scheme: light dark;
 }
 
+/* Paleta escura: preto de aco (neutro, nao azul-marinho) e o vermelho da
+   anilha de 25 kg no lugar do ciano. O amarelo do recorde e a anilha de 15 e
+   o verde de "em andamento" e a de 10. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1115;
-    --surface: #1d222d;
-    --surface-2: #262d3a;
-    --border: #333b49;
-    --text: #e8eaef;
-    --muted: #98a1b0;
-    --accent: #2dd4e0;
-    --accent-soft: #0f2a2d;
-    --on-accent: #06282c;
-    --pr: #f5b942;
-    --pr-soft: #2a2211;
+    --bg: #0b0c0d;
+    --surface: #15171a;
+    --surface-2: #1e2126;
+    --border: #292d33;
+    --text: #eff0f1;
+    --muted: #878c94;
+    --accent: #e2564a;
+    --accent-soft: #2a1614;
+    --on-accent: #130a09;
+    --pr: #e9b93a;
+    --pr-soft: #2b2210;
     --danger: #ff6b6b;
-    --success: #3ddc97;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .3);
+    --success: #46a05c;
+
+    --m-peito: #e0554a;
+    --m-costas: #3b7bd8;
+    --m-lombar: #5b94e0;
+    --m-ombros: #e3a03a;
+    --m-trapezio: #2e6bbd;
+    --m-pescoco: #c9922e;
+    --m-biceps: #4fa35f;
+    --m-triceps: #8f72d6;
+    --m-quadriceps: #2ca0a6;
+    --m-posterior: #d4699a;
+    --m-gluteos: #b8548a;
+    --m-panturrilha: #7c8794;
+    --m-abdomen: #e8785f;
+    --m-antebraco: #6fb07c;
+    --m-cardio: #e07b3c;
+    --m-alongamento: #8b96a3;
+    --m-outros: #7a828d;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .38);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0f1115;
-  --surface: #1d222d;
-  --surface-2: #262d3a;
-  --border: #333b49;
-  --text: #e8eaef;
-  --muted: #98a1b0;
-  --accent: #2dd4e0;
-  --accent-soft: #0f2a2d;
-  --on-accent: #06282c;
-  --pr: #f5b942;
-  --pr-soft: #2a2211;
+  --bg: #0b0c0d;
+  --surface: #15171a;
+  --surface-2: #1e2126;
+  --border: #292d33;
+  --text: #eff0f1;
+  --muted: #878c94;
+  --accent: #e2564a;
+  --accent-soft: #2a1614;
+  --on-accent: #130a09;
+  --pr: #e9b93a;
+  --pr-soft: #2b2210;
   --danger: #ff6b6b;
-  --success: #3ddc97;
-  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .3);
+  --success: #46a05c;
+
+  --m-peito: #e0554a;
+  --m-costas: #3b7bd8;
+  --m-lombar: #5b94e0;
+  --m-ombros: #e3a03a;
+  --m-trapezio: #2e6bbd;
+  --m-pescoco: #c9922e;
+  --m-biceps: #4fa35f;
+  --m-triceps: #8f72d6;
+  --m-quadriceps: #2ca0a6;
+  --m-posterior: #d4699a;
+  --m-gluteos: #b8548a;
+  --m-panturrilha: #7c8794;
+  --m-abdomen: #e8785f;
+  --m-antebraco: #6fb07c;
+  --m-cardio: #e07b3c;
+  --m-alongamento: #8b96a3;
+  --m-outros: #7a828d;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .38);
+}
+
+/* Condensada so pro DADO (carga, volume, contagem): cabe grande sem quebrar
+   linha e tem cara de numero estampado em equipamento. Tres pesos estaticos
+   porque a Barlow Condensed nao e variavel; subconjunto latino, que ja cobre
+   todo acento do portugues. */
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/barlow-condensed-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/barlow-condensed-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url('../fonts/barlow-condensed-800.woff2') format('woff2');
 }
 
 @font-face {
@@ -112,6 +207,24 @@ body {
 }
 
 h1, h2, h3 { margin: 0; font-weight: 650; line-height: 1.25; }
+
+/* O dado. Toda carga, volume, contagem e duracao passa por aqui. */
+.data {
+  font-family: var(--display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  line-height: .95;
+}
+/* A outra ponta da escala: rotulo pequeno, espacado, em caixa alta. */
+.tag {
+  font-family: var(--display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 p { margin: 0 0 .6em; }
 svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -136,7 +249,11 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .topbar__title {
   flex: 1;
   min-width: 0;
-  font-size: 1.06rem;
+  font-family: var(--display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
   padding-left: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -175,7 +292,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .view--no-topbar { padding-top: calc(var(--safe-top) + 12px); }
 
-.stack > * + * { margin-top: 12px; }
+.stack > * + * { margin-top: 10px; }
 
 /* O cartao e 9:16: a largura da previa e limitada pela ALTURA que sobra na
    gaveta, nao pela largura dela. 300px e o maximo que cabe sem estourar. */
@@ -190,9 +307,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 .section-title {
   margin: 22px 0 10px;
-  font-size: .78rem;
+  font-family: var(--display);
+  font-size: .875rem;
   font-weight: 700;
-  letter-spacing: .07em;
+  letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -251,8 +369,11 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
-  font: inherit;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
   /* Sem isto um <a class="btn"> sai sublinhado. */
   text-decoration: none;
   cursor: pointer;
@@ -264,8 +385,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .btn--ghost { background: transparent; }
 .btn--danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
 .btn--block { display: flex; width: 100%; }
-.btn--lg { min-height: 56px; font-size: 1.05rem; }
-.btn--sm { min-height: 36px; padding: 0 12px; font-size: .87rem; }
+.btn--lg { min-height: 56px; font-size: 1.2rem; }
+.btn--sm { min-height: 36px; padding: 0 14px; font-size: 1rem; }
 /* So o icone, no tamanho de um alvo de toque — o + ao lado da busca. */
 .btn--square { width: var(--tap); padding: 0; flex: 0 0 auto; }
 .btn svg { width: 20px; height: 20px; }
@@ -311,11 +432,20 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .composer {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 12px 14px 14px;
+  gap: 8px;
+  padding: 10px 12px 12px;
   background: var(--surface-2);
   border-top: 1px solid var(--border);
 }
+/* Rotulo do compositor no mesmo tom dos cabecalhos do livro-razao logo acima. */
+.composer .field__label {
+  margin-bottom: 5px;
+  font-family: var(--display);
+  font-size: .75rem;
+  letter-spacing: .14em;
+}
+.composer__actions .btn { min-height: 46px; font-size: 1.125rem; }
+.composer__actions .btn--chip { font-size: .9375rem; }
 /* display:contents: os dois .field (min/seg) caem direto nas 2 colunas do
    grid do .composer, como se nao houvesse wrapper -- mesmo layout de peso/reps. */
 .composer__duration { display: contents; }
@@ -328,13 +458,14 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .stepper {
   display: flex;
   align-items: stretch;
+  height: 42px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  border-radius: 9px;
+  background: var(--bg);
   overflow: hidden;
 }
 .stepper__btn {
-  flex: 0 0 42px;
+  flex: 0 0 34px;
   border: 0;
   background: transparent;
   color: var(--accent);
@@ -348,16 +479,17 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   flex: 1;
   min-width: 0;
   width: 100%;
-  height: var(--tap);
+  height: 100%;
   padding: 0 2px;
   border: 0;
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
   background: transparent;
   color: var(--text);
-  font: inherit;
-  font-size: 16px;
-  font-weight: 650;
+  font-family: var(--display);
+  /* Acima de 16px, entao o Safari nao da zoom ao focar (regra 4 do CLAUDE.md). */
+  font-size: 24px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
@@ -365,48 +497,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .stepper__input::-webkit-outer-spin-button,
 .stepper__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .stepper__input[type=number] { -moz-appearance: textfield; }
-
-/* ---------- Exercicio dentro da sessao ---------- */
-
-.exercise__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 12px 14px;
-}
-.exercise__name { font-size: 1.02rem; }
-.exercise__meta { margin-top: 2px; font-size: .82rem; color: var(--muted); }
-
-.setlist { list-style: none; margin: 0; padding: 0 0 2px; }
-.setlist__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 14px;
-  border: 0;
-  border-top: 1px solid var(--border);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.setlist__item:active { background: var(--surface-2); }
-.setlist__item[aria-current="true"] { background: var(--accent-soft); }
-.setlist__num {
-  flex: 0 0 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border-radius: 7px;
-  background: var(--surface-2);
-  font-size: .76rem;
-  font-weight: 700;
-  color: var(--muted);
-}
-.setlist__val { font-weight: 650; font-variant-numeric: tabular-nums; }
-.setlist__warm { font-size: .74rem; color: var(--muted); }
 
 /* ---------- Badges ---------- */
 
@@ -422,7 +512,18 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   color: var(--muted);
   white-space: nowrap;
 }
-.badge--pr { background: var(--pr-soft); color: var(--pr); }
+/* Chip quadrado e pequeno: na linha do treino ele acompanha o volume, nao
+   compete com ele. */
+.badge--pr {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--pr) 16%, transparent);
+  color: var(--pr);
+  font-family: var(--display);
+  font-size: .625rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
 .badge--accent { background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- Listas ---------- */
@@ -447,43 +548,309 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .list__link:active { background: var(--surface-2); }
 .list__chev { color: var(--muted); flex: 0 0 auto; }
-.list__done { display: inline-flex; flex: 0 0 auto; color: var(--success); }
-.list__done svg { width: 18px; height: 18px; }
-
-/* ---------- Estatisticas ---------- */
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--border);
-}
-.stat { padding: 12px 10px; background: var(--surface); text-align: center; }
-.stat__val { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.stat__label { margin-top: 2px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-
-/* Um numero manda na tela; os outros recuam. Usado nos tres cartoes de resumo
-   (inicio, sessao, treino do historico), que antes tinham tres numeros iguais. */
-.stats--hero { grid-template-columns: 1.5fr 1fr 1fr; }
-.stats--hero .stat:first-child { text-align: left; padding-left: 14px; }
-.stats--hero .stat:first-child .stat__val { font-size: var(--fs-xl); line-height: 1.05; letter-spacing: -.02em; }
-.stat--pr .stat__val { color: var(--pr); }
 
 .week-nav__back svg { transform: rotate(180deg); }
 
 /* Uma grade só para todas as linhas (linha = display:contents), senão a coluna
    `auto` do nome fica do tamanho do texto de cada linha e as barras desalinham. */
-.muscle-group { display: grid; grid-template-columns: 20px auto 1fr auto; align-items: center; gap: 10px 8px; }
+.muscle-group { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px 10px; }
 .muscle-group__row { display: contents; }
-.muscle-group__icon { display: flex; color: var(--muted); }
-.muscle-group__icon svg { width: 20px; height: 20px; }
-.muscle-group__name { font-size: .84rem; white-space: nowrap; }
-.muscle-group__track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
-/* Cinza pra todas; branco so pra que lidera a semana. Oito barras cianas
-   competiam com o resto da tela sem dizer nada a mais. */
-.muscle-group__fill { display: block; height: 100%; border-radius: 999px; background: #6b7688; }
-.muscle-group__row--top .muscle-group__fill { background: var(--text); }
-.muscle-group__sets { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.muscle-group__name { font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.muscle-group__track { position: relative; height: 9px; border-radius: 2px; overflow: hidden; background: var(--surface-2); }
+/* A cor e a do grupo (inline, de groupColorVar em ui.js): a mesma legenda da
+   assinatura no historico e da regua do cartao de exercicio. */
+.muscle-group__fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--muted); }
+/* O traco da meta e o que da sentido a barra: sem uma referencia, comprimento
+   sozinho nao diz se a semana foi suficiente. */
+.muscle-group__goal {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--text) 55%, transparent);
+}
+.muscle-group__sets { font-family: var(--display); font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 18px; text-align: right; }
+/* Abaixo da meta o grupo recua: a leitura da semana e "quem faltou", e isso
+   so aparece se quem chegou tiver mais peso visual. */
+.muscle-group__row--under .muscle-group__name,
+.muscle-group__row--under .muscle-group__sets { color: var(--muted); }
+
+/* ---------- Bloco da semana (inicio) ----------
+   Sem cartao: o numero fica direto no fundo. Um cartao em volta do resumo o
+   punha no mesmo peso visual do grafico e da lista abaixo -- e ele e o
+   assunto da tela. */
+
+.week__nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
+.week__arrows { display: flex; margin-right: -10px; }
+.week__big { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.week__big .data { font-size: var(--fs-hero); font-weight: 800; letter-spacing: -.03em; }
+/* Um degrau abaixo, pro detalhe de um treino: ali a tela e de leitura e o
+   numero divide a atencao com a lista de exercicios logo abaixo. No inicio o
+   volume da semana e o assunto da tela inteira, e fica no degrau de cima. */
+.week__big--sm .data { font-size: var(--fs-xl); letter-spacing: -.025em; }
+.week__big--sm .week__unit { font-size: 1.15rem; }
+.week__unit { font-family: var(--display); font-size: 1.5rem; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
+.week__sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: .8125rem;
+  color: var(--muted);
+}
+.week__sub .data { font-size: 1.05rem; font-weight: 800; color: var(--text); }
+
+.lab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 0 10px;
+  font-family: var(--display);
+  font-size: .875rem;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Assinatura muscular ----------
+   A barra de cores que da uma cara a cada treino na lista. As faixas sao
+   proporcionais as series por grupo (workoutGroupBreakdown em models.js), na
+   mesma cor usada na semana e no cartao de exercicio. */
+
+.sig { display: flex; gap: 2px; height: 5px; }
+.sig__seg { display: block; height: 100%; border-radius: 1px; background: var(--muted); }
+/* Na vertical vira a regua lateral de um cartao (exercicio concluido). */
+.sig--rule { flex-direction: column; width: 4px; height: auto; align-self: stretch; }
+.sig--rule .sig__seg { width: 100%; flex: 1; }
+
+/* ---------- Lista de treinos (historico) ---------- */
+
+.mo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 22px 0 2px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--text);
+}
+.mo:first-child { margin-top: 4px; }
+.mo__name { font-family: var(--display); font-size: 1.5rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.mo__total { font-family: var(--display); font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+.hrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.hrow:active { background: var(--surface-2); }
+.hrow__day { flex: 0 0 34px; text-align: center; }
+.hrow__num { display: block; font-family: var(--display); font-size: 1.6rem; font-weight: 700; line-height: .9; font-variant-numeric: tabular-nums; }
+.hrow__wd { display: block; font-family: var(--display); font-size: .7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.hrow__mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.hrow__groups { font-size: .84rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hrow__end { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.hrow__vol { font-family: var(--display); font-size: 1.1875rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.hrow__meta { display: flex; align-items: center; gap: 6px; }
+.hrow__unit { font-size: .656rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); }
+
+/* ---------- Exercicio na sessao ----------
+   A foto vira faixa, com o nome por cima. Ela ja existia como miniatura de
+   44px; no tamanho de faixa e o que faz a tela parecer de um app e nao de uma
+   planilha. */
+
+.exc__banner { position: relative; height: 118px; overflow: hidden; background: var(--surface-2); }
+.exc__banner--sm { height: 90px; }
+/* As duas fotos empilham no mesmo lugar (miniatura embaixo, foto grande por
+   cima quando chega) — ver bannerHtml em media.js. */
+.exc__banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.exc__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .12) 0%, rgba(0, 0, 0, .5) 50%, rgba(0, 0, 0, .88) 100%);
+}
+.exc__over { position: absolute; inset: auto 12px 10px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.exc__over .grow { min-width: 0; }
+.exc__title { color: #fff; font-size: 1rem; font-weight: 800; line-height: 1.15; text-shadow: 0 1px 8px rgba(0, 0, 0, .55); }
+.exc__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+  font-family: var(--display);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .6);
+}
+.exc__dot { width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+/* Os botoes do cabecalho ficam sobre a foto: fundo escuro proprio pra
+   continuarem legiveis em cima de qualquer imagem. */
+.exc__over .icon-btn { color: rgba(255, 255, 255, .82); background: transparent; width: 30px; height: 30px; }
+.exc__over .icon-btn svg { width: 19px; height: 19px; stroke-width: 2; }
+.exc__over .icon-btn:active { background: rgba(0, 0, 0, .62); }
+.exc__over .icon-btn[aria-pressed="true"] { color: var(--success); background: rgba(0, 0, 0, .55); }
+
+/* ---------- Livro-razao das series ----------
+   Peso e reps em colunas, que e a forma nativa do dado -- e a mesma forma da
+   ficha de treino de papel. Substitui a lista de linhas soltas. */
+
+.led { padding-bottom: 2px; }
+.led__head, .led__row {
+  display: grid;
+  grid-template-columns: 30px 1fr 1fr 46px 22px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+.led__head {
+  height: 22px;
+  font-family: var(--display);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.led__row {
+  width: 100%;
+  min-height: 32px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.led__row:active { background: var(--surface-2); }
+.led__row[aria-current="true"] { background: var(--accent-soft); }
+.led__n { font-family: var(--display); font-size: .9375rem; font-weight: 700; color: var(--muted); }
+.led__v { font-family: var(--display); font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.led__1rm { font-family: var(--display); font-size: .95rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
+.led__row--warm { color: var(--muted); }
+.led__row--warm .led__v { font-size: 1.0625rem; font-weight: 600; }
+/* Recorde: risco amarelo na borda e o numero na cor da anilha de 15. */
+.led__row--pr { background: color-mix(in srgb, var(--pr) 9%, transparent); box-shadow: inset 2px 0 0 var(--pr); }
+.led__row--pr .led__v { color: var(--pr); }
+.led__star { display: flex; color: var(--pr); }
+.led__star svg { width: 15px; height: 15px; fill: currentColor; stroke: none; }
+/* A linha fantasma: o alvo do treino passado, no lugar exato onde a proxima
+   serie vai entrar. Responde "estou evoluindo?" sem sair da tela. */
+.led__row--ghost { color: var(--muted); border-top-style: dashed; cursor: default; }
+.led__row--ghost .led__v { font-size: 1.0625rem; font-weight: 600; opacity: .75; }
+.led__ago {
+  grid-column: 4 / -1;
+  font-family: var(--display);
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: right;
+}
+/* O pulso de quando a serie entra batendo recorde. Curto de proposito: e uma
+   confirmacao, nao uma comemoracao que atrasa a proxima serie. */
+@keyframes led-pr {
+  0% { background: color-mix(in srgb, var(--pr) 44%, transparent); }
+  100% { background: color-mix(in srgb, var(--pr) 10%, transparent); }
+}
+.led__row--flash { animation: led-pr .9s ease-out; }
+
+/* Exercicio ja concluido na sessao: linha baixa, com a regua do grupo
+   substituindo o cartao — o que importa nesse ponto e so que esta feito. */
+.exc-done {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.exc-done:active { background: var(--surface-2); }
+.exc-done__name { flex: 1; min-width: 0; font-size: .84rem; font-weight: 700; }
+.exc-done__n { flex: 0 0 auto; font-family: var(--display); font-size: .9375rem; color: var(--muted); letter-spacing: .04em; }
+.exc-done__check { flex: 0 0 auto; display: flex; color: var(--success); }
+.exc-done__check svg { width: 17px; height: 17px; stroke-width: 2.4; }
+
+/* ---------- Faixa viva da sessao ----------
+   Tempo, volume e series correndo embaixo da topbar, no lugar do cartao de
+   tres numeros: e informacao de fundo, nao o assunto da tela. */
+
+.livebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 12px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+.livebar .data { font-size: 1.1rem; color: var(--text); }
+.livebar__dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: live-beat 2.4s ease-in-out infinite; }
+@keyframes live-beat { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+/* ---------- Cabecalho de foto (tela de exercicio) ----------
+   Sangra ate a borda da tela: dentro de um cartao com margem, a unica imagem
+   grande do app pedia licenca. */
+
+/* Cancela o padding da .view pra foto encostar nas quatro bordas. So existe
+   dentro de .view--no-topbar: a tela esconde a barra justamente pra isso. */
+.hero-photo {
+  position: relative;
+  margin: calc(-1 * (var(--safe-top) + 12px)) calc(-1 * var(--pad)) 0;
+  background: var(--surface-2);
+}
+.hero-photo .flip { border-radius: 0; height: 250px; aspect-ratio: auto; }
+.hero-photo__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, 0) 34%, rgba(0, 0, 0, .86) 100%);
+}
+.hero-photo__over { position: absolute; inset: auto 16px 14px; pointer-events: none; }
+.hero-photo__name {
+  font-family: var(--display);
+  font-size: 2.125rem;
+  font-weight: 700;
+  line-height: .95;
+  letter-spacing: -.01em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .6);
+}
+
+/* Recordes em linha, sem caixa em volta de cada um. */
+.recs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 0 4px; }
+.rec__val { display: block; font-family: var(--display); font-size: 2.125rem; font-weight: 800; line-height: .9; letter-spacing: -.015em; font-variant-numeric: tabular-nums; }
+.rec__label { display: block; margin-top: 4px; font-family: var(--display); font-size: .72rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
+.rec--pr .rec__val { color: var(--pr); }
+
+@media (prefers-reduced-motion: reduce) {
+  .livebar__dot, .led__row--flash { animation: none; }
+}
 
 /* ---------- Grafico ---------- */
 
@@ -491,8 +858,12 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .chart__grid { stroke: var(--border); stroke-width: 1; }
 .chart__line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 .chart__area { fill: var(--accent); opacity: .10; stroke: none; }
-.chart__dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
-.chart__dot--active { fill: var(--accent); }
+/* Invisivel por padrao: com uma marca em cada um dos 8 pontos a linha lia
+   como serie de segmentos em vez de tendencia. Continua no DOM porque e ela
+   que marca o ponto tocado. */
+.chart__dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2; opacity: 0; }
+.chart__dot--end { fill: var(--accent); opacity: 1; }
+.chart__dot--active { fill: var(--accent); opacity: 1; }
 .chart__label { fill: var(--muted); font-size: 10px; stroke: none; font-variant-numeric: tabular-nums; }
 .chart__hit { fill: transparent; stroke: none; cursor: pointer; }
 
@@ -545,34 +916,39 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   justify-content: center;
   gap: 2px;
   color: var(--muted);
-  font-size: .68rem;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
   text-decoration: none;
 }
-.tabbar__item[aria-current="page"] { color: var(--accent); }
+/* Tinta, nao vermelho: o destaque ja e o botao de treino no meio da barra, e
+   dois vermelhos lado a lado brigavam. */
+.tabbar__item[aria-current="page"] { color: var(--text); }
 .tabbar__spacer { flex: 0 0 64px; }
 
 .fab-workout {
   position: absolute;
   left: 50%;
-  top: -26px;
+  top: -22px;
   transform: translateX(-50%);
   z-index: 21;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 18px;
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 32%, transparent);
   cursor: pointer;
 }
 .fab-workout:active { transform: translateX(-50%) translateY(1px); }
 .fab-workout[disabled] { opacity: .6; pointer-events: none; }
-.fab-workout svg { width: 26px; height: 26px; }
+.fab-workout svg { width: 25px; height: 25px; stroke-width: 2.4; }
 .fab-workout__icon--active { display: none; }
 .fab-workout.is-active .fab-workout__icon--start { display: none; }
 .fab-workout.is-active .fab-workout__icon--active { display: block; }
@@ -803,34 +1179,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .tile__icon svg { width: 34px; height: 34px; }
 .tile__name { font-size: .88rem; font-weight: 600; text-align: center; line-height: 1.2; }
 .tile__n { font-size: .76rem; color: var(--muted); }
-
-/* ---------- Series de um treino, no historico ----------
-   Pastilha em vez de linha: 4 series gastavam ~180px de altura; assim ocupam
-   a largura. O tipo da serie fica na forma, nao num rotulo ao lado.
-   Nome proprio (nao `.chip`) porque aquela ja e a etiqueta do catalogo. */
-
-.setchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 12px; }
-.setchip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 10px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: var(--surface-2);
-  font-size: 1.02rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.setchip--warm {
-  background: transparent;
-  border-color: var(--border);
-  border-style: dashed;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-}
-.setchip--pr { background: var(--pr-soft); color: var(--pr); }
 
 /* ---------- Editor de passo a passo ---------- */
 

@@ -3,8 +3,13 @@
  * idioma ativo (ver i18n.js). */
 
 import { t, tn, locale } from './i18n.js';
-import { isDurationSet, isUnilateralSet } from './models.js';
+import {
+  isDurationSet, isUnilateralSet, setE1rm, workoutGroupBreakdown, workoutSummary,
+} from './models.js';
 import { groupBy, groupLabel } from './seed.js';
+
+/** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
+export const APP_NAME = 'Anilha';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -63,9 +68,9 @@ export function node(markup) {
 /**
  * @param {{title: string, back?: string|null, actions?: string, showBar?: boolean}} opts
  *   back = rota (hash) do botao voltar; ausente esconde o botao.
- *   showBar = false esconde a barra inteira (usado nas 4 abas raiz, onde ela so
- *   repetiria o nome que a tabbar ja mostra); o titulo da aba do navegador
- *   continua sendo definido normalmente.
+ *   showBar = false esconde a barra inteira; hoje so a tela de exercicio usa
+ *   isso, pra foto poder sangrar ate o topo (ver heroPhoto em exercise.js). O
+ *   titulo da aba do navegador continua sendo definido normalmente.
  */
 export function setTop({
   title, back = null, actions = '', showBar = true,
@@ -76,7 +81,7 @@ export function setTop({
   const actionsEl = $('#topbar-actions');
 
   titleEl.textContent = title;
-  document.title = title === 'Treino' ? 'Treino' : `${title} · Treino`;
+  document.title = title === APP_NAME ? APP_NAME : `${title} · ${APP_NAME}`;
   backEl.hidden = !back;
   backEl.onclick = back ? () => goBack(back) : null;
   actionsEl.innerHTML = actions;
@@ -221,7 +226,14 @@ export function daysBetween(a, b) {
 /** Duracao entre dois ISO em "1h 12min" / "48min". */
 export function fmtDuration(startIso, endIso) {
   if (!startIso || !endIso) return '';
-  const min = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
+  return fmtMinutes(Math.round((new Date(endIso) - new Date(startIso)) / 60000));
+}
+
+/** "55min" / "1h 30min" a partir de minutos ja somados — o que fmtDuration
+ *  precisa depois de subtrair, e o que o total da semana precisa sem ter dois
+ *  instantes pra subtrair (ver gymSeconds em models.js). */
+export function fmtMinutes(minutes) {
+  const min = Math.max(0, Math.round(Number(minutes) || 0));
   const sufMin = t('common.min');
   if (min < 60) return `${min}${sufMin}`;
   const h = Math.floor(min / 60);
@@ -266,6 +278,11 @@ export function fmtSetWithUnit(s, unit) {
 
 export const ICON = {
   chevron: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+  // Mesmo desenho do botao voltar em index.html — aqui pras telas que escondem
+  // a topbar e precisam do proprio botao (ver heroPhoto em exercise.js).
+  back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+  star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.8.8-5 4.7 1.3 6.9L12 17.4 6 20.7l1.3-6.9-5-4.7 6.8-.8z"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17v3z"/><path d="M14.5 7.5l2 2"/></svg>',
   plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   trophy: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 01-10 0V4zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3M9 20h6M12 14v6"/></svg>',
@@ -279,6 +296,46 @@ export const ICON = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.5a6.5 6.5 0 106.5 6.5M20.5 20.5l-4.6-4.6"/></svg>',
   steps: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h3M4 12h3M4 17.5h3M10 6.5h10M10 12h10M10 17.5h10"/></svg>',
 };
+
+/* ---------- Cor por grupo muscular ----------
+ * A chave e o valor gravado no banco (sempre em portugues); o sufixo e o nome
+ * da variavel CSS, sem acento. Tem que casar com MUSCLE_GROUPS em seed.js e
+ * com os tokens --m-* em styles.css, do mesmo jeito que ICON_GROUPS acima.
+ *
+ * Devolve `var(--m-x)` em vez do hex: assim a mesma chamada serve nos dois
+ * temas, sem a view saber qual esta ativo. */
+const GROUP_COLOR_NAMES = {
+  'Peito': 'peito',
+  'Costas': 'costas',
+  'Lombar': 'lombar',
+  'Ombros': 'ombros',
+  'Trapézio': 'trapezio',
+  'Pescoço': 'pescoco',
+  'Bíceps': 'biceps',
+  'Tríceps': 'triceps',
+  'Quadríceps': 'quadriceps',
+  'Posterior': 'posterior',
+  'Glúteos': 'gluteos',
+  'Panturrilha': 'panturrilha',
+  'Abdômen': 'abdomen',
+  'Antebraço': 'antebraco',
+  'Cardio': 'cardio',
+  'Alongamento': 'alongamento',
+  'Outros': 'outros',
+};
+
+export const groupColor = (group) => `var(--m-${GROUP_COLOR_NAMES[group] || 'outros'})`;
+
+/** A barra de assinatura de um treino: uma faixa por grupo, larga na
+ *  proporcao das series. E o que faz um dia de perna ser reconhecivel de um
+ *  de peito na lista do historico, sem ler uma palavra. */
+export function signatureHtml(breakdown) {
+  if (!breakdown.length) return '';
+  const segs = breakdown
+    .map((g) => `<span class="sig__seg" style="flex:${g.sets};background:${groupColor(g.group)}"></span>`)
+    .join('');
+  return `<span class="sig" aria-hidden="true">${segs}</span>`;
+}
 
 /* Icone por grupo muscular: aparece no cabecalho das secoes e no lugar da foto
  * quando o exercicio nao tem figura.
@@ -296,41 +353,197 @@ export const ICON = {
  */
 const BODY_PATH = 'M12 2.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2M12 6.4v7M8.4 8.2L12 7l3.6 1.2M8.4 8.2L7 12.4M15.6 8.2L17 12.4M12 13.4l-1.9 8M12 13.4l1.9 8';
 const dot = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="currentColor"/>`;
-// Cinza, nao a cor de destaque: o icone de grupo e estrutura, nao acao. A
-// familia se mantem porque silhueta e mancha ficam no mesmo tom, so mudando a
-// opacidade — o que a distinguia do resto era o contraste, nao a cor.
-const body = (...dots) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--muted)"><path d="${BODY_PATH}" opacity=".3"/>${dots.map((p) => dot(...p)).join('')}</svg>`;
+// Na cor do proprio grupo, nao em cinza: e a mesma legenda das barras da
+// semana, da assinatura no historico e da pastilha no cartao de exercicio, e
+// era o ultimo lugar do app que ainda nao a usava. A familia se mantem porque
+// silhueta e mancha continuam no mesmo tom — o que separa as duas e a
+// opacidade: a silhueta e o andaime, a mancha e a informacao.
+const body = (group, ...dots) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor(group)}">`
+  + `<path d="${BODY_PATH}" opacity=".45" stroke-width="2.2"/>`
+  + `${dots.map((p) => dot(...p)).join('')}</svg>`;
 
 export const ICON_GROUPS = {
-  'Peito': body([12, 9.1, 1.7]),
-  'Costas': body([12, 10.6, 1.7]),
+  'Peito': body('Peito', [12, 9.1, 1.95]),
+  'Costas': body('Costas', [12, 10.6, 1.95]),
   // Abaixo de Costas na silhueta, perto do quadril: hiperextensao/terra e
   // cadeia posterior, nao puxada -- por isso saiu de Costas.
-  'Lombar': body([12, 12.9, 1.3]),
-  'Ombros': body([8.4, 8.2, 1.3], [15.6, 8.2, 1.3]),
+  'Lombar': body('Lombar', [12, 12.9, 1.49]),
+  'Ombros': body('Ombros', [8.4, 8.2, 1.49], [15.6, 8.2, 1.49]),
   // Logo abaixo do pescoço, mais estreito que a mancha de Ombros: e onde
   // o trapezio fica na silhueta (base do pescoço ate o topo do ombro).
-  'Trapézio': body([12, 7.5, 1.15]),
-  'Pescoço': body([12, 5.3, 1]),
-  'Bíceps': body([6.8, 10.9, 1.2]),
-  'Tríceps': body([17.2, 10.9, 1.2]),
+  'Trapézio': body('Trapézio', [12, 7.5, 1.32]),
+  'Pescoço': body('Pescoço', [12, 5.3, 1.15]),
+  'Bíceps': body('Bíceps', [6.8, 10.9, 1.38]),
+  'Tríceps': body('Tríceps', [17.2, 10.9, 1.38]),
   // Coxa e uma so regiao na silhueta (sem frente/costas pra distinguir
   // quadriceps de posterior); a marca muda de altura — mais alta vs mais
   // baixa na coxa — pra diferenciar os dois icones.
-  'Quadríceps': body([11.2, 16, 1.3], [12.8, 16, 1.3]),
-  'Posterior': body([10.6, 19, 1.05], [13.4, 19, 1.05]),
-  'Glúteos': body([12, 13.9, 1.5]),
-  'Panturrilha': body([10.2, 20.8, 0.9], [13.8, 20.8, 0.9]),
-  'Abdômen': body([12, 11.2, 1], [12, 12.8, 1]),
-  'Antebraço': body([6.7, 13.7, 1.1], [17.3, 13.7, 1.1]),
+  'Quadríceps': body('Quadríceps', [11.2, 16, 1.49], [12.8, 16, 1.49]),
+  'Posterior': body('Posterior', [10.6, 19, 1.21], [13.4, 19, 1.21]),
+  'Glúteos': body('Glúteos', [12, 13.9, 1.72]),
+  'Panturrilha': body('Panturrilha', [10.2, 20.8, 1.03], [13.8, 20.8, 1.03]),
+  'Abdômen': body('Abdômen', [12, 11.2, 1.15], [12, 12.8, 1.15]),
+  'Antebraço': body('Antebraço', [6.7, 13.7, 1.26], [17.3, 13.7, 1.26]),
   // Cardio e alongamento nao sao regiao do corpo, entao fogem da familia
-  // "silhueta com mancha" e usam glifo proprio -- mas no mesmo color:var(--accent)
-  // que corpo() usa agora, entao a familia toda fica no mesmo tom.
-  'Cardio': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--muted)"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>`,
-  'Alongamento': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--muted)"><circle cx="14.5" cy="4.2" r="1.6" fill="currentColor" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
-  'Outros': ICON.dumbbell,
+  // "silhueta com mancha" e usam glifo proprio -- mas na cor do grupo, igual
+  // aos outros, pra familia toda seguir a mesma legenda.
+  'Cardio': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('Cardio')}"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>`,
+  'Alongamento': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('Alongamento')}"><circle cx="14.5" cy="4.2" r="1.6" fill="currentColor" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
+  'Outros': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('Outros')}"><path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/></svg>`,
 };
+
+/** Dia do mes e abreviacao do dia da semana, pro bloco de data da linha. */
+const fmtDayNum = (iso) => new Intl.DateTimeFormat(locale(), { day: 'numeric' }).format(new Date(iso));
+const fmtWeekdayShort = (iso) => new Intl.DateTimeFormat(locale(), { weekday: 'short' }).format(new Date(iso))
+  .replace(/\.$/, '');
+
+/**
+ * Uma linha de treino na lista (inicio e historico usam a mesma).
+ *
+ * O que a linha responde de relance: quando foi, o que treinou e quanto
+ * moveu. Os grupos entram duas vezes de proposito — em cor na assinatura e
+ * por extenso logo abaixo — porque a cor sozinha nao e acessivel e o texto
+ * sozinho nao e reconhecivel a distancia.
+ *
+ * @param {object} workout treino
+ * @param {object[]} sets series daquele treino
+ * @param {Map<number, object>} exercisesById exercicios indexados por id
+ * @param {{unit: string, prCount?: number, badge?: string}} opts
+ */
+export function workoutRow(workout, sets, exercisesById, { unit, prCount = 0, badge = '' }) {
+  const breakdown = workoutGroupBreakdown(sets, exercisesById);
+  const summary = workoutSummary(sets);
+
+  // Tres grupos: o suficiente pra nomear o treino ("Peito · Ombros · Triceps")
+  // sem estourar a linha. Os demais continuam visiveis na assinatura em cor.
+  const names = breakdown.slice(0, 3).map((g) => groupLabel(g.group)).join(' · ');
+
+  return node(html`
+    <a class="hrow" href="#/historico/${workout.id}">
+      <span class="hrow__day">
+        <span class="hrow__num">${fmtDayNum(workout.startedAt)}</span>
+        <span class="hrow__wd">${fmtWeekdayShort(workout.startedAt)}</span>
+      </span>
+      <span class="hrow__mid">
+        ${raw(signatureHtml(breakdown))}
+        <span class="hrow__groups">${names || tn('common.set', summary.sets)}</span>
+      </span>
+      <span class="hrow__end">
+        <span class="hrow__vol">${fmtNum(summary.volume, 0)}</span>
+        <span class="hrow__meta">
+          <span class="hrow__unit">${unit}</span>
+          ${prCount ? raw(`<span class="badge badge--pr">${tn('common.pr', prCount)}</span>`) : ''}
+          ${raw(badge)}
+        </span>
+      </span>
+    </a>
+  `);
+}
+
+/* ---------- Livro-razao das series ----------
+ * Peso e reps em colunas em vez de uma frase por linha: e a forma nativa do
+ * dado (e a mesma da ficha de papel), e faz quatro series virarem quatro
+ * linhas comparaveis de relance.
+ *
+ * Mora aqui porque a sessao e o detalhe de um treino no historico mostram a
+ * MESMA tabela — muda so quem pode tocar nela e se ha uma linha fantasma no
+ * fim. Duas copias divergiriam no primeiro ajuste de coluna. */
+
+/** Cabecalho de uma serie na coluna do numero: aquecimento nao entra na
+ *  numeracao, porque "A, 1, 2, 3" diz quantas valendo foram feitas — o que
+ *  "1, 2, 3, 4" escondia. */
+function setNumbers(sets) {
+  let n = 0;
+  return sets.map((s) => {
+    if (s.warmup) return t('session.led.warmupShort');
+    n += 1;
+    return n;
+  });
+}
+
+/** Quantas series valendo ja existem — e o numero que a linha fantasma usa. */
+export const workingCount = (sets) => sets.filter((s) => !s.warmup).length;
+
+function ledgerCells(set) {
+  // Cardio/alongamento nao tem peso nem reps: a duracao ocupa as tres colunas.
+  if (isDurationSet(set)) {
+    return html`<span class="led__v" style="grid-column:2 / 5">${fmtSet(set)}</span>`;
+  }
+  return html`
+    <span class="led__v">${fmtNum(set.weight, 2)}</span>
+    <span class="led__v">${isUnilateralSet(set) ? `${set.repsRight}/${set.repsLeft}` : set.reps}</span>
+    <span class="led__1rm">${set.warmup ? '' : fmtNum(setE1rm(set), 0)}</span>
+  `;
+}
+
+/**
+ * @param {{
+ *   sets: object[],
+ *   prIds?: Set<number>,
+ *   editingId?: number|null,
+ *   onPick?: ((set: object) => void)|null,
+ *   ghost?: {set: object, when: string}|null,
+ * }} opts
+ *   onPick ausente deixa as linhas inertes (leitura); presente as torna
+ *   tocaveis. ghost e a serie do treino anterior na posicao da proxima.
+ * @returns {HTMLElement}
+ */
+export function setLedger({
+  sets, prIds = new Set(), editingId = null, onPick = null, ghost = null,
+}) {
+  const timeBased = sets.some(isDurationSet) || (ghost && isDurationSet(ghost.set));
+  const wrap = node(html`
+    <div class="led">
+      <div class="led__head" aria-hidden="true">
+        <span>${t('session.led.num')}</span>
+        <span>${timeBased ? t('session.led.time') : t('session.led.weight')}</span>
+        <span>${timeBased ? '' : t('session.led.reps')}</span>
+        <span>${timeBased ? '' : '1RM'}</span>
+        <span></span>
+      </div>
+    </div>
+  `);
+
+  const labels = setNumbers(sets);
+  sets.forEach((s, i) => {
+    const isPR = prIds.has(s.id);
+    const star = isPR
+      ? `<span class="led__star" aria-label="${t('session.led.pr')}">${ICON.star}</span>`
+      : '<span></span>';
+    const classes = `led__row${s.warmup ? ' led__row--warm' : ''}${isPR ? ' led__row--pr' : ''}`;
+    const inner = html`
+      <span class="led__n">${labels[i]}</span>
+      ${raw(ledgerCells(s))}
+      ${raw(star)}
+    `;
+
+    // Involucro por modo: <div> inerte na leitura, <button> tocavel na edicao.
+    const row = onPick
+      ? node(html`<button class="${classes}" data-set="${s.id}" aria-current="${s.id === editingId}">${raw(inner)}</button>`)
+      : node(html`<div class="${classes}" data-set="${s.id}">${raw(inner)}</div>`);
+    if (onPick) row.onclick = () => onPick(s);
+    wrap.append(row);
+  });
+
+  if (ghost) {
+    const cells = isDurationSet(ghost.set)
+      ? html`<span class="led__v" style="grid-column:2 / 4">${fmtSet(ghost.set)}</span>`
+      : html`
+        <span class="led__v">${fmtNum(ghost.set.weight, 2)}</span>
+        <span class="led__v">${isUnilateralSet(ghost.set) ? `${ghost.set.repsRight}/${ghost.set.repsLeft}` : ghost.set.reps}</span>
+      `;
+    wrap.append(node(html`
+      <div class="led__row led__row--ghost">
+        <span class="led__n">${workingCount(sets) + 1}</span>
+        ${raw(cells)}
+        <span class="led__ago">${fmtRelativeDay(ghost.when)}</span>
+      </div>
+    `));
+  }
+
+  return wrap;
+}
 
 /* ---------- Listas ---------- */
 
