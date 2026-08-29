@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
-  orderedWorkoutExercises, workoutHighlights,
+  orderedWorkoutExercises, workoutHighlights, workoutGroupBreakdown, allPrIds, weekMuscleGroupSummary,
+  progressPct,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -144,4 +145,73 @@ test('workoutHighlights deixa de fora exercicio sem serie valida', () => {
     { id: 2, exerciseId: 9, weight: 50, reps: 0, warmup: false },
   ];
   assert.deepEqual(workoutHighlights({ exerciseIds: [7, 9] }, sets).map((h) => h.exerciseId), [7]);
+});
+
+test('workoutGroupBreakdown ordena os grupos do treino por numero de series', () => {
+  const sets = [
+    { id: 1, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+    { id: 2, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+    { id: 3, exerciseId: 3, weight: 40, reps: 12, warmup: false },
+  ];
+  const exercises = new Map([
+    [7, { id: 7, muscleGroup: 'Peito' }],
+    [3, { id: 3, muscleGroup: 'Tríceps' }],
+  ]);
+  const out = workoutGroupBreakdown(sets, exercises);
+  assert.deepEqual(out.map((g) => [g.group, g.sets]), [['Peito', 2], ['Tríceps', 1]]);
+});
+
+test('allPrIds junta os recordes de todos os exercicios, cada um contra o proprio historico', () => {
+  const sets = [
+    // Exercicio 7: a segunda serie e recorde de carga.
+    { id: 1, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+    { id: 2, exerciseId: 7, weight: 80, reps: 10, warmup: false },
+    // Exercicio 3: carga menor que a do 7, mas recorde dentro do proprio.
+    { id: 3, exerciseId: 3, weight: 40, reps: 12, warmup: false },
+    { id: 4, exerciseId: 3, weight: 30, reps: 12, warmup: false },
+  ];
+  assert.deepEqual([...allPrIds(sets)].sort(), [1, 2, 3]);
+});
+
+test('weekMuscleGroupSummary soma o tempo de academia dos treinos da semana', () => {
+  const workouts = new Map([
+    [1, { id: 1, startedAt: '2026-08-26T10:00:00', finishedAt: '2026-08-26T11:00:00' }],
+    [2, { id: 2, startedAt: '2026-08-28T10:00:00', finishedAt: '2026-08-28T10:30:00' }],
+    // Semana anterior: nao entra na conta.
+    [3, { id: 3, startedAt: '2026-08-19T10:00:00', finishedAt: '2026-08-19T12:00:00' }],
+  ]);
+  const exercises = new Map([[7, { id: 7, muscleGroup: 'Peito' }]]);
+  const sets = [
+    { id: 1, workoutId: 1, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+    { id: 2, workoutId: 2, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+    { id: 3, workoutId: 3, exerciseId: 7, weight: 60, reps: 10, warmup: false },
+  ];
+  const out = weekMuscleGroupSummary(sets, workouts, exercises, new Date('2026-08-26T12:00:00'));
+  assert.equal(out.gymSeconds, 3600 + 1800);
+});
+
+test('weekMuscleGroupSummary ignora treino em aberto no tempo de academia', () => {
+  const workouts = new Map([[1, { id: 1, startedAt: '2026-08-26T10:00:00', finishedAt: null }]]);
+  const exercises = new Map([[7, { id: 7, muscleGroup: 'Peito' }]]);
+  const sets = [{ id: 1, workoutId: 1, exerciseId: 7, weight: 60, reps: 10, warmup: false }];
+  const out = weekMuscleGroupSummary(sets, workouts, exercises, new Date('2026-08-26T12:00:00'));
+  assert.equal(out.gymSeconds, 0);
+});
+
+test('progressPct mede a partir da primeira semana COM dado, nao do zero inicial', () => {
+  // Janela de 8 semanas quase sempre comeca antes do primeiro treino: sem
+  // isso a home nunca mostrava percentual nenhum.
+  const trend = [{ sets: 0 }, { sets: 0 }, { sets: 10 }, { sets: 12 }];
+  assert.equal(progressPct(trend, 'sets'), 20);
+});
+
+test('progressPct ignora a semana vazia no fim da janela', () => {
+  // A semana corrente entra na janela mesmo antes do primeiro treino dela —
+  // contar esse zero como "fim" dava -100% toda segunda-feira.
+  const trend = [{ sets: 10 }, { sets: 12 }, { sets: 0 }];
+  assert.equal(progressPct(trend, 'sets'), 20);
+});
+
+test('progressPct devolve null quando so uma semana tem dado', () => {
+  assert.equal(progressPct([{ sets: 0 }, { sets: 10 }, { sets: 0 }], 'sets'), null);
 });

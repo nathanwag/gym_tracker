@@ -134,6 +134,27 @@ export function prSetIds(sets) {
   return ids;
 }
 
+/**
+ * Ids de toda serie que foi recorde no momento em que foi registrada, em
+ * qualquer exercicio. prSetIds() percorre a lista como se fosse de um
+ * exercicio so — por isso agrupa antes de chamar.
+ *
+ * Existe pra que uma lista de treinos possa marcar quais bateram recorde com
+ * UMA passada pelo historico, em vez de reler tudo por linha.
+ * @param {object[]} allSets todas as series do banco
+ * @returns {Set<number>}
+ */
+export function allPrIds(allSets) {
+  const byExercise = new Map();
+  for (const s of allSets) {
+    if (!byExercise.has(s.exerciseId)) byExercise.set(s.exerciseId, []);
+    byExercise.get(s.exerciseId).push(s);
+  }
+  const ids = new Set();
+  for (const exSets of byExercise.values()) for (const id of prSetIds(exSets)) ids.add(id);
+  return ids;
+}
+
 /* ---------- Series historicas por sessao ---------- */
 
 /**
@@ -184,14 +205,20 @@ export function bestSessionDuration(summaries) {
 }
 
 /**
- * Variacao percentual entre a primeira e a ultima sessao de uma metrica.
- * Retorna null quando ha menos de duas sessoes.
+ * Variacao percentual de uma metrica entre a primeira e a ultima entrada que
+ * tem dado. Retorna null quando menos de duas entradas tem dado.
  */
 export function progressPct(summaries, field = 'bestE1rm') {
-  if (summaries.length < 2) return null;
-  const start = summaries[0][field];
-  const end = summaries[summaries.length - 1][field];
-  if (!start) return null;
+  // Entrada zerada nao e queda, e periodo fora do intervalo com dado — e so as
+  // pontas mudam o resultado, ja que dai so saem a primeira e a ultima. Sem
+  // isto uma janela fixa de N semanas quase nunca da resposta: ela costuma
+  // comecar antes do primeiro treino (base zero, divisao impossivel) e
+  // terminar na semana corrente, que ainda nao aconteceu (-100% toda
+  // segunda-feira).
+  const withData = summaries.filter((s) => s[field]);
+  if (withData.length < 2) return null;
+  const start = withData[0][field];
+  const end = withData[withData.length - 1][field];
   return ((end - start) / start) * 100;
 }
 
@@ -254,6 +281,32 @@ export function workoutSummary(sets) {
   };
 }
 
+/**
+ * Grupos musculares de um treino, do mais trabalhado ao menos, contados em
+ * series. E o que da uma cara a cada treino na lista do historico: a barra de
+ * assinatura e o nome pelos grupos dominantes saem os dois daqui.
+ * Serie de exercicio apagado (sem entrada em `exercisesById`) fica de fora,
+ * porque nao ha grupo pra somar.
+ * @param {object[]} sets series do treino
+ * @param {Map<number, object>} exercisesById exercicios indexados por id
+ * @returns {{group: string, sets: number, volume: number}[]}
+ */
+export function workoutGroupBreakdown(sets, exercisesById) {
+  const byGroup = new Map();
+  for (const s of workingSets(sets)) {
+    const ex = exercisesById.get(s.exerciseId);
+    if (!ex) continue;
+    let g = byGroup.get(ex.muscleGroup);
+    if (!g) {
+      g = { group: ex.muscleGroup, sets: 0, volume: 0 };
+      byGroup.set(ex.muscleGroup, g);
+    }
+    g.sets += 1;
+    g.volume += setVolume(s);
+  }
+  return [...byGroup.values()].sort((a, b) => b.sets - a.sets);
+}
+
 /* ---------- Resumo semanal por grupo muscular ---------- */
 
 /** Segunda-feira 00:00:00.000 (hora local) da semana que contem `date`. */
@@ -275,7 +328,7 @@ export function mondayOf(date) {
  * @param {Map<number, object>} workoutsById treinos indexados por id
  * @param {Map<number, object>} exercisesById exercicios indexados por id
  * @param {Date} referenceDate qualquer data dentro da semana desejada
- * @returns {{start: Date, end: Date, workouts: number, sets: number, volume: number, byGroup: {group: string, sets: number, volume: number, duration: number}[]}}
+ * @returns {{start: Date, end: Date, workouts: number, sets: number, volume: number, gymSeconds: number, byGroup: {group: string, sets: number, volume: number, duration: number}[]}}
  */
 export function weekMuscleGroupSummary(sets, workoutsById, exercisesById, referenceDate = new Date()) {
   const start = mondayOf(referenceDate);
@@ -305,12 +358,24 @@ export function weekMuscleGroupSummary(sets, workoutsById, exercisesById, refere
     g.duration += setDuration(s);
   }
 
+  // Tempo de academia: soma da duracao dos treinos da semana. Treino ainda
+  // em aberto fica de fora — sem finishedAt nao ha duracao, e contar ate
+  // "agora" faria o numero crescer sozinho enquanto a tela esta parada.
+  const workoutIds = new Set(thisWeek.map((s) => s.workoutId));
+  let gymSeconds = 0;
+  for (const id of workoutIds) {
+    const w = workoutsById.get(id);
+    if (!w?.startedAt || !w?.finishedAt) continue;
+    gymSeconds += Math.max(0, (new Date(w.finishedAt) - new Date(w.startedAt)) / 1000);
+  }
+
   return {
     start,
     end,
-    workouts: new Set(thisWeek.map((s) => s.workoutId)).size,
+    workouts: workoutIds.size,
     sets: thisWeek.length,
     volume: thisWeek.reduce((acc, s) => acc + setVolume(s), 0),
+    gymSeconds,
     byGroup: [...byGroupMap.values()].sort((a, b) => b.sets - a.sets),
   };
 }
