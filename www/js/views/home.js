@@ -97,7 +97,7 @@ function weekCard(sets, workoutsById, exercisesById, unit, firstWeek) {
     const maxSets = byGroup.reduce((m, g) => Math.max(m, g.sets), 0);
 
     const groupRows = byGroup.map((g) => html`
-      <div class="muscle-group__row">
+      <div class="muscle-group__row${g.sets === maxSets ? ' muscle-group__row--top' : ''}">
         <span class="muscle-group__icon" aria-hidden="true">${raw(ICON_GROUPS[g.group] || '')}</span>
         <span class="muscle-group__name">${groupLabel(g.group)}</span>
         <span class="muscle-group__track"><span class="muscle-group__fill" style="width:${maxSets ? (g.sets / maxSets) * 100 : 0}%"></span></span>
@@ -114,7 +114,11 @@ function weekCard(sets, workoutsById, exercisesById, unit, firstWeek) {
         </div>
         <button class="icon-btn" data-forward aria-label="${t('home.week.next')}" ${canGoForward ? '' : 'disabled'}>${raw(ICON.chevron)}</button>
       </div>
-      <div class="stats">
+      <div class="stats stats--hero">
+        <div class="stat">
+          <div class="stat__val">${fmtNum(volume, 0)}</div>
+          <div class="stat__label">${t('home.stat.volume', { unit })}</div>
+        </div>
         <div class="stat">
           <div class="stat__val">${weekWorkouts}</div>
           <div class="stat__label">${t('home.stat.workouts')}</div>
@@ -122,10 +126,6 @@ function weekCard(sets, workoutsById, exercisesById, unit, firstWeek) {
         <div class="stat">
           <div class="stat__val">${weekSets}</div>
           <div class="stat__label">${t('home.stat.sets')}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__val">${fmtNum(volume, 0)}</div>
-          <div class="stat__label">${t('home.stat.volume', { unit })}</div>
         </div>
       </div>
       ${byGroup.length ? raw(`<div class="muscle-group card__pad">${groupRows}</div>`) : ''}

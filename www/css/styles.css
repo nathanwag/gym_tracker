@@ -19,6 +19,15 @@
   --danger: #c02626;
   --success: #12764a;
 
+  /* Escala tipografica: 5 degraus com salto de verdade. Antes eram 17
+     tamanhos soltos, 13 deles entre .68 e 1.06rem — variacao, nao hierarquia.
+     O topo e pro DADO (carga, volume), que e o conteudo do app. */
+  --fs-xs: .72rem;
+  --fs-sm: .85rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.5rem;
+  --fs-xl: 2.25rem;
+
   --radius: 14px;
   --radius-sm: 10px;
   --tap: 44px;
@@ -36,9 +45,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0f1115;
-    --surface: #171a21;
-    --surface-2: #1f2430;
-    --border: #2b313d;
+    --surface: #1d222d;
+    --surface-2: #262d3a;
+    --border: #333b49;
     --text: #e8eaef;
     --muted: #98a1b0;
     --accent: #2dd4e0;
@@ -54,9 +63,9 @@
 
 :root[data-theme="dark"] {
   --bg: #0f1115;
-  --surface: #171a21;
-  --surface-2: #1f2430;
-  --border: #2b313d;
+  --surface: #1d222d;
+  --surface-2: #262d3a;
+  --border: #333b49;
   --text: #e8eaef;
   --muted: #98a1b0;
   --accent: #2dd4e0;
@@ -450,8 +459,14 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   background: var(--border);
 }
 .stat { padding: 12px 10px; background: var(--surface); text-align: center; }
-.stat__val { font-size: 1.16rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.stat__label { margin-top: 1px; font-size: .72rem; color: var(--muted); }
+.stat__val { font-size: var(--fs-lg); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.stat__label { margin-top: 2px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* Um numero manda na tela; os outros recuam. Usado nos tres cartoes de resumo
+   (inicio, sessao, treino do historico), que antes tinham tres numeros iguais. */
+.stats--hero { grid-template-columns: 1.5fr 1fr 1fr; }
+.stats--hero .stat:first-child { text-align: left; padding-left: 14px; }
+.stats--hero .stat:first-child .stat__val { font-size: var(--fs-xl); line-height: 1.05; letter-spacing: -.02em; }
 .stat--pr .stat__val { color: var(--pr); }
 
 .week-nav__back svg { transform: rotate(180deg); }
@@ -464,7 +479,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .muscle-group__icon svg { width: 20px; height: 20px; }
 .muscle-group__name { font-size: .84rem; white-space: nowrap; }
 .muscle-group__track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
-.muscle-group__fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+/* Cinza pra todas; branco so pra que lidera a semana. Oito barras cianas
+   competiam com o resto da tela sem dizer nada a mais. */
+.muscle-group__fill { display: block; height: 100%; border-radius: 999px; background: #6b7688; }
+.muscle-group__row--top .muscle-group__fill { background: var(--text); }
 .muscle-group__sets { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 
 /* ---------- Grafico ---------- */
@@ -781,7 +799,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .tile:active { background: var(--surface-2); }
 .tile--catalog { border-style: dashed; }
-.tile__icon { display: flex; color: var(--accent); }
+.tile__icon { display: flex; color: var(--muted); }
 .tile__icon svg { width: 34px; height: 34px; }
 .tile__name { font-size: .88rem; font-weight: 600; text-align: center; line-height: 1.2; }
 .tile__n { font-size: .76rem; color: var(--muted); }
@@ -800,8 +818,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   border: 1px solid transparent;
   border-radius: 999px;
   background: var(--surface-2);
-  font-size: .84rem;
-  font-weight: 650;
+  font-size: 1.02rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .setchip--warm {
@@ -810,8 +828,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   border-style: dashed;
   color: var(--muted);
   font-weight: 600;
+  font-size: var(--fs-sm);
 }
-.setchip--pr { background: var(--accent-soft); color: var(--accent); }
+.setchip--pr { background: var(--pr-soft); color: var(--pr); }
 
 /* ---------- Editor de passo a passo ---------- */
 
@@ -839,7 +858,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   cursor: pointer;
 }
 .editor-sec__head:active { background: var(--surface-2); }
-.editor-sec__icon { display: flex; flex: 0 0 auto; color: var(--accent); }
+.editor-sec__icon { display: flex; flex: 0 0 auto; color: var(--muted); }
 .editor-sec__icon svg { width: 20px; height: 20px; }
 .editor-sec__name { flex: 1; min-width: 0; font-weight: 650; }
 .editor-sec__sum { flex: 0 0 auto; font-size: .84rem; color: var(--muted); }

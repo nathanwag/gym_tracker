@@ -296,12 +296,11 @@ export const ICON = {
  */
 const BODY_PATH = 'M12 2.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2M12 6.4v7M8.4 8.2L12 7l3.6 1.2M8.4 8.2L7 12.4M15.6 8.2L17 12.4M12 13.4l-1.9 8M12 13.4l1.9 8';
 const dot = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="currentColor"/>`;
-// color:var(--accent) no svg inteiro (nao so no ponto) e o que faz a marca
-// destacar igual Cardio/Alongamento -- silhueta e ponto no mesmo tom, so a
-// opacidade diferente, em vez de silhueta cinza (herdada de .catalog__icon) com
-// um ponto colorido cortando a familia.
+// Cinza, nao a cor de destaque: o icone de grupo e estrutura, nao acao. A
+// familia se mantem porque silhueta e mancha ficam no mesmo tom, so mudando a
+// opacidade — o que a distinguia do resto era o contraste, nao a cor.
 const body = (...dots) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent)"><path d="${BODY_PATH}" opacity=".3"/>${dots.map((p) => dot(...p)).join('')}</svg>`;
+  `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--muted)"><path d="${BODY_PATH}" opacity=".3"/>${dots.map((p) => dot(...p)).join('')}</svg>`;
 
 export const ICON_GROUPS = {
   'Peito': body([12, 9.1, 1.7]),
@@ -328,8 +327,8 @@ export const ICON_GROUPS = {
   // Cardio e alongamento nao sao regiao do corpo, entao fogem da familia
   // "silhueta com mancha" e usam glifo proprio -- mas no mesmo color:var(--accent)
   // que corpo() usa agora, entao a familia toda fica no mesmo tom.
-  'Cardio': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent)"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>`,
-  'Alongamento': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent)"><circle cx="14.5" cy="4.2" r="1.6" fill="var(--accent)" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
+  'Cardio': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--muted)"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>`,
+  'Alongamento': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--muted)"><circle cx="14.5" cy="4.2" r="1.6" fill="currentColor" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
   'Outros': ICON.dumbbell,
 };
 

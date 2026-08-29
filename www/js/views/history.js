@@ -255,7 +255,11 @@ function statsCard() {
           ${workout.finishedAt ? '' : raw(`<span class="badge badge--accent">${t('history.inProgress')}</span>`)}
         </div>
       </div>
-      <div class="stats">
+      <div class="stats stats--hero">
+        <div class="stat">
+          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
+          <div class="stat__label">${t('history.stat.volume', { unit })}</div>
+        </div>
         <div class="stat">
           <div class="stat__val">${fmtDuration(workout.startedAt, workout.finishedAt) || '—'}</div>
           <div class="stat__label">${t('history.stat.duration')}</div>
@@ -263,10 +267,6 @@ function statsCard() {
         <div class="stat">
           <div class="stat__val">${summary.sets}</div>
           <div class="stat__label">${t('history.stat.sets')}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
-          <div class="stat__label">${t('history.stat.volume', { unit })}</div>
         </div>
       </div>
     </div>

@@ -169,7 +169,11 @@ function summaryCard() {
   const zeroMin = `0${t('common.min')}`;
   const el = node(html`
     <div class="card" data-summary>
-      <div class="stats">
+      <div class="stats stats--hero">
+        <div class="stat">
+          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
+          <div class="stat__label">${t('session.summary.volume', { unit: ctx.unit })}</div>
+        </div>
         <div class="stat">
           <div class="stat__val" data-duration>${fmtDuration(ctx.workout.startedAt, new Date().toISOString()) || zeroMin}</div>
           <div class="stat__label">${t('session.summary.duration')}</div>
@@ -177,10 +181,6 @@ function summaryCard() {
         <div class="stat">
           <div class="stat__val">${summary.sets}</div>
           <div class="stat__label">${t('session.summary.sets')}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
-          <div class="stat__label">${t('session.summary.volume', { unit: ctx.unit })}</div>
         </div>
       </div>
     </div>
