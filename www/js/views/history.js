@@ -2,27 +2,32 @@
 
 import * as db from '../db.js';
 import {
-  workoutSummary, prSetIds, setE1rm, totalVolume, totalDuration, isDurationSet,
-  orderedWorkoutExercises,
+  workoutSummary, workoutGroupBreakdown, prSetIds, allPrIds, orderedWorkoutExercises,
 } from '../models.js';
-import { thumbHtml } from '../media.js';
+import { exerciseBanner } from '../media.js';
 import { openShareSheet } from '../share-image.js';
 import { takeLastAdded } from './exercise-picker.js';
 import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
-  setTop, html, raw, node, ICON, toast, confirmSheet,
-  fmtNum, fmtDate, fmtRelativeDay, fmtWeekday, fmtDuration, fmtTempoSerie, fmtSet, fmtSetWithUnit,
+  setTop, html, raw, node, ICON, toast, confirmSheet, workoutRow, setLedger, signatureHtml,
+  fmtNum, fmtDate, fmtWeekday, fmtDuration,
 } from '../ui.js';
 
-const monthYear = (iso) => new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(new Date(iso));
+// So o nome do mes; o ano entra so quando nao e o corrente. "AGOSTO DE 2026"
+// em caixa alta no tamanho do cabecalho nao cabe ao lado do total.
+const monthName = (iso) => new Intl.DateTimeFormat(locale(), { month: 'long' }).format(new Date(iso));
+const monthKey = (iso) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}`;
+};
 
 /* ==========================================================================
    Lista de treinos
    ========================================================================== */
 
 export async function render(view) {
-  setTop({ title: t('history.title'), showBar: false });
+  setTop({ title: t('history.title') });
 
   const [workouts, sets] = await Promise.all([db.listWorkouts(), db.listAllSets()]);
   const unit = db.settings().unit;
@@ -38,46 +43,58 @@ export async function render(view) {
     return;
   }
 
+  const exercises = await db.listExercises();
+  const exercisesById = new Map(exercises.map((e) => [e.id, e]));
+
   const byWorkout = new Map();
   for (const s of sets) {
     if (!byWorkout.has(s.workoutId)) byWorkout.set(s.workoutId, []);
     byWorkout.get(s.workoutId).push(s);
   }
 
+  // Uma passada so pelo historico inteiro; cada linha depois so pergunta
+  // quantas das suas series estao no conjunto.
+  const prIds = allPrIds(sets);
+  const thisYear = new Date().getFullYear();
+
   const root = node('<div></div>');
   let currentMonth = null;
 
   for (const workout of workouts) {
-    const month = monthYear(workout.startedAt);
-    if (month !== currentMonth) {
-      currentMonth = month;
-      root.append(node(html`<h2 class="section-title">${month}</h2>`));
-      root.append(node('<div class="card"><ul class="list"></ul></div>'));
+    const key = monthKey(workout.startedAt);
+    if (key !== currentMonth) {
+      currentMonth = key;
+      root.append(monthHeader(workout.startedAt, workouts, byWorkout, unit, thisYear));
     }
 
-    const r = workoutSummary(byWorkout.get(workout.id) || []);
-    const ul = root.lastElementChild.querySelector('ul');
-    ul.append(node(html`
-      <li class="list__item">
-        <a class="list__link" href="#/historico/${workout.id}">
-          <div class="grow">
-            <div class="row" style="gap:6px">
-              <span style="font-weight:650">${fmtRelativeDay(workout.startedAt)}</span>
-              ${workout.finishedAt ? '' : raw(`<span class="badge badge--accent">${t('history.inProgress')}</span>`)}
-            </div>
-            <div class="muted small">
-              ${tn('common.exercise', r.exercises)} ·
-              ${tn('common.set', r.sets)} ·
-              ${fmtNum(r.volume, 0)} ${unit}
-            </div>
-          </div>
-          <span class="list__chev">${raw(ICON.chevron)}</span>
-        </a>
-      </li>
-    `));
+    const workoutSets = byWorkout.get(workout.id) || [];
+    root.append(workoutRow(workout, workoutSets, exercisesById, {
+      unit,
+      prCount: workoutSets.filter((s) => prIds.has(s.id)).length,
+      badge: workout.finishedAt ? '' : `<span class="badge badge--accent">${t('history.inProgress')}</span>`,
+    }));
   }
 
   view.append(root);
+}
+
+/** Cabecalho de mes com o total movido no periodo — o numero que responde
+ *  "esse mes rendeu?" sem abrir treino nenhum. */
+function monthHeader(iso, workouts, byWorkout, unit, thisYear) {
+  const key = monthKey(iso);
+  const total = workouts
+    .filter((w) => monthKey(w.startedAt) === key)
+    .reduce((acc, w) => acc + workoutSummary(byWorkout.get(w.id) || []).volume, 0);
+
+  const year = new Date(iso).getFullYear();
+  const name = year === thisYear ? monthName(iso) : `${monthName(iso)} ${year}`;
+
+  return node(html`
+    <div class="mo">
+      <h2 class="mo__name">${name}</h2>
+      <span class="mo__total">${fmtNum(total, 0)} ${unit}</span>
+    </div>
+  `);
 }
 
 /* ==========================================================================
@@ -244,31 +261,32 @@ function paintWorkout() {
   window.scrollTo(0, y);
 }
 
+/** Cabecalho do treino, no mesmo molde do resumo da semana: o volume e o
+ *  assunto, sem cartao em volta. A assinatura de cor logo abaixo e a mesma que
+ *  identificou este treino na lista — abrir um treino continua a leitura de
+ *  onde ela parou, em vez de trocar de linguagem. */
 function statsCard() {
   const { workout, unit } = ctx;
   const summary = workoutSummary(ctx.sets);
+  const breakdown = workoutGroupBreakdown(ctx.sets, ctx.byId);
+  const duration = fmtDuration(workout.startedAt, workout.finishedAt);
+
   return node(html`
-    <div class="card">
-      <div class="card__pad" style="padding-bottom:10px">
-        <div class="row" style="gap:8px">
-          <h2 style="font-size:1rem">${fmtWeekday(workout.startedAt)}</h2>
-          ${workout.finishedAt ? '' : raw(`<span class="badge badge--accent">${t('history.inProgress')}</span>`)}
-        </div>
+    <div>
+      <div class="row" style="gap:8px">
+        <span class="tag">${fmtWeekday(workout.startedAt)}</span>
+        ${workout.finishedAt ? '' : raw(`<span class="badge badge--accent">${t('history.inProgress')}</span>`)}
       </div>
-      <div class="stats stats--hero">
-        <div class="stat">
-          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
-          <div class="stat__label">${t('history.stat.volume', { unit })}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__val">${fmtDuration(workout.startedAt, workout.finishedAt) || '—'}</div>
-          <div class="stat__label">${t('history.stat.duration')}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__val">${summary.sets}</div>
-          <div class="stat__label">${t('history.stat.sets')}</div>
-        </div>
+      <div class="week__big week__big--sm">
+        <span class="data">${fmtNum(summary.volume, 0)}</span>
+        <span class="week__unit">${unit}</span>
       </div>
+      <div class="week__sub">
+        ${duration ? raw(`<span><span class="data">${duration}</span> ${t('history.trainingTime')}</span>`) : ''}
+        <span><span class="data">${summary.sets}</span> ${tn('home.stat.sets', summary.sets)}</span>
+        <span><span class="data">${summary.exercises}</span> ${tn('history.stat.exercises', summary.exercises)}</span>
+      </div>
+      ${breakdown.length ? raw(`<div style="padding-top:8px">${signatureHtml(breakdown)}</div>`) : ''}
     </div>
   `);
 }
@@ -285,27 +303,20 @@ function workoutExerciseCard(exId, order) {
 
   const card = node(html`<div class="card" data-ex="${exId}"></div>`);
 
-  const meta = exSets.length
-    ? html`${tn('common.set', exSets.length)} ·
-        ${isDurationSet(exSets[0])
-          ? fmtTempoSerie(totalDuration(exSets))
-          : `${fmtNum(totalVolume(exSets), 0)} ${unit}`}`
-    : tn('common.set', 0);
-
-  const head = node(html`
-    <div class="exercise__head">
-      ${ex ? raw(thumbHtml(ex)) : ''}
-      <div class="grow">
-        <h2 class="exercise__name">${name}</h2>
-        <div class="exercise__meta">${raw(meta)}</div>
-      </div>
-      ${editMode ? raw(`
+  const head = exerciseBanner({
+    exercise: ex,
+    name,
+    // Faixa baixa: aqui a foto identifica o exercicio; conferir execucao no
+    // meio da serie e trabalho da sessao, que usa a faixa cheia.
+    small: true,
+    actions: editMode
+      ? `
         <button class="icon-btn" data-up aria-label="${t('history.moveUp')}" ${i === 0 ? 'disabled' : ''}>${ICON.up}</button>
         <button class="icon-btn" data-down aria-label="${t('history.moveDown')}" ${i === order.length - 1 ? 'disabled' : ''}>${ICON.down}</button>
         <button class="icon-btn" data-remove aria-label="${t('history.removeExercise', { name })}">${ICON.trash}</button>
-      `) : (ex ? raw(`<a class="icon-btn" href="#/exercicios/${ex.id}" aria-label="${t('history.seeProgress')}">${ICON.chevron}</a>`) : '')}
-    </div>
-  `);
+      `
+      : (ex ? `<a class="icon-btn" href="#/exercicios/${ex.id}" aria-label="${t('history.seeProgress')}">${ICON.chevron}</a>` : ''),
+  });
 
   if (editMode) {
     head.querySelector('[data-up]').onclick = () => moveWorkoutExercise(order, i, -1);
@@ -314,50 +325,29 @@ function workoutExerciseCard(exId, order) {
   }
   card.append(head);
 
-  // Conteudo de uma linha de serie (num, valor, aquec., PR, 1RM). O involucro
-  // muda por modo: <div> inerte na leitura, <button> tocavel na edicao.
-  const setRowInner = (s, idx) => html`
-    <span class="setlist__num">${idx + 1}</span>
-    <span class="setlist__val">${fmtSetWithUnit(s, unit)}</span>
-    ${s.warmup ? raw(`<span class="setlist__warm">${t('history.warmup')}</span>`) : ''}
-    ${prIds.has(s.id) ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
-    <span class="grow"></span>
-    ${(!s.warmup && !isDurationSet(s)) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(s), 0)}</span>`) : ''}
-  `;
-
-  // Leitura: cada serie vira uma pastilha. Ocupam a largura em vez da altura
-  // (uma lista de 4 series gastava ~180px de tela), e o tipo da serie fica na
-  // forma: tracejada = aquecimento, acesa = recorde. O 1RM por serie sai daqui
-  // — e derivado, e a tela do exercicio ja tem o grafico dele.
-  if (!editMode) {
-    if (exSets.length) {
-      const chips = exSets.map((s) => {
-        const pr = prIds.has(s.id);
-        const kind = s.warmup ? ' setchip--warm' : (pr ? ' setchip--pr' : '');
-        return html`<span class="setchip${kind}">${fmtSet(s)}${pr ? raw(' 🏆') : ''}</span>`;
-      });
-      card.append(node(html`<div class="setchips">${raw(chips.join(''))}</div>`));
-    }
-    return card;
+  // O resumo do exercicio (4 series · 1.553 kg) some: o livro-razao logo
+  // abaixo mostra as quatro series, e somar quatro numeros a vista nao paga
+  // uma linha de texto.
+  if (exSets.length) {
+    card.append(setLedger({
+      sets: exSets,
+      prIds,
+      editingId: editMode ? editingSetId : null,
+      // Leitura deixa as linhas inertes; so no modo de edicao elas abrem o
+      // compositor.
+      onPick: editMode
+        ? (s) => {
+          editingSetId = editingSetId === s.id ? null : s.id;
+          addingSetFor = null;
+          paintWorkout();
+        }
+        : null,
+    }));
   }
 
-  // ---- Modo de edicao ----
-  const ul = node('<ul class="setlist"></ul>');
-  exSets.forEach((s, idx) => {
-    const li = node(html`
-      <li>
-        <button class="setlist__item" data-set="${s.id}" aria-current="${s.id === editingSetId}">${raw(setRowInner(s, idx))}</button>
-      </li>
-    `);
-    li.querySelector('button').onclick = () => {
-      editingSetId = editingSetId === s.id ? null : s.id;
-      addingSetFor = null;
-      paintWorkout();
-    };
-    ul.append(li);
-  });
-  card.append(ul);
+  if (!editMode) return card;
 
+  // ---- Modo de edicao ----
   const editing = editingSetId != null && exSets.find((s) => s.id === editingSetId);
   if (editing) {
     card.append(createSetComposer({

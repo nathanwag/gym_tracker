@@ -11,7 +11,8 @@
  */
 
 import * as db from './db.js';
-import { ICON_GROUPS, html, raw } from './ui.js';
+import { ICON_GROUPS, html, raw, esc, node, groupColor } from './ui.js';
+import { groupLabel } from './seed.js';
 import { t } from './i18n.js';
 
 // Precisa bater com MEDIA_CACHE em sw.js — o service worker e classico
@@ -81,6 +82,24 @@ export function thumbHtml(ex, { className = '' } = {}) {
     : '';
 
   return html`<span class="thumb ${className}">${raw(icon)}${raw(photo)}</span>`;
+}
+
+/** A mesma foto em tamanho de faixa, pro cabecalho do exercicio na sessao.
+ *
+ *  Duas camadas: a miniatura embaixo (vai empacotada com o app, entao existe
+ *  sempre) e a foto grande por cima, que so aparece depois de baixada. Assim
+ *  a faixa nunca fica vazia — offline, na primeira vez, ela mostra a versao
+ *  esticada em vez de um retangulo cinza. */
+export function bannerHtml(ex) {
+  const customUrl = customThumbCache?.get(ex.id);
+  const base = customUrl || (ex.slug ? thumbUrl(ex.slug) : null);
+  if (!base) return '';
+
+  const full = !customUrl && ex.slug
+    ? html`<img src="${fullUrl(ex.slug, 0)}" alt="" loading="lazy" decoding="async" onerror="this.hidden=true">`
+    : '';
+
+  return html`<img src="${base}" alt="" decoding="async" onerror="this.hidden=true">${raw(full)}`;
 }
 
 /** Aquece o cache das duas fotos grandes.
@@ -194,4 +213,26 @@ export function createAnimation({ frameA, frameB, name = '' } = {}) {
 
   updateLabel();
   return el;
+}
+
+/** Cabecalho de exercicio com a foto em faixa e o nome por cima — o mesmo na
+ *  sessao e no detalhe do treino. `actions` sao os botoes da direita, que
+ *  mudam por tela (concluir/evolucao/remover; subir/descer/remover; ...). */
+export function exerciseBanner({
+  exercise, name, actions = '', small = false,
+}) {
+  const group = exercise?.muscleGroup || 'Outros';
+  return node(html`
+    <div class="exc__banner ${small ? 'exc__banner--sm' : ''}">
+      ${raw(exercise ? bannerHtml(exercise) : '')}
+      <div class="exc__scrim"></div>
+      <div class="exc__over">
+        <div class="grow">
+          ${exercise ? raw(`<div class="exc__group"><span class="exc__dot" style="background:${groupColor(group)}"></span>${esc(groupLabel(group))}</div>`) : ''}
+          <h2 class="exc__title truncate">${name}</h2>
+        </div>
+        ${raw(actions)}
+      </div>
+    </div>
+  `);
 }

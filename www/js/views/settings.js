@@ -11,7 +11,7 @@ import {
 const INCREMENTS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
 
 export async function render(view) {
-  setTop({ title: t('settings.title'), showBar: false });
+  setTop({ title: t('settings.title') });
 
   const cfg = db.settings();
   const root = node('<div class="stack"></div>');

@@ -19,7 +19,7 @@ import { cleanSteps, sameSteps } from '../text.js';
 import {
   setTop, html, raw, node, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, fmtSet, stripAccents, refresh, wireSegmented,
-  groupedList, listInCard,
+  groupedList, listInCard, groupColor,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -54,7 +54,7 @@ export async function renderList(view) {
     if (!s.warmup && s.weight > r.bestWeight) r.bestWeight = s.weight;
   }
 
-  setTop({ title: t('exercise.listTitle'), showBar: false });
+  setTop({ title: t('exercise.listTitle') });
 
   const root = node(html`
     <div class="stack">
@@ -221,11 +221,10 @@ export async function renderDetail(view, exId) {
   const bestTotalTime = bestSessionDuration(summaries);
   const prIds = prSetIds(sets);
 
-  setTop({
-    title: exercise.name,
-    back: '#/exercicios',
-    actions: `<a class="btn btn--sm btn--ghost" href="#/exercicios/${exercise.id}/editar">${t('exercise.editScreen.action')}</a>`,
-  });
+  // Sem topbar: a foto sangra ate o topo da tela e o nome fica sobre ela.
+  // Dentro de um cartao com margem, a unica imagem grande do app pedia
+  // licenca — e o nome aparecia duas vezes, na barra e embaixo.
+  setTop({ title: exercise.name, showBar: false });
 
   const root = node('<div class="stack"></div>');
 
@@ -233,36 +232,33 @@ export async function renderDetail(view, exId) {
   // abre esta tela no meio da serie quer conferir a execucao primeiro.
   revokeDetailPhotoUrls();
   const photos = photoSection(exercise, images);
-  if (photos) root.append(photos);
+  if (photos) root.append(heroPhoto(exercise, photos));
+  else root.append(heroTitle(exercise));
 
   root.append(node(timeBased ? html`
-    <div class="card">
-      <div class="stats">
-        <div class="stat stat--pr">
-          <div class="stat__val">${records.duration ? fmtTempoSerie(records.duration) : '—'}</div>
-          <div class="stat__label">${t('exercise.timeRecord')}</div>
-        </div>
-        <div class="stat stat--pr">
-          <div class="stat__val">${bestTotalTime ? fmtTempoSerie(bestTotalTime) : '—'}</div>
-          <div class="stat__label">${t('exercise.totalSessionTime')}</div>
-        </div>
+    <div class="recs" style="grid-template-columns:repeat(2, 1fr)">
+      <div class="rec rec--pr">
+        <span class="rec__val">${records.duration ? fmtTempoSerie(records.duration) : '—'}</span>
+        <span class="rec__label">${t('exercise.timeRecord')}</span>
+      </div>
+      <div class="rec">
+        <span class="rec__val">${bestTotalTime ? fmtTempoSerie(bestTotalTime) : '—'}</span>
+        <span class="rec__label">${t('exercise.totalSessionTime')}</span>
       </div>
     </div>
   ` : html`
-    <div class="card">
-      <div class="stats">
-        <div class="stat stat--pr">
-          <div class="stat__val">${records.weight ? fmtNum(records.weight, 2) : '—'}</div>
-          <div class="stat__label">${t('exercise.weightRecord', { unit })}</div>
-        </div>
-        <div class="stat stat--pr">
-          <div class="stat__val">${records.e1rm ? fmtNum(records.e1rm, 0) : '—'}</div>
-          <div class="stat__label">${t('exercise.metric.e1rmLabel')}</div>
-        </div>
-        <div class="stat stat--pr">
-          <div class="stat__val">${bestVolume ? fmtNum(bestVolume, 0) : '—'}</div>
-          <div class="stat__label">${t('exercise.bestVolume')}</div>
-        </div>
+    <div class="recs">
+      <div class="rec rec--pr">
+        <span class="rec__val">${records.weight ? fmtNum(records.weight, 2) : '—'}</span>
+        <span class="rec__label">${t('exercise.weightRecord', { unit })}</span>
+      </div>
+      <div class="rec">
+        <span class="rec__val">${records.e1rm ? fmtNum(records.e1rm, 0) : '—'}</span>
+        <span class="rec__label">${t('exercise.record.e1rm')}</span>
+      </div>
+      <div class="rec">
+        <span class="rec__val">${bestVolume ? fmtNum(bestVolume, 0) : '—'}</span>
+        <span class="rec__label">${t('exercise.bestVolume')}</span>
       </div>
     </div>
   `));
@@ -330,6 +326,57 @@ let editPhotoUrls = [];
 function revokeEditPhotoUrls() {
   for (const url of editPhotoUrls) URL.revokeObjectURL(url);
   editPhotoUrls = [];
+}
+
+/** Envolve a foto no cabecalho que sangra ate a borda: escurecimento por
+ *  cima, nome do exercicio embaixo e os controles (voltar / editar) flutuando
+ *  no topo, ja que a topbar sai de cena nesta tela. */
+function heroPhoto(exercise, photos) {
+  const wrap = node(html`
+    <div class="hero-photo">
+      <div data-photo></div>
+      <div class="hero-photo__scrim"></div>
+      <div class="exc__over" style="inset:auto auto auto 0;top:calc(var(--safe-top) + 8px);left:8px">
+        <button class="icon-btn" data-back aria-label="${t('app.back')}">${raw(ICON.back)}</button>
+      </div>
+      <div class="exc__over" style="inset:auto 8px auto auto;top:calc(var(--safe-top) + 8px)">
+        <a class="icon-btn" href="#/exercicios/${exercise.id}/editar" aria-label="${t('exercise.editScreen.action')}">${raw(ICON.pencil)}</a>
+      </div>
+      <div class="hero-photo__over">
+        ${raw(groupChip(exercise))}
+        <h1 class="hero-photo__name">${exercise.name}</h1>
+      </div>
+    </div>
+  `);
+  wrap.querySelector('[data-photo]').replaceWith(photos);
+  wrap.querySelector('[data-back]').onclick = () => goBack('#/exercicios');
+  return wrap;
+}
+
+/** Exercicio sem nenhuma foto: o nome sozinho, no mesmo tamanho, sem o
+ *  retangulo cinza que uma foto ausente deixaria. */
+function heroTitle(exercise) {
+  const el = node(html`
+    <div class="row" style="gap:6px;align-items:flex-start">
+      <button class="icon-btn" data-back aria-label="${t('app.back')}" style="margin-left:-10px">${raw(ICON.back)}</button>
+      <div class="grow">
+        ${raw(groupChip(exercise, { onPhoto: false }))}
+        <h1 class="hero-photo__name" style="color:var(--text);text-shadow:none">${exercise.name}</h1>
+      </div>
+      <a class="icon-btn" href="#/exercicios/${exercise.id}/editar" aria-label="${t('exercise.editScreen.action')}">${raw(ICON.pencil)}</a>
+    </div>
+  `);
+  el.querySelector('[data-back]').onclick = () => goBack('#/exercicios');
+  return el;
+}
+
+function groupChip(exercise, { onPhoto = true } = {}) {
+  const group = exercise.muscleGroup || 'Outros';
+  return html`
+    <div class="exc__group" style="${onPhoto ? '' : 'color:var(--muted);text-shadow:none'}">
+      <span class="exc__dot" style="background:${groupColor(group)}"></span>${groupLabel(group)}
+    </div>
+  `;
 }
 
 /** Decide o que mostrar no lugar da animacao flip: foto(s) personalizada(s)

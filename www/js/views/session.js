@@ -8,17 +8,15 @@
  */
 
 import * as db from '../db.js';
-import {
-  evaluatePR, prSetIds, setE1rm, isDurationSet, workoutSummary,
-} from '../models.js';
-import { thumbHtml } from '../media.js';
+import { evaluatePR, prSetIds, workoutSummary } from '../models.js';
+import { exerciseBanner } from '../media.js';
 import { takeLastAdded } from './exercise-picker.js';
 import { openShareSheet } from '../share-image.js';
 import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn } from '../i18n.js';
 import {
-  setTop, html, raw, node, ICON, toast,
-  confirmSheet, fmtNum, fmtRelativeDay, fmtDuration, fmtSet, fmtSetWithUnit, buzz,
+  setTop, html, raw, node, ICON, toast, setLedger, workingCount,
+  confirmSheet, fmtNum, fmtDuration, buzz,
 } from '../ui.js';
 
 /** Estado da tela. Recriado a cada render; as telas nao compartilham estado. */
@@ -75,7 +73,7 @@ export async function render(view) {
   };
 
   const root = node('<div class="stack"></div>');
-  root.append(summaryCard());
+  root.append(liveBar());
   root.append(node('<div class="stack" data-list></div>'));
 
   const add = node(html`
@@ -136,10 +134,7 @@ function renderList() {
   completedWrap.innerHTML = '';
   if (completed.length) {
     completedWrap.append(node(`<h2 class="section-title">${t('session.done')}</h2>`));
-    const card = node('<div class="card"><ul class="list" data-completed></ul></div>');
-    const ul = card.querySelector('ul');
-    for (const id of completed) ul.append(completedItem(id));
-    completedWrap.append(card);
+    for (const id of completed) completedWrap.append(completedItem(id));
   }
 }
 
@@ -164,25 +159,22 @@ function previousSession(exId) {
 
 /* ---------- Resumo do topo ---------- */
 
-function summaryCard() {
+/** Tempo, volume e series correndo numa faixa fina embaixo da topbar.
+ *
+ *  Era um cartao com tres numeros do tamanho do resumo da semana. Mas aqui
+ *  isso e informacao de fundo: o assunto da tela e a proxima serie, e o
+ *  cartao empurrava o primeiro exercicio pra fora do alcance do polegar. */
+function liveBar() {
   const summary = workoutSummary(setsInWorkout());
   const zeroMin = `0${t('common.min')}`;
   const el = node(html`
-    <div class="card" data-summary>
-      <div class="stats stats--hero">
-        <div class="stat">
-          <div class="stat__val">${fmtNum(summary.volume, 0)}</div>
-          <div class="stat__label">${t('session.summary.volume', { unit: ctx.unit })}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__val" data-duration>${fmtDuration(ctx.workout.startedAt, new Date().toISOString()) || zeroMin}</div>
-          <div class="stat__label">${t('session.summary.duration')}</div>
-        </div>
-        <div class="stat">
-          <div class="stat__val">${summary.sets}</div>
-          <div class="stat__label">${t('session.summary.sets')}</div>
-        </div>
-      </div>
+    <div class="livebar" data-summary>
+      <span class="livebar__dot" aria-hidden="true"></span>
+      <span class="data" data-duration>${fmtDuration(ctx.workout.startedAt, new Date().toISOString()) || zeroMin}</span>
+      <span aria-hidden="true">·</span>
+      <span><span class="data">${fmtNum(summary.volume, 0)}</span> ${ctx.unit}</span>
+      <span aria-hidden="true">·</span>
+      <span><span class="data">${summary.sets}</span> ${tn('home.stat.sets', summary.sets)}</span>
     </div>
   `);
 
@@ -198,7 +190,7 @@ function summaryCard() {
 
 function updateSummary() {
   const old = document.querySelector('[data-summary]');
-  if (old) old.replaceWith(summaryCard());
+  if (old) old.replaceWith(liveBar());
 }
 
 /* ---------- Cartao de exercicio ---------- */
@@ -220,28 +212,35 @@ function exerciseCard(exId) {
 
   const card = node(html`<section class="card" data-ex="${exId}"></section>`);
 
-  const header = node(html`
-    <div class="exercise__head">
-      ${raw(thumbHtml(ex))}
-      <div class="grow">
-        <h2 class="exercise__name">${ex.name}</h2>
-        <div class="exercise__meta">${raw(previousText(previous))}</div>
-      </div>
-      <button class="icon-btn" data-collapse aria-label="${t('session.markDone', { name: ex.name })}">${raw(ICON.check)}</button>
-      <button class="icon-btn" data-detail aria-label="${t('session.seeProgressFor', { name: ex.name })}">${raw(ICON.chevron)}</button>
-      <button class="icon-btn" data-remove aria-label="${t('session.removeFromWorkout', { name: ex.name })}">${raw(ICON.trash)}</button>
-    </div>
-  `);
+  const header = exerciseBanner({
+    exercise: ex,
+    name: ex.name,
+    actions: `
+      <button class="icon-btn" data-collapse aria-label="${t('session.markDone', { name: ex.name })}">${ICON.check}</button>
+      <button class="icon-btn" data-detail aria-label="${t('session.seeProgressFor', { name: ex.name })}">${ICON.chevron}</button>
+      <button class="icon-btn" data-remove aria-label="${t('session.removeFromWorkout', { name: ex.name })}">${ICON.trash}</button>
+    `,
+  });
   header.querySelector('[data-collapse]').onclick = () => setCollapsed(exId, true);
   header.querySelector('[data-detail]').onclick = () => { location.hash = `#/exercicios/${exId}`; };
   header.querySelector('[data-remove]').onclick = () => removeExercise(exId, ex.name);
   card.append(header);
 
-  if (here.length) {
-    const ul = node('<ul class="setlist"></ul>');
-    here.forEach((s, i) => ul.append(setItem(s, i + 1, prIds.has(s.id), s.id === editingId)));
-    card.append(ul);
-  }
+  // A linha fantasma e a serie que o treino anterior fez NESTA posicao — a
+  // proxima a ser preenchida, nao a primeira dele.
+  const target = previous?.sets.filter((s) => !s.warmup)[workingCount(here)] || null;
+  card.append(setLedger({
+    sets: here,
+    prIds,
+    editingId,
+    onPick: (s) => {
+      const current = ctx.editing.get(exId);
+      if (current === s.id) ctx.editing.delete(exId);
+      else ctx.editing.set(exId, s.id);
+      rebuildCard(exId);
+    },
+    ghost: target ? { set: target, when: previous.when } : null,
+  }));
   card.append(createSetComposer({
     exercise: ex,
     unit: ctx.unit,
@@ -266,67 +265,22 @@ function exerciseCard(exId) {
  *  que foi feito. Reabrir (e so entao excluir/ver evolucao) e um toque. */
 function completedItem(exId) {
   const ex = ctx.exercises.get(exId);
-  if (!ex) return node('<li hidden></li>');
+  if (!ex) return node('<div hidden></div>');
 
-  const here = setsHere(exId);
-  const li = node(html`
-    <li class="list__item">
-      <button class="list__link" data-reopen aria-label="${t('session.reopen', { name: ex.name })}">
-        <div class="grow">
-          <div style="font-weight:600">${ex.name}</div>
-          <div class="muted small">${raw(sessionSummaryText(here))}</div>
-        </div>
-        <span class="list__done">${raw(ICON.check)}</span>
-      </button>
-    </li>
+  const done = setsHere(exId).filter((s) => !s.warmup).length;
+  const group = ex.muscleGroup || 'Outros';
+  const button = node(html`
+    <button class="exc-done" data-reopen aria-label="${t('session.reopen', { name: ex.name })}">
+      <span class="sig sig--rule" aria-hidden="true">
+        <span class="sig__seg" style="background:${groupColor(group)}"></span>
+      </span>
+      <span class="exc-done__name truncate">${ex.name}</span>
+      <span class="exc-done__n">${tn('common.set', done)}</span>
+      <span class="exc-done__check">${raw(ICON.check)}</span>
+    </button>
   `);
-  li.querySelector('[data-reopen]').onclick = () => setCollapsed(exId, false);
-  return li;
-}
-
-/** Texto de uma serie na comparacao/resumo, com asterisco de aquecimento —
- *  o valor em si (duracao ou peso×reps) vem de fmtSet (ui.js). */
-function setText(s) {
-  return `${fmtSet(s)}${s.warmup ? '*' : ''}`;
-}
-
-function previousText(previous) {
-  if (!previous) return html`<span class="muted">${t('session.firstTime')}</span>`;
-  const summary = previous.sets.map(setText).join('   ');
-  return html`${t('session.lastTime', { date: fmtRelativeDay(previous.when) })} <b class="tnum">${summary}</b>`;
-}
-
-/** Resumo do que ja foi feito aqui, usado no cabecalho quando o exercicio
- *  esta colapsado — nesse ponto o que importa e o que a pessoa acabou de
- *  registrar, nao mais a comparacao com o treino anterior. */
-function sessionSummaryText(here) {
-  if (!here.length) return html`<span class="muted">${t('session.noSetsLogged')}</span>`;
-  const summary = here.map(setText).join('   ');
-  return html`${tn('common.set', here.length)}: <b class="tnum">${summary}</b>`;
-}
-
-function setItem(set, number, isPR, active) {
-  const timeBased = isDurationSet(set);
-  const li = node(html`
-    <li>
-      <button class="setlist__item" data-set="${set.id}" aria-current="${active}">
-        <span class="setlist__num">${number}</span>
-        <span class="setlist__val">${fmtSetWithUnit(set, ctx.unit)}</span>
-        ${set.warmup ? raw(`<span class="setlist__warm">${t('history.warmup')}</span>`) : ''}
-        ${isPR ? raw('<span class="badge badge--pr">🏆 PR</span>') : ''}
-        <span class="grow"></span>
-        ${(!set.warmup && !timeBased) ? raw(`<span class="muted small tnum">1RM ${fmtNum(setE1rm(set), 0)}</span>`) : ''}
-      </button>
-    </li>
-  `);
-
-  li.querySelector('button').onclick = () => {
-    const current = ctx.editing.get(set.exerciseId);
-    if (current === set.id) ctx.editing.delete(set.exerciseId);
-    else ctx.editing.set(set.exerciseId, set.id);
-    rebuildCard(set.exerciseId);
-  };
-  return li;
+  button.onclick = () => setCollapsed(exId, false);
+  return button;
 }
 
 /* ---------- Mutacoes ---------- */
@@ -348,7 +302,13 @@ async function addSet(exId, values, warmup) {
   const pr = evaluatePR(newSet, setsForExercise(exId));
   rebuildCard(exId);
   updateSummary();
-  buzz(18);
+  // Vibra mais forte no recorde: e a unica diferenca que da pra sentir com o
+  // celular no chao e a barra na mao.
+  buzz(pr.any ? 40 : 18);
+
+  // A linha que acabou de entrar pulsa em amarelo. O toast diz o que houve;
+  // o pulso diz ONDE — sem ele, a serie recorde some no meio das outras.
+  if (pr.any) document.querySelector(`[data-set="${newSet.id}"]`)?.classList.add('led__row--flash');
 
   if (pr.duration) toast(t('session.timeRecord'));
   else if (pr.weight) toast(t('session.weightRecord'));
