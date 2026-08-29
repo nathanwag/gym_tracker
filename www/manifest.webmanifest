@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Treino — cargas e repeticoes",
-  "short_name": "Treino",
+  "name": "Anilha — cargas e repeticoes",
+  "short_name": "Anilha",
   "description": "Registro de series, cargas e repeticoes com graficos de progressao e recordes.",
   "lang": "pt-BR",
   "dir": "ltr",
@@ -9,8 +9,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f1115",
-  "theme_color": "#0f1115",
+  "background_color": "#0b0c0d",
+  "theme_color": "#0b0c0d",
   "categories": ["health", "fitness", "sports"],
   "icons": [
     { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

@@ -12,7 +12,7 @@
  * GitHub Pages quanto na origem local do WebView nativo.
  */
 
-const VERSION = 'treino-v22';
+const VERSION = 'anilha-v23';
 
 // Dois caches de proposito. O do app e versionado e descartavel: bumpar VERSION
 // e como se deploya. O de midia NAO e versionado — sao dezenas de MB de fotos
@@ -38,6 +38,9 @@ const ASSETS = [
   './manifest.webmanifest',
   './css/styles.css',
   './fonts/manrope-variable.woff2',
+  './fonts/barlow-condensed-600.woff2',
+  './fonts/barlow-condensed-700.woff2',
+  './fonts/barlow-condensed-800.woff2',
   './js/app.js',
   './js/ui.js',
   './js/i18n.js',
@@ -49,6 +52,7 @@ const ASSETS = [
   './js/backup.js',
   './js/share-image.js',
   './js/charts.js',
+  './js/curve.js',
   './js/catalog.js',
   './js/media.js',
   './js/set-composer.js',

@@ -4,9 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## O que é
 
-PWA de registro de treino (peso × reps por série, gráficos, recordes). JavaScript
-puro, sem build, sem dependência de runtime, sem servidor. `www/` é o app inteiro
-e também o `webDir` do Capacitor (empacota como iOS/Android sem reescrever nada).
+**Anilha** — PWA de registro de treino (peso × reps por série, gráficos,
+recordes). JavaScript puro, sem build, sem dependência de runtime, sem servidor.
+`www/` é o app inteiro e também o `webDir` do Capacitor (empacota como
+iOS/Android sem reescrever nada).
+
+O app se chamava "Treino"; o nome de exibição vive em `APP_NAME` (`ui.js`), no
+`<title>`/`apple-mobile-web-app-title` e no manifest. **Dois identificadores
+persistidos ficaram com o nome antigo de propósito** e não podem mudar:
+`DB_NAME = 'treino'` (`db.js`) e `FORMAT = 'treino-backup'` (`backup.js`) —
+renomear o primeiro órfã o banco de todo mundo, e o segundo faz o app rejeitar
+backups já exportados. Ambos têm comentário no código dizendo isso.
 
 ## Rodar o app
 
@@ -43,11 +51,12 @@ node --test --test-name-pattern="unilateral"    # por nome
 ```
 
 Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`). Só dá
-pra testar módulos **puros** sob `node --test`: `models.js` e `text.js` não têm
-import nenhum. `seed.js`/`db.js`/`ui.js` puxam `i18n.js`, que toca `location` no
-carregamento e quebra fora do browser. Para testar algo desses, extraia a lógica
-pura pra um módulo sem dependência de DOM/IndexedDB (precedente: `text.js` existe
-separado de `ui.js` porque `db.js` precisa dele numa migração).
+pra testar módulos **puros** sob `node --test`: `models.js`, `text.js` e
+`curve.js` não têm import nenhum. `seed.js`/`db.js`/`ui.js` puxam `i18n.js`, que
+toca `location` no carregamento e quebra fora do browser. Para testar algo
+desses, extraia a lógica pura pra um módulo sem dependência de DOM/IndexedDB —
+é o que `text.js` (separado de `ui.js` porque `db.js` precisa dele numa
+migração) e `curve.js` (separado de `charts.js`, que importa `ui.js`) fazem.
 
 ## Deploy e service worker
 
@@ -55,11 +64,11 @@ Deploy = push na `main`; `.github/workflows/pages.yml` publica `www/`. Trabalho 
 trunk-based, commits direto na `main`.
 
 **Toda alteração em arquivo de `www/` exige bumpar `VERSION` em `www/sw.js`**
-(`treino-vN` → `vN+1`). O cache do app é cache-first e versionado: sem o bump, o
+(`anilha-vN` → `vN+1`). O cache do app é cache-first e versionado: sem o bump, o
 PWA já instalado continua servindo os arquivos antigos. É o mecanismo de deploy.
 
 Dois caches no SW, de propósito diferente:
-- app (`treino-vN`) — versionado, descartável, limpo no `activate`.
+- app (`anilha-vN`) — versionado, descartável, limpo no `activate`.
 - mídia (`workout-media`) — **nunca** versionado nem apagado; são dezenas de MB de
   fotos baixadas aos poucos. O ramo de mídia no `fetch` tem que vir **antes** do
   genérico, senão as fotos caem no cache versionado e somem no deploy seguinte.
@@ -101,6 +110,26 @@ exercícios criados antes do catálogo existir.
 séries, nunca gravados — editar/apagar uma série não deixa PR fantasma. 1RM por
 Epley (`peso × (1 + reps/30)`). Séries de aquecimento ficam fora de tudo. Série
 unilateral guarda `repsLeft`/`repsRight` em vez de `reps`.
+
+**Linguagem visual (direção "Anilha")** — a cor vem da anilha olímpica:
+vermelho 25 kg como destaque (`--accent`), amarelo 15 kg pro recorde (`--pr`),
+verde 10 kg pro que está em andamento (`--success`), sobre preto de aço neutro.
+Duas coisas que dependem disso:
+
+- **Cor por grupo muscular** (`--m-peito`, `--m-costas`, …) em `styles.css`, com
+  `groupColor()` em `ui.js` devolvendo `var(--m-x)` — os dois temas resolvem
+  sozinhos. A lista de chaves tem que casar com `MUSCLE_GROUPS` (`seed.js`), do
+  mesmo jeito que `ICON_GROUPS` — que hoje **usa** `groupColor()`, e por isso o
+  bloco de cor precisa ficar acima dele no arquivo. Não é enfeite: é a legenda
+  das barras da semana, da assinatura do treino no histórico (`workoutRow`), da
+  régua do cartão de exercício e dos ícones de grupo.
+  O canvas do cartão de compartilhar não resolve `var()`: ele repete a paleta
+  em hex (`GROUP_COLORS` em `share-image.js`), de propósito, porque o cartão é
+  sempre escuro mesmo com o app no tema claro.
+- **Duas famílias de tipo**: Manrope pra interface e **Barlow Condensed** só pro
+  dado (classe `.data`; rótulo em `.tag`). São 3 `woff2` estáticos locais em
+  `www/fonts/` — a Barlow Condensed não é variável. Precisam estar no `ASSETS`
+  do `sw.js`, senão o app quebra a tipografia offline.
 
 **`i18n.js`** — `t()`/`tn()`; `language()` lê síncrono de `db.settings()`.
 Dicionário em `i18n-strings.js` (PT/EN, chaves planas com namespace por ponto).

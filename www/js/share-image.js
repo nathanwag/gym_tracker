@@ -12,10 +12,10 @@
  * manifest.webmanifest.
  */
 
-import { workoutSummary, workoutHighlights } from './models.js';
+import { workoutSummary, workoutHighlights, workoutGroupBreakdown } from './models.js';
 import { t, tn, locale } from './i18n.js';
 import {
-  html, raw, node, openSheet, onSheetClose, toast,
+  APP_NAME, html, raw, node, openSheet, onSheetClose, toast,
   fmtNum, fmtDuration, fmtSetWithUnit, isIOS, isStandalone,
 } from './ui.js';
 
@@ -23,14 +23,42 @@ const WIDTH = 1080;
 const HEIGHT = 1920;
 const PAD = 84;
 
-const COLOR_BG_TOP = '#0f1115';
-const COLOR_BG_BOTTOM = '#171a21';
-const COLOR_ACCENT = '#2dd4e0';
-const COLOR_TEXT = '#e8eaef';
-const COLOR_MUTED = '#98a1b0';
-const COLOR_BORDER = 'rgba(232, 234, 239, 0.14)';
+const COLOR_BG_TOP = '#0b0c0d';
+const COLOR_BG_BOTTOM = '#17191c';
+const COLOR_ACCENT = '#e2564a';
+const COLOR_TEXT = '#eff0f1';
+const COLOR_MUTED = '#878c94';
+const COLOR_BORDER = 'rgba(239, 240, 241, 0.14)';
+const COLOR_PR = '#e9b93a';
+
+// Cor por grupo, em hex literal: o canvas nao resolve var(--m-x), e o cartao
+// e sempre escuro (mesma excecao ja declarada no topo do arquivo), entao ler
+// o tema ativo daria as cores erradas pra quem usa o app no claro. Os valores
+// batem com o bloco :root[data-theme="dark"] de styles.css.
+const GROUP_COLORS = {
+  'Peito': '#e0554a',
+  'Costas': '#3b7bd8',
+  'Lombar': '#5b94e0',
+  'Ombros': '#e3a03a',
+  'Trapézio': '#2e6bbd',
+  'Pescoço': '#c9922e',
+  'Bíceps': '#4fa35f',
+  'Tríceps': '#8f72d6',
+  'Quadríceps': '#2ca0a6',
+  'Posterior': '#d4699a',
+  'Glúteos': '#b8548a',
+  'Panturrilha': '#7c8794',
+  'Abdômen': '#e8785f',
+  'Antebraço': '#6fb07c',
+  'Cardio': '#e07b3c',
+  'Alongamento': '#8b96a3',
+  'Outros': '#7a828d',
+};
 
 const font = (weight, size) => `${weight} ${size}px Manrope, sans-serif`;
+// A condensada carrega todo numero e todo rotulo em caixa alta — as duas
+// pontas da escala do app.
+const fontData = (weight, size) => `${weight} ${size}px "Barlow Condensed", "Arial Narrow", sans-serif`;
 
 /* ---------- Dados ---------- */
 
@@ -50,37 +78,45 @@ async function loadFonts() {
     await Promise.all([
       document.fonts.load('600 16px Manrope'),
       document.fonts.load('800 16px Manrope'),
+      document.fonts.load('700 16px "Barlow Condensed"'),
+      document.fonts.load('800 16px "Barlow Condensed"'),
     ]);
     await document.fonts.ready;
   } catch { /* segue com a fonte de fallback do sistema */ }
 }
 
-function drawDumbbell(ctx, x, y, size) {
-  const s = size / 24;
+/** A anilha de frente: disco cheio, furo central e o encaixe da barra. E o
+ *  nome do app desenhado — o halter generico servia pra qualquer um. */
+function drawPlate(ctx, cx, cy, size) {
+  const r = size / 2;
   ctx.save();
-  ctx.translate(x, y);
-  ctx.strokeStyle = COLOR_ACCENT;
-  ctx.lineWidth = 2.2 * s;
-  ctx.lineCap = 'round';
-  const line = (x1, y1, x2, y2) => {
-    ctx.beginPath();
-    ctx.moveTo(x1 * s, y1 * s);
-    ctx.lineTo(x2 * s, y2 * s);
-    ctx.stroke();
-  };
-  line(6.5, 8, 6.5, 16);
-  line(17.5, 8, 17.5, 16);
-  line(3.5, 10, 3.5, 14);
-  line(20.5, 10, 20.5, 14);
-  line(6.5, 12, 17.5, 12);
+  ctx.fillStyle = COLOR_ACCENT;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // O furo recorta o disco em vez de pintar por cima: assim ele funciona sobre
+  // o degrade do fundo, que muda de tom ao longo do cartao.
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.34, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = COLOR_BG_TOP;
+  ctx.lineWidth = r * 0.16;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.66, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
 }
 
 /** Reduz o tamanho da fonte ate o texto caber em `maxWidth`. */
-function fitFontSize(ctx, text, weight, maxSize, maxWidth, minSize = 22) {
+function fitFontSize(ctx, text, weight, maxSize, maxWidth, minSize = 22, family = font) {
   let size = maxSize;
   while (size > minSize) {
-    ctx.font = font(weight, size);
+    ctx.font = family(weight, size);
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
@@ -113,19 +149,19 @@ function roundedRect(ctx, x, y, w, h, r) {
 }
 
 function drawBrand(ctx, workout) {
-  drawDumbbell(ctx, PAD, 62, 40);
-  ctx.fillStyle = COLOR_ACCENT;
-  ctx.font = font(800, 32);
+  drawPlate(ctx, PAD + 21, 74, 42);
+  ctx.fillStyle = COLOR_TEXT;
+  ctx.font = fontData(800, 40);
   ctx.textAlign = 'left';
-  spacedText(ctx, 'TREINO', PAD + 56, 88, 4);
+  spacedText(ctx, APP_NAME.toUpperCase(), PAD + 58, 89, 6);
 
   const startedAt = new Date(workout.startedAt);
   const weekday = new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(startedAt);
   const longDate = new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long', year: 'numeric' }).format(startedAt);
 
   ctx.fillStyle = COLOR_MUTED;
-  ctx.font = font(700, 28);
-  spacedText(ctx, `${weekday} · ${longDate}`.toUpperCase(), PAD, 152, 3);
+  ctx.font = fontData(700, 30);
+  spacedText(ctx, `${weekday} · ${longDate}`.toUpperCase(), PAD, 152, 4);
 }
 
 /** O volume da sessao ocupando a largura toda: e o numero que da a dimensao do
@@ -133,13 +169,21 @@ function drawBrand(ctx, workout) {
 function drawHero(ctx, summary, unit) {
   const value = fmtNum(summary.volume, 0);
   ctx.textAlign = 'left';
-  ctx.fillStyle = COLOR_ACCENT;
-  ctx.font = font(800, fitFontSize(ctx, value, 800, 260, WIDTH - PAD * 2, 110));
+  ctx.fillStyle = COLOR_TEXT;
+  ctx.font = fontData(800, fitFontSize(ctx, value, 800, 300, WIDTH - PAD * 2 - 150, 130, fontData));
   ctx.fillText(value, PAD, 420);
 
+  // A unidade encosta no numero, na linha de base dele — o mesmo par do
+  // bloco da semana no app.
   ctx.fillStyle = COLOR_MUTED;
-  ctx.font = font(800, 36);
-  spacedText(ctx, t('shareImage.volumeLabel', { unit }).toUpperCase(), PAD, 478, 6);
+  const unitFont = fontData(600, 76);
+  const numberWidth = ctx.measureText(value).width;
+  ctx.font = unitFont;
+  ctx.fillText(unit, PAD + numberWidth + 18, 420);
+
+  ctx.fillStyle = COLOR_MUTED;
+  ctx.font = fontData(700, 34);
+  spacedText(ctx, t('shareImage.volumeLabel').toUpperCase(), PAD, 478, 7);
 }
 
 /** Quebra "3 séries" em ["3", "séries"] pra desenhar o numero em negrito e o
@@ -162,30 +206,48 @@ function drawMeta(ctx, workout, summary, exerciseCount) {
   ctx.textAlign = 'left';
   for (const [value, label] of segments) {
     ctx.fillStyle = COLOR_TEXT;
-    ctx.font = font(800, 34);
+    ctx.font = fontData(800, 40);
     ctx.fillText(value, x, y);
     x += ctx.measureText(value).width + 10;
 
     ctx.fillStyle = COLOR_MUTED;
-    ctx.font = font(700, 34);
+    ctx.font = font(600, 30);
     ctx.fillText(label, x, y);
     x += ctx.measureText(label).width + 40;
   }
 }
 
-function drawPrBadge(ctx, x, baseline, loadSize) {
-  const h = Math.max(36, loadSize * 0.54);
-  ctx.font = font(800, h * 0.44);
-  const label = `🏆 ${t('shareImage.pr')}`;
-  const w = ctx.measureText(label).width + h * 0.8;
-  const top = baseline - h * 0.8;
+/** Estrela cheia, o mesmo desenho do recorde no livro-razao do app. */
+function drawStar(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const radius = i % 2 === 0 ? r : r * 0.45;
+    const angle = (Math.PI / 5) * i - Math.PI / 2;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
 
-  ctx.fillStyle = 'rgba(45, 212, 224, 0.14)';
-  roundedRect(ctx, x, top, w, h, h / 2);
+function drawPrBadge(ctx, x, baseline, loadSize) {
+  const h = Math.max(34, loadSize * 0.46);
+  const label = t('shareImage.pr');
+  ctx.font = fontData(800, h * 0.56);
+  const star = h * 0.3;
+  const w = ctx.measureText(label).width + h * 1.5;
+  const top = baseline - h * 0.82;
+
+  ctx.fillStyle = 'rgba(233, 185, 58, 0.16)';
+  roundedRect(ctx, x, top, w, h, h * 0.28);
   ctx.fill();
 
-  ctx.fillStyle = COLOR_ACCENT;
-  ctx.fillText(label, x + h * 0.4, top + h * 0.68);
+  ctx.fillStyle = COLOR_PR;
+  drawStar(ctx, x + h * 0.46, top + h / 2, star);
+  ctx.letterSpacing = '2px';
+  ctx.fillText(label, x + h * 0.86, top + h * 0.71);
+  ctx.letterSpacing = '0px';
 }
 
 /**
@@ -215,7 +277,7 @@ function drawBlocks(ctx, items, unit, top, bottom) {
   const blockHeight = Math.min(340, available / totalRows);
   const startY = top + (available - blockHeight * totalRows) / 2;
   const loadSize = Math.max(44, Math.min(112, blockHeight * 0.34));
-  const nameSize = Math.max(22, Math.min(34, blockHeight * 0.14));
+  const nameSize = Math.max(24, Math.min(38, blockHeight * 0.15));
   const maxWidth = WIDTH - PAD * 2;
 
   const rule = (y) => {
@@ -234,12 +296,12 @@ function drawBlocks(ctx, items, unit, top, bottom) {
 
     ctx.textAlign = 'left';
     ctx.fillStyle = COLOR_MUTED;
-    ctx.font = font(800, nameSize);
-    spacedText(ctx, truncate(ctx, item.name.toUpperCase(), maxWidth), PAD, middle - loadSize * 0.36, 3);
+    ctx.font = fontData(700, nameSize);
+    spacedText(ctx, truncate(ctx, item.name.toUpperCase(), maxWidth), PAD, middle - loadSize * 0.36, 4);
 
     const load = fmtSetWithUnit(item.topSet, unit);
-    ctx.fillStyle = item.pr ? COLOR_ACCENT : COLOR_TEXT;
-    ctx.font = font(800, loadSize);
+    ctx.fillStyle = item.pr ? COLOR_PR : COLOR_TEXT;
+    ctx.font = fontData(800, loadSize);
     ctx.fillText(load, PAD, middle + loadSize * 0.58);
 
     if (item.pr) {
@@ -252,11 +314,31 @@ function drawBlocks(ctx, items, unit, top, bottom) {
     rule(y);
     ctx.textAlign = 'left';
     ctx.fillStyle = COLOR_MUTED;
-    ctx.font = font(800, loadSize * 0.6);
+    ctx.font = fontData(800, loadSize * 0.6);
     ctx.fillText(`+ ${remaining}`, PAD, y + blockHeight * 0.62);
     y += blockHeight;
   }
   rule(y);
+}
+
+/** A mesma barra de cores que identifica o treino na lista do historico.
+ *  Sem ela o cartao nao dizia o que foi treinado — dois treinos de volume
+ *  parecido saiam identicos. */
+function drawSignature(ctx, breakdown, y) {
+  if (!breakdown.length) return;
+  const total = breakdown.reduce((acc, g) => acc + g.sets, 0);
+  const width = WIDTH - PAD * 2;
+  const gap = 6;
+  const usable = width - gap * (breakdown.length - 1);
+
+  let x = PAD;
+  for (const g of breakdown) {
+    const w = (g.sets / total) * usable;
+    ctx.fillStyle = GROUP_COLORS[g.group] || GROUP_COLORS['Outros'];
+    roundedRect(ctx, x, y, w, 14, 3);
+    ctx.fill();
+    x += w + gap;
+  }
 }
 
 function drawFooter(ctx) {
@@ -264,16 +346,20 @@ function drawFooter(ctx) {
   ctx.fillRect(PAD, HEIGHT - 92, WIDTH - PAD * 2, 5);
 }
 
-function drawCard(ctx, { workout, summary, unit, items }) {
+function drawCard(ctx, {
+  workout, summary, unit, items, breakdown,
+}) {
   const background = ctx.createLinearGradient(0, 0, 0, HEIGHT);
   background.addColorStop(0, COLOR_BG_TOP);
   background.addColorStop(1, COLOR_BG_BOTTOM);
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  const glow = ctx.createRadialGradient(WIDTH * 0.85, 140, 0, WIDTH * 0.85, 140, 520);
-  glow.addColorStop(0, 'rgba(45, 212, 224, 0.16)');
-  glow.addColorStop(1, 'rgba(45, 212, 224, 0)');
+  // Estava em ciano cravado, sobra da paleta antiga: o cartao saia com um
+  // halo azul num desenho todo vermelho.
+  const glow = ctx.createRadialGradient(WIDTH * 0.82, 120, 0, WIDTH * 0.82, 120, 560);
+  glow.addColorStop(0, 'rgba(226, 86, 74, 0.20)');
+  glow.addColorStop(1, 'rgba(226, 86, 74, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -282,7 +368,8 @@ function drawCard(ctx, { workout, summary, unit, items }) {
   drawBrand(ctx, workout);
   drawHero(ctx, summary, unit);
   drawMeta(ctx, workout, summary, items.length);
-  drawBlocks(ctx, items, unit, 620, HEIGHT - 150);
+  drawSignature(ctx, breakdown, 600);
+  drawBlocks(ctx, items, unit, 680, HEIGHT - 150);
   drawFooter(ctx);
 }
 
@@ -304,11 +391,11 @@ export async function generateImage(workout, sets, exercisesById, unit, allSets 
 
   await loadFonts();
   drawCard(ctx, {
-    workout, summary, unit, items,
+    workout, summary, unit, items, breakdown: workoutGroupBreakdown(sets, exercisesById),
   });
 
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-  const fileName = `treino-${String(workout.date || workout.startedAt || '').slice(0, 10)}.png`;
+  const fileName = `anilha-${String(workout.date || workout.startedAt || '').slice(0, 10)}.png`;
 
   let file = null;
   try {

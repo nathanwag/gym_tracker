@@ -91,7 +91,7 @@ export async function prepareBackup() {
   };
 
   const json = JSON.stringify(payload);
-  const fileName = `treino-${new Date().toISOString().slice(0, 10)}.json`;
+  const fileName = `anilha-${new Date().toISOString().slice(0, 10)}.json`;
 
   let file = null;
   try {
