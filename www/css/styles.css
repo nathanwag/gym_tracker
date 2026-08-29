@@ -515,9 +515,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 /* Chip quadrado e pequeno: na linha do treino ele acompanha o volume, nao
    compete com ele. */
 .badge--pr {
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--pr) 16%, transparent);
+  padding: 1px 0;
+  background: transparent;
   color: var(--pr);
   font-family: var(--display);
   font-size: .625rem;
@@ -663,7 +662,11 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .hrow__num { display: block; font-family: var(--display); font-size: 1.6rem; font-weight: 700; line-height: .9; font-variant-numeric: tabular-nums; }
 .hrow__wd { display: block; font-family: var(--display); font-size: .7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .hrow__mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.hrow__groups { font-size: .84rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Legenda da barra, nao segundo titulo. Os grupos aparecem duas vezes na
+   linha (em cor e por extenso) porque cor sozinha nao e acessivel — mas em
+   negrito branco o texto competia com a assinatura e com o volume, e a lista
+   virava quatro vozes no mesmo tom. */
+.hrow__groups { font-size: .84rem; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hrow__end { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .hrow__vol { font-family: var(--display); font-size: 1.1875rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .hrow__meta { display: flex; align-items: center; gap: 6px; }
