@@ -408,14 +408,20 @@ export async function generateImage(workout, sets, exercisesById, unit, allSets 
 }
 
 /** @returns {Promise<'shared'|'cancelled'|'downloaded'|'manual'>} */
+/** Erros que significam que a folha de compartilhamento NAO chegou a abrir —
+ *  so nesses vale tentar o download em seguida. Qualquer outra rejeicao pode
+ *  ter vindo depois de a imagem ja ter sido salva, e ai baixar de novo daria
+ *  dois arquivos (era o que acontecia na exportacao do backup). */
+const SHARE_NAO_ABRIU = new Set(['NotAllowedError', 'NotSupportedError', 'TypeError']);
+
 export async function shareImage({ file, blob, fileName }, { canDownload = true } = {}) {
   if (file && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: fileName });
       return 'shared';
     } catch (err) {
-      if (err?.name === 'AbortError') return 'cancelled';
-      // Qualquer outra falha cai para as alternativas abaixo.
+      if (!SHARE_NAO_ABRIU.has(err?.name)) return 'cancelled';
+      // A folha nao abriu: seguem as alternativas abaixo.
     }
   }
 

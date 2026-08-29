@@ -111,9 +111,17 @@ export async function prepareBackup() {
   };
 }
 
-/** @returns {Promise<'shared'|'cancelled'|'downloaded'|'copied'|'manual'>} */
+/**
+ * Exportar backup e SALVAR um arquivo, nao compartilhar. Por isso baixar vem
+ * primeiro e o compartilhamento so entra onde `<a download>` nao funciona
+ * (PWA instalado no iOS) — o inverso salvava dois arquivos: a folha de
+ * compartilhamento gravava um e, quando ela rejeitava a promessa depois de ja
+ * ter gravado (acontece no desktop, quando o app de destino nao responde de
+ * volta), a queda pro download gravava outro.
+ * @returns {Promise<'shared'|'cancelled'|'downloaded'|'copied'|'manual'>}
+ */
 export async function exportBackup(backup, { canDownload = true } = {}) {
-  if (backup.file && navigator.canShare?.({ files: [backup.file] })) {
+  if (!canDownload && backup.file && navigator.canShare?.({ files: [backup.file] })) {
     try {
       await navigator.share({ files: [backup.file], title: backup.fileName });
       return 'shared';
