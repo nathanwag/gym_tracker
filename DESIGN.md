@@ -69,6 +69,24 @@ Duas regras ao mexer nisso:
 mesmo nos cinco: barras da semana, assinatura do treino no histórico, régua do
 exercício concluído, pastilha do cartão de exercício e ícones de grupo.
 
+## A marca
+
+Três traços do mesmo comprimento, cada um mais grosso, em vermelho de anilha
+sobre preto de aço. A progressão está na **espessura**, não na altura — é o que
+a tira do território de gráfico de barras e a faz dizer a tese do app: mesma
+série, carga subindo.
+
+Vive em dois lugares e **tem que ser a mesma nos dois**: os PNG de
+`www/icons/` (mais o `icon.svg` do favicon) e o `drawMark()` do cartão de
+compartilhar. Marcas diferentes leem como dois apps.
+
+Geometria, na grade de 100 usada pelo `icon.svg`: traços de 48 de largura,
+alturas 5 / 9 / 14, começando em y 28 / 43 / 60. O `icon-512-maskable` desenha
+a marca a 82% porque o launcher recorta até 20% de cada borda.
+
+Os quatro PNG saem do canvas, sem dependência nova — o gerador é geometria
+pura, não rasterização de SVG, então não há serrilhado de escala.
+
 ## Tipo
 
 Duas famílias, com papéis fixos:

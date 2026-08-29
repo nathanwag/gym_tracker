@@ -85,30 +85,30 @@ async function loadFonts() {
   } catch { /* segue com a fonte de fallback do sistema */ }
 }
 
-/** A anilha de frente: disco cheio, furo central e o encaixe da barra. E o
- *  nome do app desenhado — o halter generico servia pra qualquer um. */
-function drawPlate(ctx, cx, cy, size) {
-  const r = size / 2;
+/** A marca do app: tres tracos do mesmo comprimento, cada um mais grosso.
+ *  E o MESMO desenho do icone (www/icons/) — marca de app e marca de peca
+ *  compartilhada tem que ser a mesma, senao quem ve as duas ve dois apps.
+ *  `x` e a borda esquerda dos tracos e `yCenter` o meio do bloco. */
+function drawMark(ctx, x, yCenter, width) {
+  // Proporcoes da grade de 100 do icone: tracos de 48 de largura, alturas
+  // 5/9/14, comecando em 0/15/32 a partir do topo do bloco.
+  const k = width / 48;
+  const alturas = [5, 9, 14];
+  const topos = [0, 15, 32];
+  const total = 46 * k;
+  const top = yCenter - total / 2;
+
   ctx.save();
   ctx.fillStyle = COLOR_ACCENT;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fill();
-
-  // O furo recorta o disco em vez de pintar por cima: assim ele funciona sobre
-  // o degrade do fundo, que muda de tom ao longo do cartao.
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.34, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.strokeStyle = COLOR_BG_TOP;
-  ctx.lineWidth = r * 0.16;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.66, 0, Math.PI * 2);
-  ctx.stroke();
+  for (let i = 0; i < 3; i++) {
+    const h = alturas[i] * k;
+    const y = top + topos[i] * k;
+    const r = h / 2;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, width, h, r);
+    else ctx.rect(x, y, width, h);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -149,11 +149,11 @@ function roundedRect(ctx, x, y, w, h, r) {
 }
 
 function drawBrand(ctx, workout) {
-  drawPlate(ctx, PAD + 21, 74, 42);
+  drawMark(ctx, PAD, 74, 34);
   ctx.fillStyle = COLOR_TEXT;
   ctx.font = fontData(800, 40);
   ctx.textAlign = 'left';
-  spacedText(ctx, APP_NAME.toUpperCase(), PAD + 58, 89, 6);
+  spacedText(ctx, APP_NAME.toUpperCase(), PAD + 52, 89, 6);
 
   const startedAt = new Date(workout.startedAt);
   const weekday = new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(startedAt);
