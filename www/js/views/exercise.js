@@ -17,8 +17,9 @@ import {
 import { t, tn, language } from '../i18n.js';
 import { cleanSteps, sameSteps } from '../text.js';
 import {
-  setTop, html, raw, node, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
-  fmtNum, fmtRelativeDay, fmtDate, fmtTempoSerie, fmtSet, stripAccents, refresh, wireSegmented,
+  setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
+  fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
+  fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented,
   groupedList, listInCard, groupColor,
 } from '../ui.js';
 
@@ -409,29 +410,35 @@ function photoSection(exercise, [blob0, blob1]) {
   return null;
 }
 
+// Sem cartao, no mesmo molde da tendencia da home: rotulo com a metrica de um
+// lado e a variacao do outro, e o grafico solto no fundo.
 function chartSection(summaries, unit, timeBased) {
   const m = metrics(timeBased);
   const card = node(html`
-    <div class="card">
-      <div class="card__pad" style="padding-bottom:6px">
-        <h2 style="font-size:1rem">${t('exercise.progress')}</h2>
-        <p class="muted small" data-change style="margin:2px 0 10px"></p>
-        <div class="segmented" data-metrics>
-          ${raw(Object.entries(m)
-            .map(([key, metric], i) => `<button class="segmented__btn" data-m="${key}" aria-pressed="${i === 0}">${metric.short}</button>`)
-            .join(''))}
-        </div>
+    <div>
+      <div class="lab">
+        <span data-window></span>
+        <span data-change></span>
       </div>
-      <div data-chart style="padding:6px 8px 12px"></div>
+      <div class="segmented" data-metrics>
+        ${raw(Object.entries(m)
+          .map(([key, metric], i) => `<button class="segmented__btn" data-m="${key}" aria-pressed="${i === 0}">${metric.short}</button>`)
+          .join(''))}
+      </div>
+      <div data-chart style="padding:10px 0 2px"></div>
     </div>
   `);
 
   const chartArea = card.querySelector('[data-chart]');
   const changeText = card.querySelector('[data-change]');
+  const windowText = card.querySelector('[data-window]');
 
   const draw = (key) => {
     const metric = m[key];
     chartArea.innerHTML = '';
+    windowText.textContent = summaries.length
+      ? t('exercise.chart.window', { label: metric.short, date: fmtDateShort(summaries[0].when) })
+      : t('exercise.progress');
 
     if (summaries.length < 2) {
       chartArea.append(node(html`
@@ -461,16 +468,9 @@ function chartSection(summaries, unit, timeBased) {
     }));
 
     const change = progressPct(summaries, metric.field);
-    if (change == null) {
-      changeText.textContent = '';
-    } else {
-      changeText.textContent = t('exercise.chart.change', {
-        sign: change >= 0 ? '+' : '',
-        value: fmtNum(change, 1),
-        label: metric.label,
-        date: fmtDate(summaries[0].when),
-      });
-    }
+    changeText.textContent = change == null ? '' :
+      t('common.pct', { sign: change >= 0 ? '+' : '', value: fmtNum(change, 1) });
+    changeText.style.color = change == null || change === 0 ? '' : `var(--${change > 0 ? 'success' : 'danger'})`;
   };
 
   wireSegmented(card, (button) => draw(button.dataset.m));
@@ -484,32 +484,41 @@ function historySection(summaries, prIds, unit, timeBased) {
   wrap.append(node(`<h2 class="section-title">${t('exercise.history.title')}</h2>`));
 
   if (!summaries.length) {
-    wrap.append(node(`<div class="card"><div class="empty small"><p>${t('exercise.history.empty')}</p></div></div>`));
+    wrap.append(node(`<div class="empty small"><p>${t('exercise.history.empty')}</p></div>`));
     return wrap;
   }
 
-  const items = [...summaries].reverse().map((r) => {
-    const sets = r.sets
-      .map((s) => `<span class="tnum">${fmtSet(s)}</span>${prIds.has(s.id) ? ' 🏆' : ''}`)
-      .join('<span class="muted"> · </span>');
-    const summaryLine = timeBased
-      ? t('exercise.history.totalTime', { time: fmtTempoSerie(r.totalDuration) })
-      : t('exercise.history.volumeRm', { volume: fmtNum(r.volume, 0), unit, rm: fmtNum(r.bestE1rm, 0) });
-    return html`
-      <li class="list__item">
-        <a class="list__link" href="#/historico/${r.workoutId}">
-          <div class="grow">
-            <div style="font-weight:650">${fmtRelativeDay(r.when)}</div>
-            <div class="small" style="margin-top:2px">${raw(sets)}</div>
-            <div class="muted small">${summaryLine}</div>
-          </div>
-          <span class="list__chev">${raw(ICON.chevron)}</span>
-        </a>
-      </li>
-    `;
-  });
+  // Mesma linha da lista de treinos: bloco de data a esquerda, a leitura
+  // principal no meio, o numero da sessao a direita. O que muda e o miolo —
+  // la e a assinatura de grupos, aqui e a serie que mandou no dia.
+  for (const r of [...summaries].reverse()) {
+    const best = bests(r.sets);
+    const topSet = best.setWeight || best.setDuration || r.sets[0];
+    const rest = r.sets.filter((s) => s !== topSet);
+    const isPR = r.sets.some((s) => prIds.has(s.id));
 
-  wrap.append(node(html`<div class="card"><ul class="list">${raw(items.join(''))}</ul></div>`));
+    wrap.append(node(html`
+      <a class="hrow" href="#/historico/${r.workoutId}">
+        <span class="hrow__day">
+          <span class="hrow__num">${fmtDayNum(r.when)}</span>
+          <span class="hrow__wd">${fmtMonthShort(r.when)}</span>
+        </span>
+        <span class="hrow__mid">
+          <span class="hrow__set">
+            ${fmtSetWithUnit(topSet, unit)}
+            ${isPR ? raw(`<span class="led__star" aria-label="${t('session.led.pr')}">${ICON.star}</span>`) : ''}
+          </span>
+          ${rest.length ? raw(`<span class="hrow__groups">${rest.map((s) => esc(fmtSet(s))).join(' · ')}</span>`) : ''}
+        </span>
+        <span class="hrow__end">
+          <span class="hrow__vol">${timeBased ? fmtTempoSerie(r.totalDuration) : fmtNum(r.volume, 0)}</span>
+          <span class="hrow__meta">
+            <span class="hrow__unit">${timeBased ? t('exercise.history.totalLabel') : unit}</span>
+          </span>
+        </span>
+      </a>
+    `));
+  }
   return wrap;
 }
 

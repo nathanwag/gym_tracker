@@ -89,10 +89,10 @@ três, e é o que separa "planilha" de "painel". Escala em `--fs-xs` … `--fs-h
 | Classe | O que é | Onde |
 |---|---|---|
 | `.week__big` | número grande + unidade na linha de base | início, detalhe do treino (`--sm`, um degrau abaixo) |
-| `.lab` | rótulo de seção com valor à direita | início, exercício |
+| `.lab` | rótulo de seção com valor à direita, usado como cabeçalho de gráfico (métrica · período à esquerda, variação % à direita) | início, exercício |
 | `.muscle-group` | barras por grupo, com `__goal` de meta | início |
 | `.sig` | assinatura: faixas por grupo, largura ∝ séries | histórico, cartão de compartilhar |
-| `.hrow` / `.mo` | linha de treino / cabeçalho de mês | lista do histórico |
+| `.hrow` / `.mo` | linha de treino / cabeçalho de mês | lista do histórico e sessões de um exercício |
 | `.exc__banner` | foto em faixa com nome por cima | sessão (118 px), histórico (`--sm`, 90 px) |
 | `.led` | livro-razão: peso e reps em colunas | sessão e detalhe do treino |
 | `.livebar` | tempo/volume/séries correndo | sessão |

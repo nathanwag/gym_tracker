@@ -674,6 +674,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
    linha (em cor e por extenso) porque cor sozinha nao e acessivel — mas em
    negrito branco o texto competia com a assinatura e com o volume, e a lista
    virava quatro vozes no mesmo tom. */
+/* A serie que mandou no dia, na lista de sessoes de um exercicio: ocupa o
+   lugar que a assinatura de grupos ocupa na lista de treinos. */
+.hrow__set { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 1.12rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hrow__set .led__star svg { width: 13px; height: 13px; }
 .hrow__groups { font-size: .84rem; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hrow__end { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .hrow__vol { font-family: var(--display); font-size: 1.1875rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }

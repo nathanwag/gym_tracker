@@ -393,8 +393,12 @@ export const ICON_GROUPS = {
   'Outros': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('Outros')}"><path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/></svg>`,
 };
 
-/** Dia do mes e abreviacao do dia da semana, pro bloco de data da linha. */
-const fmtDayNum = (iso) => new Intl.DateTimeFormat(locale(), { day: 'numeric' }).format(new Date(iso));
+/** Dia do mes e abreviacao do dia da semana (ou do mes), pro bloco de data da
+ *  linha. A lista de treinos usa o dia da semana; a de sessoes de um exercicio
+ *  usa o mes, porque ali as datas atravessam meses e "29 QUI" seria ambiguo. */
+export const fmtDayNum = (iso) => new Intl.DateTimeFormat(locale(), { day: 'numeric' }).format(new Date(iso));
+export const fmtMonthShort = (iso) => new Intl.DateTimeFormat(locale(), { month: 'short' }).format(new Date(iso))
+  .replace(/\.$/, '');
 const fmtWeekdayShort = (iso) => new Intl.DateTimeFormat(locale(), { weekday: 'short' }).format(new Date(iso))
   .replace(/\.$/, '');
 

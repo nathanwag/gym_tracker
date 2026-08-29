@@ -227,7 +227,7 @@ function trendCard(sets, workoutsById, unit) {
     // desde 06/07") repetia o que o rotulo ao lado e o eixo do grafico ja dizem.
     const change = progressPct(trend, key);
     changeText.textContent = change == null ? '' :
-      t('home.trend.pct', { sign: change >= 0 ? '+' : '', value: fmtNum(change, 1) });
+      t('common.pct', { sign: change >= 0 ? '+' : '', value: fmtNum(change, 1) });
     changeText.style.color = change == null || change === 0 ? '' : `var(--${change > 0 ? 'success' : 'danger'})`;
   };
 

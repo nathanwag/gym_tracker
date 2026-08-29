@@ -30,6 +30,8 @@ export const DICT = {
     // "PR" nao flexiona em nenhum dos dois idiomas; o plural existe so pra
     // tn() ter as duas formas.
     'common.pr': { one: '{n} PR', other: '{n} PR' },
+    // Usado pela home e pela tela de exercicio — mesma leitura nas duas.
+    'common.pct': '{sign}{value}%',
 
     // ---------- ui.js: helpers compartilhados ----------
     'ui.decrease': 'Diminuir {label}',
@@ -131,7 +133,6 @@ export const DICT = {
     'home.goal': 'Meta {n}',
     'home.gymTime': 'na academia',
     'home.trend.window': '{label} · 8 semanas',
-    'home.trend.pct': '{sign}{value}%',
     'home.trend.metricSets': 'Séries',
     'home.trend.labelSets': 'séries por semana',
     'home.trend.metricVolume': 'Volume',
@@ -192,11 +193,10 @@ export const DICT = {
     'exercise.progress': 'Evolução',
     'exercise.chart.emptyNoSets': 'Nenhuma série registrada ainda.',
     'exercise.chart.emptyFewWorkouts': 'Registre este exercício em pelo menos dois treinos para ver a linha de evolução.',
-    'exercise.chart.change': '{sign}{value}% em {label} desde a primeira sessão ({date}).',
+    'exercise.chart.window': '{label} · desde {date}',
     'exercise.history.title': 'Histórico',
     'exercise.history.empty': 'Sem sessões registradas.',
-    'exercise.history.volumeRm': 'volume {volume} {unit} · 1RM {rm}',
-    'exercise.history.totalTime': 'tempo total {time}',
+    'exercise.history.totalLabel': 'total',
     'exercise.menu.rename': 'Renomear / mudar grupo',
     'exercise.menu.changePhoto': 'Trocar figura',
     'exercise.menu.choosePhotoFromCatalog': 'Escolher figura do catálogo',
@@ -395,6 +395,8 @@ export const DICT = {
     'common.day': { one: '{n} day', other: '{n} days' },
     'common.week': { one: '{n} week', other: '{n} weeks' },
     'common.pr': { one: '{n} PR', other: '{n} PR' },
+    // Usado pela home e pela tela de exercicio — mesma leitura nas duas.
+    'common.pct': '{sign}{value}%',
 
     // ---------- ui.js ----------
     'ui.decrease': 'Decrease {label}',
@@ -495,7 +497,6 @@ export const DICT = {
     'home.goal': 'Goal {n}',
     'home.gymTime': 'at the gym',
     'home.trend.window': '{label} · 8 weeks',
-    'home.trend.pct': '{sign}{value}%',
     'home.trend.metricSets': 'Sets',
     'home.trend.labelSets': 'sets per week',
     'home.trend.metricVolume': 'Volume',
@@ -556,11 +557,10 @@ export const DICT = {
     'exercise.progress': 'Progress',
     'exercise.chart.emptyNoSets': 'No sets logged yet.',
     'exercise.chart.emptyFewWorkouts': 'Log this exercise in at least two workouts to see the progress line.',
-    'exercise.chart.change': '{sign}{value}% in {label} since the first session ({date}).',
+    'exercise.chart.window': '{label} · since {date}',
     'exercise.history.title': 'History',
     'exercise.history.empty': 'No sessions logged.',
-    'exercise.history.volumeRm': 'volume {volume} {unit} · 1RM {rm}',
-    'exercise.history.totalTime': 'total time {time}',
+    'exercise.history.totalLabel': 'total',
     'exercise.menu.rename': 'Rename / change group',
     'exercise.menu.changePhoto': 'Change photo',
     'exercise.menu.choosePhotoFromCatalog': 'Choose photo from catalog',
