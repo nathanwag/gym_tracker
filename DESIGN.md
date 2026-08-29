@@ -40,8 +40,30 @@ prática é o preenchimento (ação primária é sólida, destrutiva é contorno
 
 `--m-peito`, `--m-costas`, … em `styles.css`, com **`groupColor(grupo)`** em
 `ui.js` devolvendo `var(--m-x)` — a mesma chamada serve nos dois temas, sem a
-view saber qual está ativo. Famílias por região do corpo: costas em azul,
-braços em verde/violeta, pernas em teal/rosa.
+view saber qual está ativo.
+
+**Três famílias, não dezessete matizes soltos:**
+
+| Família | Matiz | Grupos (do mais claro ao mais escuro) |
+|---|---|---|
+| Empurrar | vermelho | Peito, Ombros, Tríceps |
+| Puxar | azul | Costas, Lombar, Trapézio, Bíceps, Antebraço |
+| Pernas | verde-azulado | Quadríceps, Posterior, Glúteos, Panturrilha |
+| — | aço | Abdômen, Cardio, Pescoço, Outros, Alongamento |
+
+Dentro da família muda só a luminosidade. Dezessete matizes distintos viravam
+arco-íris: cada linha do histórico tinha três cores brigando e a lista inteira
+vibrava. Assim **um dia de treino tem uma cor**, e a cor passa a dizer que tipo
+de treino foi — que é como se pensa a semana.
+
+Duas regras ao mexer nisso:
+
+- **Grupos que treinam juntos ficam em degraus distantes.** Costas e bíceps são
+  o par mais comum, então estão a três passos um do outro; sem isso a barra do
+  dia vira um bloco chapado e some a proporção.
+- **O degrau mais escuro precisa funcionar como traço fino, não só como barra.**
+  A barra tem massa e aguenta escuro; o ícone de grupo é um traço de 2 px, e foi
+  por isso que a opacidade da silhueta subiu pra 62%.
 
 **Não é enfeite, é legenda.** Aparece em cinco lugares e tem que significar o
 mesmo nos cinco: barras da semana, assinatura do treino no histórico, régua do

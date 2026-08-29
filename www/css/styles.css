@@ -19,29 +19,25 @@
   --danger: #b3231b;
   --success: #2c7a48;
 
-  /* Cor por grupo muscular. Nao e enfeite: e a mesma legenda nas barras da
-     semana, na assinatura do treino no historico e na regua do cartao de
-     exercicio -- o que torna um dia de perna reconhecivel de um de peito sem
-     ler uma palavra. Familias por regiao do corpo (costas em azul, bracos em
-     verde/violeta, pernas em teal/rosa), escurecidas aqui pra segurar
-     contraste sobre claro. */
-  --m-peito: #c0402f;
-  --m-costas: #24559e;
-  --m-lombar: #3a6cb0;
-  --m-ombros: #a8720f;
-  --m-trapezio: #1d4a86;
-  --m-pescoco: #8a6420;
-  --m-biceps: #2f6b3c;
-  --m-triceps: #57429b;
-  --m-quadriceps: #17696d;
-  --m-posterior: #a03c6d;
-  --m-gluteos: #7d2f5c;
-  --m-panturrilha: #5c6570;
-  --m-abdomen: #b55a3c;
-  --m-antebraco: #4d8659;
-  --m-cardio: #b25b1e;
-  --m-alongamento: #6a7480;
-  --m-outros: #7a7f88;
+  /* Cor por grupo muscular em tres familias — ver o bloco do tema escuro
+     abaixo pro racional. Escurecidas aqui pra segurar contraste sobre claro. */
+  --m-peito: #c94435;
+  --m-ombros: #a5342a;
+  --m-triceps: #7a251e;
+  --m-costas: #2f66b8;
+  --m-lombar: #255296;
+  --m-trapezio: #1c4076;
+  --m-biceps: #173458;
+  --m-antebraco: #122a45;
+  --m-quadriceps: #1e8b92;
+  --m-posterior: #176e75;
+  --m-gluteos: #12565c;
+  --m-panturrilha: #0d4146;
+  --m-abdomen: #69717c;
+  --m-cardio: #575f69;
+  --m-pescoco: #464d56;
+  --m-outros: #3a4149;
+  --m-alongamento: #2e343b;
 
   /* Escala tipografica: o salto do rotulo ao dado e de sete vezes, nao de
      tres. Contraste extremo e o que faz um numero parecer dado -- antes o
@@ -89,23 +85,35 @@
     --danger: #ff6b6b;
     --success: #46a05c;
 
-    --m-peito: #e0554a;
-    --m-costas: #3b7bd8;
-    --m-lombar: #5b94e0;
-    --m-ombros: #e3a03a;
-    --m-trapezio: #2e6bbd;
-    --m-pescoco: #c9922e;
-    --m-biceps: #4fa35f;
-    --m-triceps: #8f72d6;
-    --m-quadriceps: #2ca0a6;
-    --m-posterior: #d4699a;
-    --m-gluteos: #b8548a;
-    --m-panturrilha: #7c8794;
-    --m-abdomen: #e8785f;
-    --m-antebraco: #6fb07c;
-    --m-cardio: #e07b3c;
-    --m-alongamento: #8b96a3;
-    --m-outros: #7a828d;
+    /* Tres familias, nao dezessete matizes soltos: empurrar em vermelho,
+       puxar em azul, pernas em verde-azulado, e aco pro que nao e nenhum dos
+       tres. Dentro da familia muda so a luminosidade, do grupo principal
+       (mais claro) ao acessorio. Assim um dia de treino tem UMA cor na lista
+       do historico, em vez de tres competindo — e a cor passa a dizer que
+       tipo de treino foi. */
+    /* Tres familias, nao dezessete matizes soltos: empurrar em vermelho,
+       puxar em azul, pernas em verde-azulado, e aco pro que nao e nenhum dos
+       tres. Dentro da familia muda so a luminosidade, do grupo principal
+       (mais claro) ao acessorio. Assim um dia de treino tem UMA cor na lista
+       do historico, em vez de tres competindo — e a cor passa a dizer que
+       tipo de treino foi. */
+--m-peito: #ec6154;
+--m-ombros: #c4483b;
+--m-triceps: #96322a;
+--m-costas: #5a92e8;
+--m-lombar: #4276c4;
+--m-trapezio: #345f9f;
+--m-biceps: #27497c;
+--m-antebraco: #1c3a63;
+--m-quadriceps: #45c2c8;
+--m-posterior: #2d9aa1;
+--m-gluteos: #20787e;
+--m-panturrilha: #175b61;
+--m-abdomen: #9aa1ab;
+--m-cardio: #828a95;
+--m-pescoco: #6b737e;
+--m-outros: #5a626c;
+--m-alongamento: #4a515a;
 
     --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .38);
   }
@@ -126,23 +134,23 @@
   --danger: #ff6b6b;
   --success: #46a05c;
 
-  --m-peito: #e0554a;
-  --m-costas: #3b7bd8;
-  --m-lombar: #5b94e0;
-  --m-ombros: #e3a03a;
-  --m-trapezio: #2e6bbd;
-  --m-pescoco: #c9922e;
-  --m-biceps: #4fa35f;
-  --m-triceps: #8f72d6;
-  --m-quadriceps: #2ca0a6;
-  --m-posterior: #d4699a;
-  --m-gluteos: #b8548a;
-  --m-panturrilha: #7c8794;
-  --m-abdomen: #e8785f;
-  --m-antebraco: #6fb07c;
-  --m-cardio: #e07b3c;
-  --m-alongamento: #8b96a3;
-  --m-outros: #7a828d;
+--m-peito: #ec6154;
+--m-ombros: #c4483b;
+--m-triceps: #96322a;
+--m-costas: #5a92e8;
+--m-lombar: #4276c4;
+--m-trapezio: #345f9f;
+--m-biceps: #27497c;
+--m-antebraco: #1c3a63;
+--m-quadriceps: #45c2c8;
+--m-posterior: #2d9aa1;
+--m-gluteos: #20787e;
+--m-panturrilha: #175b61;
+--m-abdomen: #9aa1ab;
+--m-cardio: #828a95;
+--m-pescoco: #6b737e;
+--m-outros: #5a626c;
+--m-alongamento: #4a515a;
 
   --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .38);
 }

@@ -360,7 +360,7 @@ const dot = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="current
 // opacidade: a silhueta e o andaime, a mancha e a informacao.
 const body = (group, ...dots) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor(group)}">`
-  + `<path d="${BODY_PATH}" opacity=".45" stroke-width="2.2"/>`
+  + `<path d="${BODY_PATH}" opacity=".62" stroke-width="2.3"/>`
   + `${dots.map((p) => dot(...p)).join('')}</svg>`;
 
 export const ICON_GROUPS = {
