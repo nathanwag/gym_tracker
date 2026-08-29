@@ -10,9 +10,13 @@
  *    precisa aparecer como um vao, senao o grafico mente sobre o ritmo.
  *  - Rotulos so no primeiro, no ultimo e no melhor ponto. Numero em cima de todo
  *    ponto vira ruido e some com a tendencia, que e o que interessa.
+ *  - Linha curva (ver curve.js) e sem bolinha em cada ponto: com 8 marcas a
+ *    linha lia como serie de segmentos, nao como tendencia. A bolinha existe,
+ *    invisivel, e aparece na ponta e no ponto tocado.
  *  - Toque em qualquer ponto abre o detalhe daquela sessao.
  */
 
+import { smoothPath } from './curve.js';
 import { fmtNum, fmtDateShort } from './ui.js';
 import { t } from './i18n.js';
 
@@ -92,7 +96,7 @@ export function lineChart({
   }).join('');
 
   /* --- area e linha --- */
-  const path = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join('');
+  const path = smoothPath(coords);
   const area = points.length > 1
     ? `<path class="chart__area" d="${path}L${coords[coords.length - 1][0].toFixed(1)},${plot.y1}L${coords[0][0].toFixed(1)},${plot.y1}Z"/>`
     : '';
@@ -116,8 +120,10 @@ export function lineChart({
        <text class="chart__label" x="${plot.x1}" y="${H - 6}" text-anchor="end">${fmtDateShort(points[points.length - 1].when)}</text>`
     : `<text class="chart__label" x="${W / 2}" y="${H - 6}" text-anchor="middle">${fmtDateShort(points[0].when)}</text>`;
 
+  // A bolinha fica no DOM mas invisivel: e o ancoradouro do estado "tocado".
+  // So a ultima aparece sempre — e onde a leitura termina.
   const dots = coords
-    .map(([x, y], i) => `<circle class="chart__dot" data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>`)
+    .map(([x, y], i) => `<circle class="chart__dot${i === coords.length - 1 ? ' chart__dot--end' : ''}" data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>`)
     .join('');
 
   // Alvos de toque bem maiores que a bolinha: 8px de diametro e pequeno demais
