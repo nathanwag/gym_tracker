@@ -111,25 +111,21 @@ séries, nunca gravados — editar/apagar uma série não deixa PR fantasma. 1RM
 Epley (`peso × (1 + reps/30)`). Séries de aquecimento ficam fora de tudo. Série
 unilateral guarda `repsLeft`/`repsRight` em vez de `reps`.
 
-**Linguagem visual (direção "Anilha")** — a cor vem da anilha olímpica:
-vermelho 25 kg como destaque (`--accent`), amarelo 15 kg pro recorde (`--pr`),
-verde 10 kg pro que está em andamento (`--success`), sobre preto de aço neutro.
-Duas coisas que dependem disso:
+**Identidade visual (direção "Anilha")** — está em [`DESIGN.md`](DESIGN.md):
+paleta, escala de tipo, vocabulário de componentes e as peças de UI que não
+devem ser duplicadas. **Leia antes de mexer em `styles.css` ou em qualquer
+tela.** O que quebra o app, e por isso fica aqui:
 
-- **Cor por grupo muscular** (`--m-peito`, `--m-costas`, …) em `styles.css`, com
-  `groupColor()` em `ui.js` devolvendo `var(--m-x)` — os dois temas resolvem
-  sozinhos. A lista de chaves tem que casar com `MUSCLE_GROUPS` (`seed.js`), do
-  mesmo jeito que `ICON_GROUPS` — que hoje **usa** `groupColor()`, e por isso o
-  bloco de cor precisa ficar acima dele no arquivo. Não é enfeite: é a legenda
-  das barras da semana, da assinatura do treino no histórico (`workoutRow`), da
-  régua do cartão de exercício e dos ícones de grupo.
-  O canvas do cartão de compartilhar não resolve `var()`: ele repete a paleta
-  em hex (`GROUP_COLORS` em `share-image.js`), de propósito, porque o cartão é
-  sempre escuro mesmo com o app no tema claro.
-- **Duas famílias de tipo**: Manrope pra interface e **Barlow Condensed** só pro
-  dado (classe `.data`; rótulo em `.tag`). São 3 `woff2` estáticos locais em
-  `www/fonts/` — a Barlow Condensed não é variável. Precisam estar no `ASSETS`
-  do `sw.js`, senão o app quebra a tipografia offline.
+- **`groupColor()` tem que ficar acima de `ICON_GROUPS`** em `ui.js`: os ícones
+  chamam ela na inicialização do módulo, e `const` usada antes da declaração
+  derruba o app no carregamento — não num teste. As chaves de cor e de ícone
+  têm que casar com `MUSCLE_GROUPS` (`seed.js`).
+- **Os 3 `woff2` da Barlow Condensed** (`www/fonts/`, estáticos — a família não
+  é variável) precisam estar no `ASSETS` do `sw.js`, senão a tipografia quebra
+  offline.
+- **O cartão de compartilhar repete a paleta em hex** (`GROUP_COLORS` em
+  `share-image.js`): canvas não resolve `var()`, e o cartão é sempre escuro
+  mesmo com o app no tema claro.
 
 **`i18n.js`** — `t()`/`tn()`; `language()` lê síncrono de `db.settings()`.
 Dicionário em `i18n-strings.js` (PT/EN, chaves planas com namespace por ponto).
