@@ -1,4 +1,4 @@
-# Treino
+# Anilha
 
 App para registrar **peso e repetições** de cada série na academia e acompanhar a evolução ao longo
 do tempo, com gráficos de progressão e recordes automáticos.
@@ -51,16 +51,16 @@ local (`http://192.168.x.x:8000`) abre o app, mas não instala nem guarda offlin
 ```bash
 git init
 git add .
-git commit -m "Treino"
+git commit -m "Anilha"
 git branch -M main
-git remote add origin https://github.com/SEU-USUARIO/treino.git
+git remote add origin https://github.com/SEU-USUARIO/anilha.git
 git push -u origin main
 ```
 
 No GitHub: **Settings → Pages → Source: GitHub Actions** — e não *Deploy from a branch*, que faria o
 Jekyll renderizar este README como página inicial em vez de publicar o app. O workflow em
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publica a pasta `www/` a cada push e
-devolve uma URL `https://SEU-USUARIO.github.io/treino/`.
+devolve uma URL `https://SEU-USUARIO.github.io/anilha/`.
 
 > Se a primeira execução falhar com *"Get Pages site failed"*, é porque ela rodou antes de o Pages
 > estar em modo GitHub Actions. Trocar a opção no Settings **não re-dispara o workflow**: rode-o de
@@ -162,7 +162,7 @@ Estas não são estilo — cada uma quebra o app dentro do WebView nativo ou no 
 4. **Storage isolado em `db.js`**, backup isolado em `backup.js`, dados estáticos em `catalog.js`.
    Trocar para SQLite nativo depois não encosta nas telas.
 5. **Dois caches no service worker.** O do app é versionado e descartável; o de figuras
-   (`treino-midia`) **não** é versionado e nunca é apagado no `activate` — senão cada deploy jogaria
+   (`workout-media`) **não** é versionado e nunca é apagado no `activate` — senão cada deploy jogaria
    fora dezenas de MB que o usuário baixou aos poucos. O ramo de mídia no `fetch` precisa vir antes
    do genérico, ou as fotos acabam no cache versionado e somem na atualização seguinte.
 6. **Safe areas** (`env(safe-area-inset-*)`) para Dynamic Island e barra de gestos.

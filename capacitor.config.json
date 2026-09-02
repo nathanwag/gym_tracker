@@ -1,6 +1,6 @@
 {
-  "appId": "com.nwkau.treino",
-  "appName": "Treino",
+  "appId": "com.nwkau.anilha",
+  "appName": "Anilha",
   "webDir": "www",
   "bundledWebRuntime": false,
   "android": {
