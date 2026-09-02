@@ -12,7 +12,7 @@
  * GitHub Pages quanto na origem local do WebView nativo.
  */
 
-const VERSION = 'anilha-v29';
+const VERSION = 'anilha-v30';
 
 // Dois caches de proposito. O do app e versionado e descartavel: bumpar VERSION
 // e como se deploya. O de midia NAO e versionado — sao dezenas de MB de fotos
@@ -63,6 +63,7 @@ const ASSETS = [
   './js/views/catalog.js',
   './js/views/history.js',
   './js/views/settings.js',
+  './js/views/templates.js',
   // O catalogo entra no precache para a busca funcionar offline. As 873
   // miniaturas NAO entram: 873 cache.add em paralelo num 3G de academia demora
   // minutos, e se o install falhar o app perde o offline inteiro. Elas sao

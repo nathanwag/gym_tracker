@@ -82,9 +82,12 @@ direto — passam pelas camadas abaixo.
 
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,
-  `settings`, `exerciseImages`. `DB_VERSION` + `onupgradeneeded` com blocos
-  `if (event.oldVersion < N)`. Migração tem que ser **100% síncrona** (WebKit
-  encerra transação que fica ociosa — nada de `await` no meio). Helper `tx()`.
+  `settings`, `exerciseImages`, `workoutTemplates` (modelo de treino = nome +
+  ordem de `exerciseIds`, a mesma forma do treino; `startWorkoutFromTemplate()`
+  é o único caminho de "treinar a partir de um modelo"). `DB_VERSION` +
+  `onupgradeneeded` com blocos `if (event.oldVersion < N)`. Migração tem que ser
+  **100% síncrona** (WebKit encerra transação que fica ociosa — nada de `await`
+  no meio). Helper `tx()`.
   A biblioteca de exercícios (~80 itens) fica em cache na memória; qualquer
   escrita invalida.
 - `catalog.js` — única a ler `www/data/`. O catálogo (873 exercícios,

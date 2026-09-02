@@ -1,12 +1,12 @@
-/* Tela pra escolher um exercicio e por num treino, em duas etapas: primeiro o
- * grupo muscular (alvos grandes, pensados pra mao suada no meio da serie),
- * depois o exercicio daquele grupo.
+/* Tela pra escolher um exercicio, em duas etapas: primeiro o grupo muscular
+ * (alvos grandes, pensados pra mao suada no meio da serie), depois o exercicio
+ * daquele grupo.
  *
  * Era um bottom sheet, que na pratica ja ocupava 88% da tela — mas sem botao
- * de voltar e com rolagem dentro de rolagem. Virou rota
- * (#/treino/:id/adicionar) usada tanto pelo treino em andamento quanto pela
- * edicao de um treino do historico: nos dois casos a tarefa e a mesma, "por o
- * exercicio E no treino T".
+ * de voltar e com rolagem dentro de rolagem. Virou rota, usada por dois
+ * destinos diferentes: um treino (em andamento ou do historico) e um modelo.
+ * A diferenca entre eles esta so nos dois pontos de entrada aqui embaixo; o
+ * miolo — grupos, busca, catalogo, criar na hora — e o mesmo.
  *
  * As tres saidas de "preciso de um exercicio que ainda nao tenho" continuam
  * aqui: biblioteca, catalogo de 873 (pela busca) e criar na hora. */
@@ -33,6 +33,7 @@ export function takeLastAdded() {
   return id;
 }
 
+/** Escolher pra um treino: um toque adiciona e ja volta pra sessao. */
 export async function render(view, workoutId) {
   const [workout, exercises] = await Promise.all([
     db.getWorkout(workoutId),
@@ -48,14 +49,65 @@ export async function render(view, workoutId) {
   // Treino em aberto se retoma pela sessao; treino fechado vive no historico.
   // So vale como destino de emergencia: goBack() prefere de onde a pessoa veio.
   const backTo = workout.finishedAt ? `#/historico/${workout.id}` : '#/sessao';
-  const alreadyChosenIds = new Set(workout.exerciseIds || []);
 
+  await renderPicker({
+    view,
+    exercises,
+    title: t('picker.sheetTitle'),
+    backTo,
+    chosen: new Set(workout.exerciseIds || []),
+    chosenLabel: t('picker.inWorkout'),
+    onChoose: async (exercise) => {
+      await db.addExerciseToWorkout(workout.id, exercise.id);
+      lastAdded = exercise.id;
+      goBack(backTo);
+    },
+  });
+}
+
+/** Escolher pra um modelo: a tela FICA aberta a cada escolha. Montar uma
+ *  rotina e por meia duzia de exercicios de uma vez — sair e voltar a cada um
+ *  e justamente a dor que o modelo veio resolver. */
+export async function renderForTemplate(view, templateId) {
+  const [template, exercises] = await Promise.all([
+    db.getTemplate(templateId),
+    db.listExercises(),
+  ]);
+
+  if (!template) {
+    setTop({ title: t('templates.addExercise'), back: '#/modelos' });
+    view.append(node(`<div class="card card__pad">${t('templates.notFound')}</div>`));
+    return;
+  }
+
+  await renderPicker({
+    view,
+    exercises,
+    title: t('templates.addExercise'),
+    backTo: `#/modelos/${template.id}`,
+    chosen: new Set(template.exerciseIds || []),
+    chosenLabel: t('picker.inTemplate'),
+    keepOpen: true,
+    onChoose: (exercise) => db.addExerciseToTemplate(template.id, exercise.id),
+  });
+}
+
+/** O seletor em si. Quem chama diz o que ja esta escolhido e o que fazer com a
+ *  escolha; `keepOpen` decide se a tela sai do ar depois dela. */
+async function renderPicker({
+  view, title, backTo, exercises, chosen, chosenLabel, keepOpen = false, onChoose,
+}) {
   openGroup = null;
 
   const choose = async (exercise) => {
-    await db.addExerciseToWorkout(workout.id, exercise.id);
-    lastAdded = exercise.id;
-    goBack(backTo);
+    await onChoose(exercise);
+    if (!keepOpen) return;
+    chosen.add(exercise.id);
+    // A escolha pode ter acabado de criar o exercicio (veio do catalogo ou do
+    // "criar do zero"), entao a biblioteca e relida antes de redesenhar.
+    exercises = await db.listExercises();
+    toast(t('templates.added', { name: exercise.name }));
+    draw();
   };
 
   const root = node(html`
@@ -73,7 +125,7 @@ export async function render(view, workoutId) {
   let catalogHint = false;
 
   const topbar = () => setTop({
-    title: openGroup ? groupLabel(openGroup) : t('picker.sheetTitle'),
+    title: openGroup ? groupLabel(openGroup) : title,
     back: backTo,
     // Dentro de um grupo, voltar sobe uma etapa em vez de sair da tela.
     actions: '',
@@ -100,7 +152,7 @@ export async function render(view, workoutId) {
         stripAccents(e.name).includes(q) || stripAccents(e.muscleGroup).includes(q));
 
       if (filtered.length) {
-        results.append(listInCard(filtered.map((ex) => exerciseItem(ex, alreadyChosenIds, choose))));
+        results.append(listInCard(filtered.map((ex) => exerciseItem(ex, chosen, choose, chosenLabel))));
       } else {
         results.append(node(html`<p class="muted small">${t('picker.noneFound')}</p>`));
       }
@@ -135,7 +187,7 @@ export async function render(view, workoutId) {
     // Etapa 2: os exercicios do grupo escolhido.
     if (openGroup) {
       const items = exercises.filter((e) => e.muscleGroup === openGroup);
-      results.append(listInCard(items.map((ex) => exerciseItem(ex, alreadyChosenIds, choose))));
+      results.append(listInCard(items.map((ex) => exerciseItem(ex, chosen, choose, chosenLabel))));
       return;
     }
 
@@ -211,7 +263,7 @@ async function showCatalogSuggestions(target, term, exercises, choose) {
       </li>
     `);
     li.querySelector('button').onclick = async () => {
-      // Um toque faz tudo: entra na biblioteca, entra no treino e ja busca as
+      // Um toque faz tudo: entra na biblioteca, entra no destino e ja busca as
       // fotos com a rede que houver agora.
       const created = await db.addExerciseFromCatalog(item);
       prefetchPhotos(item.slug);
@@ -226,8 +278,8 @@ async function showCatalogSuggestions(target, term, exercises, choose) {
 /** Uma linha de exercicio no seletor — usada tanto na lista plana (buscando)
  *  quanto na lista de um grupo, sem embrulho de card: quem monta a lista ao
  *  redor decide isso. */
-function exerciseItem(ex, alreadyChosenIds, choose) {
-  const chosen = alreadyChosenIds.has(ex.id);
+function exerciseItem(ex, chosenIds, choose, chosenLabel) {
+  const chosen = chosenIds.has(ex.id);
   const li = node(html`
     <li class="list__item">
       <button class="list__link" data-id="${ex.id}" ${raw(chosen ? 'disabled' : '')}>
@@ -236,7 +288,7 @@ function exerciseItem(ex, alreadyChosenIds, choose) {
           <div style="font-weight:600">${ex.name}</div>
           <div class="muted small">${groupLabel(ex.muscleGroup)}</div>
         </div>
-        ${chosen ? raw(`<span class="badge">${t('picker.inWorkout')}</span>`) : raw(ICON.plus)}
+        ${chosen ? raw(`<span class="badge">${chosenLabel}</span>`) : raw(ICON.plus)}
       </button>
     </li>
   `);

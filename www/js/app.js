@@ -3,8 +3,10 @@
  * funciona igual no GitHub Pages, em subpasta, e na origem local do WebView
  * nativo do Capacitor — sem nenhuma configuracao de servidor. */
 
-import { $, initSheet, closeSheet, html, node, refresh } from './ui.js';
-import { t } from './i18n.js';
+import {
+  $, initSheet, openSheet, closeSheet, html, raw, node, refresh, ICON, listInCard,
+} from './ui.js';
+import { t, tn } from './i18n.js';
 import * as db from './db.js';
 import { precacheMedia } from './media.js';
 import * as home from './views/home.js';
@@ -13,6 +15,7 @@ import * as history from './views/history.js';
 import * as exercise from './views/exercise.js';
 import * as picker from './views/exercise-picker.js';
 import * as catalog from './views/catalog.js';
+import * as templates from './views/templates.js';
 import * as settings from './views/settings.js';
 
 const ROUTES = [
@@ -26,6 +29,9 @@ const ROUTES = [
   // Escolher exercicio pra um treino — do treino em andamento ou da edicao
   // de um treino do historico; nos dois casos e "por o exercicio no treino T".
   [/^\/treino\/(\d+)\/adicionar$/, (view, id) => picker.render(view, Number(id))],
+  [/^\/modelos$/, (view) => templates.renderList(view)],
+  [/^\/modelos\/(\d+)$/, (view, id) => templates.renderDetail(view, Number(id))],
+  [/^\/modelos\/(\d+)\/adicionar$/, (view, id) => picker.renderForTemplate(view, Number(id))],
   // Sem ambiguidade com /exercicios/(\d+): la o parametro e o id numerico do
   // banco, aqui e o slug do catalogo.
   [/^\/catalogo$/, (view) => catalog.renderList(view)],
@@ -36,9 +42,9 @@ const ROUTES = [
 const TABS = [
   [/^\/(sessao)?$/, 'workout'],
   [/^\/historico/, 'history'],
-  // O catalogo nao tem aba propria: a tabbar de 4 ja esta no limite confortavel
-  // de toque. Ele vive dentro de Exercicios e mantem essa aba acesa.
-  [/^\/(exercicios|catalogo)/, 'exercises'],
+  // Catalogo e modelos nao tem aba propria: a tabbar de 4 ja esta no limite
+  // confortavel de toque. Vivem dentro de Exercicios e mantem essa aba acesa.
+  [/^\/(exercicios|catalogo|modelos)/, 'exercises'],
   [/^\/ajustes/, 'settings'],
 ];
 
@@ -66,12 +72,53 @@ function initFab() {
   const fab = $('#fab-workout');
   fab.onclick = async () => {
     const active = await db.getActiveWorkout();
-    if (!active) {
-      fab.disabled = true;
-      await db.startWorkout();
-    }
-    location.hash = '#/sessao';
+    if (active) { location.hash = '#/sessao'; return; }
+
+    // So pergunta quando ha o que perguntar: sem modelo montado, o FAB abre um
+    // treino vazio direto, como sempre fez.
+    const templates = (await db.listTemplates()).filter((tpl) => (tpl.exerciseIds || []).length);
+    if (!templates.length) { startWorkout(fab, null); return; }
+    openStartSheet(fab, templates);
   };
+}
+
+/** `templateId` null = treino livre. O FAB e desabilitado antes do await pra
+ *  um toque duplo nao abrir dois treinos; updateFab() reabilita no proximo
+ *  render. */
+async function startWorkout(fab, templateId) {
+  fab.disabled = true;
+  if (templateId === null) await db.startWorkout();
+  else await db.startWorkoutFromTemplate(templateId);
+  location.hash = '#/sessao';
+}
+
+function openStartSheet(fab, templates) {
+  const option = (label, hint, icon, onPick) => {
+    const li = node(html`
+      <li class="list__item">
+        <button class="list__link" type="button">
+          <span class="editor-sec__icon">${raw(icon)}</span>
+          <div class="grow">
+            <div style="font-weight:650">${label}</div>
+            <div class="muted small">${hint}</div>
+          </div>
+          <span class="list__chev">${raw(ICON.chevron)}</span>
+        </button>
+      </li>
+    `);
+    li.querySelector('button').onclick = () => { closeSheet(); onPick(); };
+    return li;
+  };
+
+  openSheet(t('app.start.title'), listInCard([
+    option(t('app.start.free'), t('app.start.freeHint'), ICON.plus, () => startWorkout(fab, null)),
+    ...templates.map((tpl) => option(
+      tpl.name,
+      tn('common.exercise', tpl.exerciseIds.length),
+      ICON.dumbbell,
+      () => startWorkout(fab, tpl.id),
+    )),
+  ]));
 }
 
 let renderToken = 0;

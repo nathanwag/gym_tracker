@@ -20,7 +20,7 @@ import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
   fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented,
-  groupedList, listInCard, groupColor,
+  groupedList, listInCard, groupColor, librarySwitch,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -67,6 +67,7 @@ export async function renderList(view) {
       <div data-list></div>
     </div>
   `);
+  root.prepend(librarySwitch('exercises'));
   root.querySelector('[data-add]').onclick = addExerciseSheet;
 
   const list = root.querySelector('[data-list]');

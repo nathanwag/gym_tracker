@@ -735,3 +735,19 @@ export function wireSegmented(container, onChange) {
     };
   }
 }
+
+/** Alternador entre as duas listas da aba Exercicios: a biblioteca e os
+ *  modelos de treino. Fica aqui, e nao numa das duas views, porque as duas o
+ *  desenham identico no topo — e o unico jeito de a pessoa descobrir a outra. */
+export function librarySwitch(active) {
+  const el = node(html`
+    <div class="segmented">
+      <button class="segmented__btn" data-to="#/exercicios"
+              aria-pressed="${String(active === 'exercises')}">${t('exercise.listTitle')}</button>
+      <button class="segmented__btn" data-to="#/modelos"
+              aria-pressed="${String(active === 'templates')}">${t('templates.listTitle')}</button>
+    </div>
+  `);
+  wireSegmented(el, (button) => { location.hash = button.dataset.to; });
+  return el;
+}

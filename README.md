@@ -1,7 +1,8 @@
 # Anilha
 
 App para registrar **peso e repetições** de cada série na academia e acompanhar a evolução ao longo
-do tempo, com gráficos de progressão e recordes automáticos.
+do tempo, com gráficos de progressão e recordes automáticos. Rotinas que se repetem viram
+**modelos**: monte a lista de exercícios uma vez e comece o treino já pronto.
 
 Funciona offline, guarda tudo no próprio aparelho e não depende de nenhum servidor.
 
@@ -199,5 +200,5 @@ topo do arquivo. (APK não serve para iPhone.)
 
 ## Fora do escopo por enquanto
 
-Rotinas/templates de treino, timer de descanso e sincronização em nuvem. O modelo de dados já
-comporta os dois primeiros sem migração dolorosa.
+Timer de descanso e sincronização em nuvem. O modelo de dados já comporta o primeiro sem
+migração dolorosa.
