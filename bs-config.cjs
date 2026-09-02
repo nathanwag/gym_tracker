@@ -11,7 +11,8 @@
 //             (isSecureContext falso) — de proposito; instalacao/offline
 //             continuam sendo testados no GitHub Pages.
 //   /seed   — popula o IndexedDB local com treinos de exemplo pra ver o app
-//             com historico. Usa os modulos reais (js/db.js, js/seed.js).
+//             com historico, e com os tres modelos de treino do mesmo plano.
+//             Usa os modulos reais (js/db.js, js/seed.js).
 //
 // Abre no Opera (se achar o executavel) e ja em /phone. Cada navegador tem seu
 // proprio IndexedDB, entao a primeira vez em cada um: abrir /seed e clicar.
@@ -55,9 +56,10 @@ const SEED = `<!doctype html><meta charset="utf-8">
 <h1>Seed de histórico</h1>
 <p>Popula o IndexedDB local (<code>treino</code>) deste navegador com treinos de
 exemplo — 6 semanas de push/pull/legs com carga progressiva, pra ver o app com
-histórico, gráficos e recordes. Só dev; não vai pro app publicado.</p>
-<button class="primary" id="seed">Gerar 6 semanas de treino</button>
-<button id="clear">Apagar treinos gerados</button>
+histórico, gráficos e recordes — e os três modelos desse mesmo plano, pra ver a
+aba Modelos. Só dev; não vai pro app publicado.</p>
+<button class="primary" id="seed">Gerar 6 semanas de treino + 3 modelos</button>
+<button id="clear">Apagar treinos e modelos gerados</button>
 <p><a href="/phone">← voltar ao app</a></p>
 <div id="log"></div>
 <script type="module">
@@ -81,6 +83,8 @@ const PLAN = [
   ['legs', 'Panturrilha', 'Panturrilha em pé',            90, 2.5],
 ];
 const DAYS = ['push', 'pull', 'legs'];
+// Nome do modelo de cada dia. Em portugues como todo valor gravado no banco.
+const DAY_NAME = { push: 'Empurrar', pull: 'Puxar', legs: 'Pernas' };
 const DAY_OFFSET = { push: 4, pull: 2, legs: 0 }; // dias atrás dentro da semana
 const WEEKS = 6;
 const REPS = [10, 9, 8];
@@ -98,6 +102,21 @@ async function ensureExercises() {
   return ids;
 }
 
+/** Um modelo por dia do plano, na mesma ordem de exercicios que o treino usa.
+ *  Idempotente pelo nome: rodar o seed duas vezes nao duplica. */
+async function ensureTemplates(ids) {
+  const existing = new Map((await db.listTemplates()).map((t) => [t.name, t]));
+  let made = 0;
+  for (const day of DAYS) {
+    const name = DAY_NAME[day];
+    const exerciseIds = PLAN.filter(([d]) => d === day).map(([, , n]) => ids.get(n));
+    const tpl = existing.get(name) || await db.addTemplate(name);
+    await db.updateTemplate(tpl.id, { exerciseIds });
+    if (!existing.has(name)) made++;
+  }
+  return made;
+}
+
 document.getElementById('seed').onclick = async (e) => {
   e.target.disabled = true;
   out.textContent = '';
@@ -105,6 +124,7 @@ document.getElementById('seed').onclick = async (e) => {
     await db.init();
     const ids = await ensureExercises();
     log(ids.size + ' exercícios prontos.');
+    log(await ensureTemplates(ids) + ' modelos criados (' + DAYS.map((d) => DAY_NAME[d]).join(', ') + ').');
     let made = 0;
     for (let w = 0; w < WEEKS; w++) {
       for (const day of DAYS) {
@@ -130,7 +150,7 @@ document.getElementById('seed').onclick = async (e) => {
         log('treino ' + made + '/' + (WEEKS * DAYS.length));
       }
     }
-    log('\\nPronto. Abra o app → Histórico.');
+    log('\\nPronto. Abra o app → Histórico, e Exercícios → Modelos.');
   } catch (err) {
     log('ERRO: ' + (err && err.message || err));
   } finally {
@@ -145,7 +165,10 @@ document.getElementById('clear').onclick = async (e) => {
     await db.init();
     const mine = (await db.listWorkouts()).filter((w) => w.notes === MARK);
     for (const w of mine) await db.deleteWorkout(w.id);
-    log(mine.length + ' treinos gerados apagados (exercícios mantidos).');
+    const names = new Set(DAYS.map((d) => DAY_NAME[d]));
+    const tpls = (await db.listTemplates()).filter((t) => names.has(t.name));
+    for (const t of tpls) await db.deleteTemplate(t.id);
+    log(mine.length + ' treinos e ' + tpls.length + ' modelos gerados apagados (exercícios mantidos).');
   } catch (err) {
     log('ERRO: ' + (err && err.message || err));
   } finally {
