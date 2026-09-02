@@ -12,6 +12,7 @@
 
 import { slugByName } from './seed.js';
 import { normalizeName } from './text.js';
+import { existingInOrder } from './models.js';
 
 // Nome do banco em si NAO muda: IndexedDB e chaveado por (origem, nome do
 // banco) — trocar essa string faria o app abrir um banco novo e vazio,
@@ -21,7 +22,8 @@ const DB_NAME = 'treino';
 // v2: campo `slug` no exercicio, ligando-o as figuras de www/img/ex/.
 // v3: nomes de campo em ingles (exercises/workouts/sets/settings).
 // v4: store `exerciseImages`, fotos personalizadas (posicao inicial/final).
-const DB_VERSION = 4;
+// v5: store `workoutTemplates`, modelos de treino montados pelo usuario.
+const DB_VERSION = 5;
 
 export const DEFAULT_SETTINGS = {
   unit: 'kg',
@@ -198,6 +200,13 @@ export function open() {
         // primaria (ver getExerciseImages), sem indice extra.
         db.createObjectStore('exerciseImages', { keyPath: ['exerciseId', 'slot'] });
       }
+
+      if (event.oldVersion < 5) {
+        // Aditiva: nenhum dado existente e tocado. Um modelo e so um nome e uma
+        // ordem de exerciseIds — a mesma forma que `workouts.exerciseIds` ja
+        // tem, e por isso iniciar um treino a partir dele e uma copia.
+        db.createObjectStore('workoutTemplates', { keyPath: 'id', autoIncrement: true });
+      }
     };
 
     request.onsuccess = () => {
@@ -349,12 +358,23 @@ export async function deleteExercise(id) {
   if (uses > 0) {
     throw new Error(`Este exercício tem ${uses} série(s) registrada(s). Apague o histórico dele antes.`);
   }
-  await tx(['exercises', 'exerciseImages'], 'readwrite', (ex, images) => {
-    ex.delete(Number(id));
+  const target = Number(id);
+  await tx(['exercises', 'exerciseImages', 'workoutTemplates'], 'readwrite', (ex, images, templates) => {
+    ex.delete(target);
     // Delete de chave inexistente nao da erro — nao precisa checar antes se
     // o exercicio tinha foto em cada posicao.
-    images.delete([Number(id), 0]);
-    images.delete([Number(id), 1]);
+    images.delete([target, 0]);
+    images.delete([target, 1]);
+    // Tira o id dos modelos que o citavam, na mesma transacao: um modelo com
+    // id orfao nao quebra a tela (existingInOrder filtra), mas guardar lixo
+    // faria o backup carregar referencia morta pra sempre.
+    return req(templates.getAll()).then((rows) => {
+      for (const row of rows) {
+        const ids = row.exerciseIds || [];
+        if (!ids.includes(target)) continue;
+        templates.put({ ...row, exerciseIds: ids.filter((i) => i !== target) });
+      }
+    });
   });
   exerciseCache = null;
 }
@@ -476,6 +496,73 @@ export function deleteWorkout(id) {
   });
 }
 
+/* ---------- Modelos de treino ----------
+ * Um modelo guarda ids da biblioteca, nao slugs: ele e montado a partir dos
+ * exercicios que o usuario ja tem, e assim fica identico em forma a
+ * `workouts.exerciseIds`. Id orfao (exercicio apagado depois) e tratado nos
+ * dois lados: limpo em deleteExercise e filtrado na leitura. */
+
+export async function listTemplates() {
+  const rows = await tx('workoutTemplates', 'readonly', (s) => req(s.getAll()));
+  rows.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  return rows;
+}
+
+export function getTemplate(id) {
+  return tx('workoutTemplates', 'readonly', (s) => req(s.get(Number(id))));
+}
+
+export async function addTemplate(name) {
+  const record = {
+    name: String(name).trim(),
+    exerciseIds: [],
+    createdAt: new Date().toISOString(),
+  };
+  const id = await tx('workoutTemplates', 'readwrite', (s) => req(s.add(record)));
+  return { ...record, id };
+}
+
+export async function updateTemplate(id, patch) {
+  await tx('workoutTemplates', 'readwrite', (store) =>
+    req(store.get(Number(id))).then((current) => {
+      if (!current) throw new Error('Modelo não encontrado.');
+      store.put({ ...current, ...patch, id: current.id });
+    }));
+}
+
+export function deleteTemplate(id) {
+  return tx('workoutTemplates', 'readwrite', (s) => s.delete(Number(id)));
+}
+
+export async function addExerciseToTemplate(templateId, exerciseId) {
+  const template = await getTemplate(templateId);
+  if (!template) throw new Error('Modelo não encontrado.');
+  const ids = template.exerciseIds || [];
+  if (ids.includes(Number(exerciseId))) return;
+  await updateTemplate(templateId, { exerciseIds: [...ids, Number(exerciseId)] });
+}
+
+export async function removeExerciseFromTemplate(templateId, exerciseId) {
+  const template = await getTemplate(templateId);
+  if (!template) return;
+  const target = Number(exerciseId);
+  await updateTemplate(templateId, {
+    exerciseIds: (template.exerciseIds || []).filter((id) => id !== target),
+  });
+}
+
+/** Abre um treino ja com os exercicios do modelo. Unico caminho de "treinar a
+ *  partir de um modelo" — startWorkout() segue sendo o do treino livre. */
+export async function startWorkoutFromTemplate(templateId) {
+  const [template, exercises] = await Promise.all([getTemplate(templateId), listExercises()]);
+  if (!template) throw new Error('Modelo não encontrado.');
+  const workout = await startWorkout();
+  const ids = existingInOrder(template.exerciseIds, exercises.map((e) => e.id));
+  if (!ids.length) return workout;
+  await updateWorkout(workout.id, { exerciseIds: ids });
+  return { ...workout, exerciseIds: ids };
+}
+
 /* ---------- Series ---------- */
 
 export async function addSet({
@@ -530,37 +617,43 @@ export async function listAllSets() {
 
 /** Copia integral do banco, usada por backup.js para gerar o JSON. */
 export async function dumpAll() {
-  const [exercises, workouts, sets, settingsRows, images] = await Promise.all([
+  const [exercises, workouts, sets, settingsRows, images, templates] = await Promise.all([
     tx('exercises', 'readonly', (s) => req(s.getAll())),
     tx('workouts', 'readonly', (s) => req(s.getAll())),
     tx('sets', 'readonly', (s) => req(s.getAll())),
     tx('settings', 'readonly', (s) => req(s.getAll())),
     tx('exerciseImages', 'readonly', (s) => req(s.getAll())),
+    tx('workoutTemplates', 'readonly', (s) => req(s.getAll())),
   ]);
   return {
-    exercises, workouts, sets, settings: settingsRows, images,
+    exercises, workouts, sets, settings: settingsRows, images, templates,
   };
 }
 
 /** Substitui todo o conteudo do banco (restauracao de backup). */
 export async function replaceAll({
-  exercises = [], workouts = [], sets = [], settings: settingsRows = [], images = [],
+  exercises = [], workouts = [], sets = [], settings: settingsRows = [], images = [], templates = [],
 }) {
-  await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages'], 'readwrite', (ex, wo, se, st, im) => {
-    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear();
+  const STORES = ['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates'];
+  await tx(STORES, 'readwrite', (ex, wo, se, st, im, tp) => {
+    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear();
     for (const row of exercises) ex.put(row);
     for (const row of workouts) wo.put(row);
     for (const row of sets) se.put(row);
     for (const row of settingsRows) st.put(row);
     for (const row of images) im.put(row);
+    // Ausente em backup gerado antes dos modelos existirem: o default [] so
+    // limpa a loja, sem erro.
+    for (const row of templates) tp.put(row);
   });
   exerciseCache = null;
 }
 
 /** Apaga tudo, incluindo a biblioteca de exercicios. */
 export async function resetAll() {
-  await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages'], 'readwrite', (ex, wo, se, st, im) => {
-    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear();
-  });
+  await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates'], 'readwrite',
+    (ex, wo, se, st, im, tp) => {
+      ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear();
+    });
   exerciseCache = null;
 }

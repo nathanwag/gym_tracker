@@ -88,6 +88,7 @@ export async function prepareBackup() {
     sets: data.sets,
     settings: data.settings,
     images,
+    templates: data.templates,
   };
 
   const json = JSON.stringify(payload);
@@ -237,6 +238,14 @@ export async function validate(payload) {
     })),
     settings: Array.isArray(settings) ? settings.filter((s) => s && s.key).map(remapSetting) : [],
     images,
+    // Chave ausente = backup gerado antes dos modelos existirem; restaura sem
+    // nenhum, em vez de recusar o arquivo.
+    templates: (Array.isArray(payload.templates) ? payload.templates : []).map((tpl) => ({
+      id: toNumber(tpl.id),
+      name: String(tpl.name ?? 'Modelo'),
+      exerciseIds: Array.isArray(tpl.exerciseIds) ? tpl.exerciseIds.map(toNumber) : [],
+      createdAt: tpl.createdAt ?? new Date().toISOString(),
+    })),
   };
 }
 
