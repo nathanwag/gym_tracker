@@ -222,6 +222,23 @@ export function progressPct(summaries, field = 'bestE1rm') {
   return ((end - start) / start) * 100;
 }
 
+/** Troca o item de posicao, devolvendo uma lista nova. Destino fora da lista
+ *  devolve a original — quem chama nao precisa checar a borda. */
+export function moveInOrder(ids, index, delta) {
+  const target = index + delta;
+  if (target < 0 || target >= ids.length) return [...ids];
+  const next = [...ids];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+}
+
+/** So os ids que ainda existem, na ordem original: um exercicio apagado da
+ *  biblioteca some do modelo de treino em vez de virar uma linha quebrada. */
+export function existingInOrder(ids, existingIds) {
+  const alive = new Set(existingIds);
+  return [...(ids || [])].filter((id) => alive.has(id));
+}
+
 /** Ordem de exibicao dos exercicios de um treino: primeiro a ordem gravada em
  *  `exerciseIds`; quem tem serie mas ficou de fora dela (dado antigo ou
  *  importado) entra no fim, sem repetir. */

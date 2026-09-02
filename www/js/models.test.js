@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
   orderedWorkoutExercises, workoutHighlights, workoutGroupBreakdown, allPrIds, weekMuscleGroupSummary,
-  progressPct,
+  progressPct, moveInOrder, existingInOrder,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -214,4 +214,23 @@ test('progressPct ignora a semana vazia no fim da janela', () => {
 
 test('progressPct devolve null quando so uma semana tem dado', () => {
   assert.equal(progressPct([{ sets: 0 }, { sets: 10 }, { sets: 0 }], 'sets'), null);
+});
+
+test('moveInOrder desce o item uma posicao', () => {
+  assert.deepEqual(moveInOrder([1, 2, 3], 0, 1), [2, 1, 3]);
+});
+
+test('moveInOrder devolve a lista intacta quando o destino fica fora da lista', () => {
+  const ids = [1, 2, 3];
+  assert.deepEqual(moveInOrder(ids, 0, -1), [1, 2, 3]);
+  assert.deepEqual(moveInOrder(ids, 2, 1), [1, 2, 3]);
+  assert.deepEqual(ids, [1, 2, 3], 'nao muta a lista recebida');
+});
+
+test('existingInOrder tira o exercicio que sumiu da biblioteca e mantem a ordem', () => {
+  assert.deepEqual(existingInOrder([7, 3, 9], new Set([9, 7])), [7, 9]);
+});
+
+test('existingInOrder aceita modelo sem lista de exercicios', () => {
+  assert.deepEqual(existingInOrder(undefined, new Set([1])), []);
 });

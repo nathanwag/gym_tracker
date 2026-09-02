@@ -2,7 +2,7 @@
 
 import * as db from '../db.js';
 import {
-  workoutSummary, workoutGroupBreakdown, prSetIds, allPrIds, orderedWorkoutExercises,
+  workoutSummary, workoutGroupBreakdown, prSetIds, allPrIds, orderedWorkoutExercises, moveInOrder,
 } from '../models.js';
 import { exerciseBanner } from '../media.js';
 import { openShareSheet } from '../share-image.js';
@@ -391,11 +391,7 @@ function workoutExerciseCard(exId, order) {
 }
 
 async function moveWorkoutExercise(order, i, dir) {
-  const j = i + dir;
-  if (j < 0 || j >= order.length) return;
-  const next = [...order];
-  [next[i], next[j]] = [next[j], next[i]];
-  await db.updateWorkout(ctx.workout.id, { exerciseIds: next });
+  await db.updateWorkout(ctx.workout.id, { exerciseIds: moveInOrder(order, i, dir) });
   await reloadWorkout();
   paintWorkout();
 }
