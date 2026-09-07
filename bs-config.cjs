@@ -58,7 +58,7 @@ const SEED = `<!doctype html><meta charset="utf-8">
 exemplo — 6 semanas de push/pull/legs com carga progressiva, pra ver o app com
 histórico, gráficos e recordes — e os três modelos desse mesmo plano, pra ver a
 aba Modelos. Só dev; não vai pro app publicado.</p>
-<button class="primary" id="seed">Gerar 6 semanas de treino + 3 modelos</button>
+<button class="primary" id="seed">Gerar 12 semanas de treino + 3 modelos</button>
 <button id="clear">Apagar treinos e modelos gerados</button>
 <p><a href="/phone">← voltar ao app</a></p>
 <div id="log"></div>
@@ -70,23 +70,32 @@ const out = document.getElementById('log');
 const log = (m) => { out.textContent += m + '\\n'; };
 const MARK = 'seed'; // workout.notes; invisível na UI, serve pra "apagar gerados"
 
-// [dia, grupo, nome (de SEED_EXERCISES), carga inicial, incremento/semana]
+// [dia, grupo, nome (de SEED_EXERCISES), carga inicial, incremento/semana, forma]
+//
+// A "forma" existe pro Progresso ter o que mostrar: com todo exercicio subindo
+// linear, o indice por grupo sai chapado em ~110 e a tela nao prova nada.
+//   linear — sobe todo semana, 3 series (o caso comum)
+//   stall  — para de subir na 6a semana e perde uma serie nas ultimas 3
+//            (indice bem abaixo de 100: o grupo que precisa de atencao)
+//   surge  — ganha uma serie nas ultimas 3 (indice bem acima de 100)
 const PLAN = [
-  ['push', 'Peito',       'Supino reto com barra',        60, 2.5],
-  ['push', 'Ombros',      'Desenvolvimento com halteres', 20, 1  ],
-  ['push', 'Tríceps',     'Tríceps na polia (corda)',     25, 1.5],
-  ['pull', 'Costas',      'Puxada frontal (pulley)',      45, 2.5],
-  ['pull', 'Costas',      'Remada curvada com barra',     50, 2.5],
-  ['pull', 'Bíceps',      'Rosca direta com barra',       30, 1  ],
-  ['legs', 'Quadríceps',  'Agachamento livre',            80, 5  ],
-  ['legs', 'Posterior',   'Levantamento terra romeno',    70, 5  ],
-  ['legs', 'Panturrilha', 'Panturrilha em pé',            90, 2.5],
+  ['push', 'Peito',       'Supino reto com barra',        60, 2.5, 'linear'],
+  ['push', 'Ombros',      'Desenvolvimento com halteres', 20, 1,   'linear'],
+  ['push', 'Tríceps',     'Tríceps na polia (corda)',     25, 1.5, 'linear'],
+  ['pull', 'Costas',      'Puxada frontal (pulley)',      45, 2.5, 'linear'],
+  ['pull', 'Costas',      'Remada curvada com barra',     50, 2.5, 'linear'],
+  ['pull', 'Bíceps',      'Rosca direta com barra',       30, 1,   'surge' ],
+  ['legs', 'Quadríceps',  'Agachamento livre',            80, 5,   'linear'],
+  ['legs', 'Posterior',   'Levantamento terra romeno',    70, 5,   'stall' ],
+  ['legs', 'Panturrilha', 'Panturrilha em pé',            90, 2.5, 'linear'],
 ];
+const STALL_AFTER = 5;  // semana em que o 'stall' para de progredir
+const LATE_WEEKS = 3;   // quantas semanas finais mudam de numero de series
 const DAYS = ['push', 'pull', 'legs'];
 // Nome do modelo de cada dia. Em portugues como todo valor gravado no banco.
 const DAY_NAME = { push: 'Empurrar', pull: 'Puxar', legs: 'Pernas' };
 const DAY_OFFSET = { push: 4, pull: 2, legs: 0 }; // dias atrás dentro da semana
-const WEEKS = 6;
+const WEEKS = 12; // 12 sessoes por grupo — o indice precisa de 6 pra existir
 const REPS = [10, 9, 8];
 
 const slugFor = (group, name) =>
@@ -135,12 +144,17 @@ document.getElementById('seed').onclick = async (e) => {
         const finished = new Date(when.getTime() + 55 * 60000).toISOString();
         const workout = await db.startWorkout();
         const order = [];
-        for (const [, group, name, base, step] of PLAN.filter(([d]) => d === day)) {
+        for (const [, group, name, base, step, shape] of PLAN.filter(([d]) => d === day)) {
           const exId = ids.get(name);
           order.push(exId);
-          const weight = base + step * w;
+          const late = w >= WEEKS - LATE_WEEKS;
+          const weeksProgressed = shape === 'stall' ? Math.min(w, STALL_AFTER) : w;
+          const weight = base + step * weeksProgressed;
+          const reps = (shape === 'stall' && late) ? REPS.slice(0, 2)
+            : (shape === 'surge' && late) ? REPS.concat(8)
+              : REPS;
           await db.addSet({ workoutId: workout.id, exerciseId: exId, weight: Math.round(weight * 0.5), reps: 12, warmup: true });
-          for (const reps of REPS) await db.addSet({ workoutId: workout.id, exerciseId: exId, weight, reps });
+          for (const r of reps) await db.addSet({ workoutId: workout.id, exerciseId: exId, weight, reps: r });
         }
         await db.updateWorkout(workout.id, {
           date: started.slice(0, 10), startedAt: started, finishedAt: finished,

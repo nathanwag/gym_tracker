@@ -4,6 +4,7 @@ import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
   orderedWorkoutExercises, workoutHighlights, workoutGroupBreakdown, allPrIds, weekMuscleGroupSummary,
   progressPct, moveInOrder, existingInOrder, workoutDeltas,
+  groupSessionSummaries, groupIndex,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -325,4 +326,60 @@ test('workoutDeltas devolve os exercicios na ordem do treino', () => {
   const rows = workoutDeltas(workouts.get(2), sets, workouts);
   assert.deepEqual(rows.map((r) => r.exerciseId), [3, 7]);
   assert.deepEqual(rows.map((r) => r.headline), ['same', 'weight']);
+});
+
+/* ---------- groupSessionSummaries ---------- */
+
+const backAndBiceps = () => ({
+  workouts: new Map([[1, { id: 1, startedAt: '2026-08-21T10:00:00' }]]),
+  exercises: new Map([
+    [7, { id: 7, muscleGroup: 'Costas' }],
+    [3, { id: 3, muscleGroup: 'Bíceps' }],
+  ]),
+  sets: [
+    { id: 1, workoutId: 1, exerciseId: 7, weight: 50, reps: 10 },
+    { id: 2, workoutId: 1, exerciseId: 3, weight: 30, reps: 10 },
+  ],
+});
+
+test('groupSessionSummaries deixa de fora as series dos outros grupos do mesmo treino', () => {
+  const { workouts, exercises, sets } = backAndBiceps();
+
+  const [session] = groupSessionSummaries(sets, workouts, exercises, 'Costas');
+  assert.equal(session.sets.length, 1);
+  assert.equal(session.volume, 500, 'so a remada de 50x10; a rosca de biceps fica fora');
+});
+
+test('groupSessionSummaries ignora serie de exercicio apagado da biblioteca', () => {
+  const { workouts, exercises, sets } = backAndBiceps();
+  sets.push({ id: 3, workoutId: 1, exerciseId: 99, weight: 40, reps: 10 });
+
+  const [session] = groupSessionSummaries(sets, workouts, exercises, 'Costas');
+  assert.equal(session.volume, 500, 'exercicio sem entrada em exercisesById nao tem grupo pra somar');
+});
+
+/* ---------- groupIndex ---------- */
+
+const vols = (...values) => values.map((volume) => ({ volume }));
+
+test('groupIndex compara a mediana das sessoes recentes com a das anteriores', () => {
+  // anteriores 1000/2000/3000 -> mediana 2000; recentes 2200/2400/2600 -> 2400
+  // 2400 / 2000 = 1,2
+  assert.equal(groupIndex(vols(1000, 2000, 3000, 2200, 2400, 2600)), 120);
+});
+
+test('groupIndex nao se move por causa de uma sessao ruim isolada', () => {
+  // recentes 2000/2000/200: a mediana segue 2000, entao o indice segue 100
+  assert.equal(groupIndex(vols(1000, 2000, 3000, 2000, 2000, 200)), 100);
+});
+
+test('groupIndex devolve null quando nao ha sessoes suficientes', () => {
+  assert.equal(groupIndex(vols(1000, 2000, 3000, 2200, 2400)), null);
+});
+
+test('groupIndex usa so as ultimas sessoes como base, nao a historia inteira', () => {
+  // Os tres 100 do comeco ficam fora da base de 8; base = 2000 (mediana de
+  // 2000 repetido), recentes = 2000 -> 100. Com a historia inteira daria mais.
+  const summaries = vols(100, 100, 100, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000);
+  assert.equal(groupIndex(summaries, { recent: 3, baseline: 8 }), 100);
 });

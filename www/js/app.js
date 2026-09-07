@@ -12,6 +12,7 @@ import { precacheMedia } from './media.js';
 import * as home from './views/home.js';
 import * as session from './views/session.js';
 import * as history from './views/history.js';
+import * as progress from './views/progress.js';
 import * as exercise from './views/exercise.js';
 import * as picker from './views/exercise-picker.js';
 import * as catalog from './views/catalog.js';
@@ -23,6 +24,9 @@ const ROUTES = [
   [/^\/sessao$/, (view) => session.render(view)],
   [/^\/historico$/, (view) => history.render(view)],
   [/^\/historico\/(\d+)$/, (view, id) => history.renderWorkout(view, Number(id))],
+  [/^\/progresso$/, (view) => progress.render(view)],
+  // Grupo muscular sem acento no hash, pelo mesmo motivo do slug do catalogo.
+  [/^\/progresso\/([a-z]+)$/, (view, slug) => progress.renderGroup(view, slug)],
   [/^\/exercicios$/, (view) => exercise.renderList(view)],
   [/^\/exercicios\/(\d+)$/, (view, id) => exercise.renderDetail(view, Number(id))],
   [/^\/exercicios\/(\d+)\/editar$/, (view, id) => exercise.renderEdit(view, Number(id))],
@@ -42,6 +46,7 @@ const ROUTES = [
 const TABS = [
   [/^\/(sessao)?$/, 'workout'],
   [/^\/historico/, 'history'],
+  [/^\/progresso/, 'history'],
   // Catalogo e modelos nao tem aba propria: a tabbar de 4 ja esta no limite
   // confortavel de toque. Vivem dentro de Exercicios e mantem essa aba acesa.
   [/^\/(exercicios|catalogo|modelos)/, 'exercises'],

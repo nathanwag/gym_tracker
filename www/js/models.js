@@ -194,6 +194,59 @@ export function sessionSummaries(sets, workoutsById) {
   return summaries;
 }
 
+/**
+ * O mesmo resumo por sessao de sessionSummaries, mas de um GRUPO MUSCULAR em
+ * vez de um exercicio: cada entrada e um treino, contando so as series daquele
+ * grupo. E o que permite comparar ombro com ombro — um treino de costas e
+ * biceps alimenta os dois grupos sem que uma serie conte duas vezes, ja que
+ * cada exercicio tem um `muscleGroup` so.
+ * Serie de exercicio apagado (sem entrada em `exercisesById`) fica de fora:
+ * nao ha grupo a que atribuir.
+ * @param {object[]} sets todas as series (de qualquer exercicio/treino)
+ * @param {Map<number, object>} workoutsById
+ * @param {Map<number, object>} exercisesById
+ * @param {string} group grupo muscular, no valor gravado (portugues)
+ */
+export function groupSessionSummaries(sets, workoutsById, exercisesById, group) {
+  const ofGroup = sets.filter((s) => exercisesById.get(s.exerciseId)?.muscleGroup === group);
+  return sessionSummaries(ofGroup, workoutsById);
+}
+
+const median = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+};
+
+/**
+ * Quanto o grupo rendeu ultimamente comparado ao proprio normal: 100 = normal,
+ * 120 = um quinto acima. E a unica leitura do app em que grupos diferentes
+ * podem ficar lado a lado, porque cada um e medido contra si mesmo — em kg
+ * absoluto, perna sempre ganharia de biceps.
+ *
+ * Mediana dos dois lados, nao media: uma sessao ruim isolada (deload, dia
+ * corrido) nao pode virar alarme, so uma queda sustentada deve mover o numero.
+ *
+ * Conta SESSOES, nao dias: grupos tem cadencias diferentes (perna 1x, peito 2x
+ * por semana), e numa janela de dias um grupo teria o dobro de amostra do
+ * outro — o ruido ficaria diferente por grupo.
+ *
+ * @param {object[]} summaries sessoes do grupo em ordem cronologica
+ * @param {{recent?: number, baseline?: number, field?: string}} opts
+ * @returns {number|null} null quando falta historico pra comparacao valer
+ */
+export function groupIndex(summaries, { recent = 3, baseline = 8, field = 'volume' } = {}) {
+  if (summaries.length < recent * 2) return null;
+
+  const values = summaries.map((s) => Number(s[field]) || 0);
+  const head = values.slice(-recent);
+  const base = values.slice(Math.max(0, values.length - recent - baseline), values.length - recent);
+
+  const reference = median(base);
+  if (!reference) return null;
+  return (median(head) / reference) * 100;
+}
+
 /** Melhor volume de uma unica sessao (o terceiro tipo de recorde). */
 export function bestSessionVolume(summaries) {
   return summaries.reduce((max, r) => Math.max(max, r.volume), 0);
