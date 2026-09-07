@@ -321,8 +321,6 @@ export const DICT = {
     'progress.chart.few': 'Duas sessões deste grupo e o gráfico aparece.',
     'progress.lastSession': 'última',
     'progress.total': 'total',
-    'home.metric.sets': 'Séries',
-    'home.metric.volume': 'Volume',
     'history.toastExerciseRemoved': 'Exercício removido do treino.',
 
     // ---------- share-image.js ----------
@@ -733,8 +731,6 @@ export const DICT = {
     'progress.chart.few': 'Two sessions of this group and the chart shows up.',
     'progress.lastSession': 'last',
     'progress.total': 'total',
-    'home.metric.sets': 'Sets',
-    'home.metric.volume': 'Volume',
     'history.toastExerciseRemoved': 'Exercise removed.',
 
     // ---------- share-image.js ----------

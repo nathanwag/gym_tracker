@@ -8,7 +8,7 @@ import { lineChart } from '../charts.js';
 import { t, tn } from '../i18n.js';
 import { groupLabel } from '../seed.js';
 import {
-  setTop, html, raw, node, ICON, groupColor, workoutRow, wireSegmented, esc,
+  setTop, html, raw, node, ICON, groupColor, workoutRow, wireSegmented,
   fmtNum, fmtDateRange, fmtMinutes,
 } from '../ui.js';
 
@@ -85,14 +85,6 @@ function weekTitle(offset) {
 // reabria em "essa semana", perdendo a semana que a pessoa estava vendo.
 let weekOffset = 0; // semanas para tras; 0 = semana atual
 
-// Qual numero manda no topo. Series por padrao, nao volume: kg somado entre
-// grupos mede se a semana teve perna, nao se ela rendeu — um agachamento vale
-// sete roscas na mesma conta. Series e adimensional, e e a mesma unidade das
-// barras por grupo logo abaixo. Volume segue a um toque, na aba ao lado.
-// Escopo de modulo pelo mesmo motivo de weekOffset: sobrevive a sair da home
-// e voltar.
-let weekMetric = 'sets';
-
 // Bloco com estado proprio (offset de semanas), no molde de createStepper em
 // ui.js: navegar entre semanas so troca o referenceDate passado pra
 // weekMuscleGroupSummary e redesenha — series/treinos/exercicios ja estao
@@ -140,20 +132,13 @@ function weekBlock(sets, workoutsById, exercisesById, unit, firstWeek) {
         </span>
       </div>
 
-      <div class="segmented" data-metrics>
-        <button class="segmented__btn" data-m="sets" aria-pressed="${String(weekMetric === 'sets')}">${t('home.metric.sets')}</button>
-        <button class="segmented__btn" data-m="volume" aria-pressed="${String(weekMetric === 'volume')}">${t('home.metric.volume')}</button>
-      </div>
-
       <div class="week__big">
-        <span class="data">${fmtNum(weekMetric === 'sets' ? weekSets : volume, 0)}</span>
-        <span class="week__unit">${weekMetric === 'sets' ? tn('home.stat.sets', weekSets) : unit}</span>
+        <span class="data">${fmtNum(volume, 0)}</span>
+        <span class="week__unit">${unit}</span>
       </div>
       <div class="week__sub">
         <span><span class="data">${weekWorkouts}</span> ${tn('home.stat.workouts', weekWorkouts)}</span>
-        ${weekMetric === 'sets'
-    ? raw(`<span><span class="data">${fmtNum(volume, 0)}</span> ${esc(unit)}</span>`)
-    : raw(`<span><span class="data">${weekSets}</span> ${tn('home.stat.sets', weekSets)}</span>`)}
+        <span><span class="data">${weekSets}</span> ${tn('home.stat.sets', weekSets)}</span>
         ${gymSeconds ? raw(`<span><span class="data">${fmtMinutes(gymSeconds / 60)}</span> ${t('home.gymTime')}</span>`) : ''}
       </div>
 
@@ -165,8 +150,6 @@ function weekBlock(sets, workoutsById, exercisesById, unit, firstWeek) {
 
     el.querySelector('[data-back]').onclick = () => { weekOffset += 1; draw(); };
     el.querySelector('[data-forward]').onclick = () => { weekOffset -= 1; draw(); };
-    // Redesenhado a cada draw(), entao religa junto — mesmo caso das setas.
-    wireSegmented(el, (button) => { weekMetric = button.dataset.m; draw(); });
   }
 
   draw();
