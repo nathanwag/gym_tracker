@@ -1,6 +1,7 @@
 /* Historico: lista de treinos e o detalhe de um treino. */
 
 import * as db from '../db.js';
+import { weightStep } from '../weight-step.js';
 import {
   workoutSummary, workoutGroupBreakdown, prSetIds, allPrIds, orderedWorkoutExercises, moveInOrder,
   workoutDeltas, bests,
@@ -125,7 +126,7 @@ export async function renderWorkout(view, workoutId) {
   ctx = {
     workoutId,
     unit: cfg.unit,
-    weightStep: Number(cfg.weightIncrement) || 2.5,
+    weightStep: weightStep(cfg.weightIncrement),
     repsStep: Number(cfg.repsIncrement) || 1,
     root: node('<div class="stack"></div>'),
   };

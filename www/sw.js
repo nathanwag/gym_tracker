@@ -12,7 +12,7 @@
  * GitHub Pages quanto na origem local do WebView nativo.
  */
 
-const VERSION = 'anilha-v38';
+const VERSION = 'anilha-v39';
 
 // Dois caches de proposito. O do app e versionado e descartavel: bumpar VERSION
 // e como se deploya. O de midia NAO e versionado — sao dezenas de MB de fotos
@@ -46,6 +46,7 @@ const ASSETS = [
   './js/i18n.js',
   './js/i18n-strings.js',
   './js/text.js',
+  './js/weight-step.js',
   './js/db.js',
   './js/models.js',
   './js/seed.js',

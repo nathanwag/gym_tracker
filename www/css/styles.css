@@ -462,6 +462,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   font-size: 16px; /* impede o zoom automatico do iOS ao focar */
 }
 .input:focus, .select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+/* Texto de ajuda de um campo quando o valor nao serve: o recado fica onde a
+   pessoa esta olhando, e nao num toast por cima do proprio campo. */
+.hint--err { color: var(--danger); }
 .field { display: block; }
 .field--check {
   display: flex;

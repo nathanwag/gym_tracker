@@ -166,6 +166,18 @@ A exceção é o **campo de formulário**: ao lado de um `<input>` de texto com 
 mesma moldura, o `<select>` nativo é coerente — é o caso de `groupField()`. A
 regra não é "select é feio", é **valor de linha usa folha, campo usa campo**.
 
+**Quando a lista não cobre tudo, a última linha dela é a saída** — "Outro
+valor…" abre uma segunda folha com o campo (é o passo de peso em Você). A lista
+continua respondendo em um toque para quem quer 2,5, e quem tem anilha de 1,5
+não fica de fora. Duas regras: se o valor guardado não está na lista, quem vem
+marcada é a linha "Outro valor…" (senão a folha abre sem nada aceso), e o campo
+aceita vírgula — é o que o teclado do celular oferece em português.
+
+**Valor recusado se explica no lugar onde foi digitado**: o texto de ajuda do
+campo vira vermelho (`.hint--err`), e não um toast. O toast do app aparece no
+meio da tela, justamente por cima do campo, e repetiria a mesma frase que já
+estava dois centímetros abaixo dele.
+
 **A linha inteira é o alvo, nunca só o texto.** Uma linha acionável é
 `<button>` ou `<a>` de altura cheia (`min-height: var(--tap)`), nunca um `div`
 com `onclick` — que além do alvo curto não recebe foco por teclado. Já

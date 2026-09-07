@@ -7,12 +7,18 @@
 import * as db from '../db.js';
 import { prepareBackup, exportBackup, readFile, restore } from '../backup.js';
 import { MEDIA_CACHE, APP_CACHE_PREFIX, precacheMedia } from '../media.js';
+import { parseWeightStep, MIN_STEP, MAX_STEP } from '../weight-step.js';
 import { t } from '../i18n.js';
 import {
-  setTop, html, raw, node, toast, openSheet, confirmSheet, pickSheet, isIOS, isStandalone, ICON,
+  setTop, html, raw, node, toast, openSheet, closeSheet, onSheetClose, confirmSheet, pickSheet,
+  fmtNum, isIOS, isStandalone, ICON,
 } from '../ui.js';
 
 const INCREMENTS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
+
+/* Valor-sentinela da opcao "Outro valor...": nao e numero, entao nunca
+ * colide com um passo que a pessoa possa digitar. */
+const CUSTOM = 'outro';
 
 export async function render(view) {
   setTop({ title: t('settings.title') });
@@ -55,8 +61,9 @@ function section(title, ...content) {
  *  Era um <select> nativo, cujo alvo de toque terminava no fim do texto — a
  *  seta ao lado nao respondia, que e onde a mao ia. E o menu do sistema nao
  *  obedece a paleta nem o tipo do app (ver pickSheet em ui.js). */
-function pickerRow(label, options, value, onPick) {
-  const labelOf = (v) => options.find((o) => o.value === String(v))?.label ?? String(v);
+function pickerRow(label, options, value, onPick, custom = null) {
+  const labelOf = (v) => options.find((o) => o.value === String(v))?.label
+    ?? custom?.labelOf(v) ?? String(v);
   let current = String(value);
 
   // <button>, nao <div> com onclick: a linha inteira e o alvo, e como alvo ela
@@ -69,7 +76,13 @@ function pickerRow(label, options, value, onPick) {
   `);
 
   row.onclick = async () => {
-    const picked = await pickSheet({ title: label, options, value: current });
+    // Valor que nao esta na lista (digitado antes, ou vindo de um backup) marca
+    // a propria linha "Outro valor..." — senao a folha abriria sem nada aceso.
+    const known = !custom || options.some((o) => o.value === current);
+    const list = custom ? [...options, { value: CUSTOM, label: custom.label }] : options;
+
+    let picked = await pickSheet({ title: label, options: list, value: known ? current : CUSTOM });
+    if (picked === CUSTOM) picked = await custom.ask(current);
     if (picked == null || picked === current) return;
     current = picked;
     row.querySelector('[data-value]').textContent = labelOf(picked);
@@ -198,17 +211,87 @@ function logSection(cfg) {
     },
   );
 
+  // fmtNum, e nao replace('.', ','): a virgula decimal e do idioma, e a lista
+  // agora convive com valores digitados, que podem ter duas casas.
+  const stepLabel = (v) => fmtNum(Number(v), 2);
+
   const step = pickerRow(
     t('settings.preferences.step.label'),
-    INCREMENTS.map((v) => ({ value: String(v), label: String(v).replace('.', ',') })),
+    INCREMENTS.map((v) => ({ value: String(v), label: stepLabel(v) })),
     cfg.weightIncrement,
     async (value) => {
       await db.setSetting('weightIncrement', Number(value));
       toast(t('settings.preferences.step.toast'));
     },
+    { label: t('settings.preferences.step.custom'), labelOf: stepLabel, ask: askStep },
   );
 
   return section(t('settings.section.log'), unit, step);
+}
+
+/** Segundo nivel da folha do passo: o campo pra digitar um valor fora dos sete
+ *  da lista (anilha de 1,5 kg, 5 lb em kg, maquina que so pula de 20 em 20).
+ *  Devolve string, mesmo contrato do pickSheet, ou null se fechar sem valor. */
+function askStep(current) {
+  // A unidade e lida agora, e nao do cfg da abertura da tela: setSetting troca
+  // o objeto inteiro, entao quem mudou de kg pra lb sem sair da tela veria a
+  // unidade antiga aqui.
+  const unit = db.settings().unit;
+  const hint = t('settings.preferences.step.customHint', {
+    min: fmtNum(MIN_STEP, 2), max: fmtNum(MAX_STEP, 2),
+  });
+
+  return new Promise((resolve) => {
+    let answered = false;
+    const finish = (value) => {
+      if (answered) return;
+      answered = true;
+      resolve(value);
+    };
+
+    // type="text" com inputmode decimal, nao type="number": o campo precisa
+    // aceitar a virgula que o teclado do celular oferece em pt.
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field__label">${t('settings.preferences.step.customLabel')} <span class="muted">${unit}</span></span>
+          <input class="input" data-step type="text" inputmode="decimal" enterkeyhint="done"
+                 value="${fmtNum(Number(current), 2)}">
+        </label>
+        <p class="muted small" data-hint aria-live="polite" style="margin:0">${hint}</p>
+        <button type="button" class="btn btn--primary btn--block" data-use>${t('common.save')}</button>
+      </div>
+    `);
+    openSheet(t('settings.preferences.step.customTitle'), body);
+    onSheetClose(() => finish(null));
+
+    const input = body.querySelector('[data-step]');
+    const hintEl = body.querySelector('[data-hint]');
+
+    const submit = () => {
+      const parsed = parseWeightStep(input.value);
+      // O recado do erro e a propria dica que ja esta ali, em vermelho: um
+      // toast repetiria a mesma frase dois centimetros acima dela.
+      hintEl.classList.toggle('hint--err', parsed == null);
+      input.setAttribute('aria-invalid', String(parsed == null));
+      if (parsed == null) {
+        input.focus();
+        input.select();
+        return;
+      }
+      finish(String(parsed));
+      closeSheet();
+    };
+
+    body.querySelector('[data-use]').onclick = submit;
+    input.onkeydown = (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      submit();
+    };
+    input.focus();
+    input.select();
+  });
 }
 
 function lookSection(cfg) {

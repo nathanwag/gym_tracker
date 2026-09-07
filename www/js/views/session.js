@@ -8,6 +8,7 @@
  */
 
 import * as db from '../db.js';
+import { weightStep } from '../weight-step.js';
 import { evaluatePR, prSetIds, workoutSummary } from '../models.js';
 import { exerciseBanner } from '../media.js';
 import { takeLastAdded } from './exercise-picker.js';
@@ -36,7 +37,7 @@ export async function render(view) {
   ctx = {
     workout,
     unit: cfg.unit,
-    weightStep: Number(cfg.weightIncrement) || 2.5,
+    weightStep: weightStep(cfg.weightIncrement),
     repsStep: Number(cfg.repsIncrement) || 1,
     exercises: new Map(exercises.map((e) => [e.id, e])),
     list: exercises,

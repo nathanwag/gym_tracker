@@ -51,12 +51,14 @@ node --test --test-name-pattern="unilateral"    # por nome
 ```
 
 Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`). Só dá
-pra testar módulos **puros** sob `node --test`: `models.js`, `text.js` e
-`curve.js` não têm import nenhum. `seed.js`/`db.js`/`ui.js` puxam `i18n.js`, que
-toca `location` no carregamento e quebra fora do browser. Para testar algo
+pra testar módulos **puros** sob `node --test`: `models.js`, `text.js`,
+`curve.js` e `weight-step.js` não têm import nenhum. `seed.js`/`db.js`/`ui.js`
+puxam `i18n.js`, que toca `location` no carregamento e quebra fora do browser. Para testar algo
 desses, extraia a lógica pura pra um módulo sem dependência de DOM/IndexedDB —
 é o que `text.js` (separado de `ui.js` porque `db.js` precisa dele numa
-migração) e `curve.js` (separado de `charts.js`, que importa `ui.js`) fazem.
+migração), `curve.js` (separado de `charts.js`, que importa `ui.js`) e
+`weight-step.js` (validação do passo digitado em Você, saneamento do passo
+gravado nas telas que registram série) fazem.
 
 ## Deploy e service worker
 
