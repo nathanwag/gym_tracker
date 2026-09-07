@@ -9,7 +9,7 @@ import { prepareBackup, exportBackup, readFile, restore } from '../backup.js';
 import { MEDIA_CACHE, APP_CACHE_PREFIX, precacheMedia } from '../media.js';
 import { t } from '../i18n.js';
 import {
-  setTop, html, raw, node, toast, openSheet, confirmSheet, isIOS, isStandalone, ICON,
+  setTop, html, raw, node, toast, openSheet, confirmSheet, pickSheet, isIOS, isStandalone, ICON,
 } from '../ui.js';
 
 const INCREMENTS = [0.5, 1, 1.25, 2, 2.5, 5, 10];
@@ -51,33 +51,41 @@ function section(title, ...content) {
   return el;
 }
 
-/** Linha de ajuste com <select> nativo a direita. Segue nativo de proposito:
- *  abre o seletor do sistema num toque so — trocar por um sheet proprio
- *  deixaria a tela mais uniforme e cada ajuste mais caro. */
-function selectRow(label, attr, options, onChange) {
-  // O <select> perde a aparencia nativa e ganha a MESMA seta das linhas de
-  // leitura: com a seta do sistema por cima, cada navegador desenhava uma
-  // coisa e as linhas de ajuste destoavam das de informacao logo abaixo.
+/** Linha de ajuste: a LINHA INTEIRA abre a folha de escolha, nao so o texto.
+ *  Era um <select> nativo, cujo alvo de toque terminava no fim do texto — a
+ *  seta ao lado nao respondia, que e onde a mao ia. E o menu do sistema nao
+ *  obedece a paleta nem o tipo do app (ver pickSheet em ui.js). */
+function pickerRow(label, options, value, onPick) {
+  const labelOf = (v) => options.find((o) => o.value === String(v))?.label ?? String(v);
+  let current = String(value);
+
+  // <button>, nao <div> com onclick: a linha inteira e o alvo, e como alvo ela
+  // precisa receber foco pelo teclado e anunciar-se como acionavel.
   const row = node(html`
-    <div class="set-row">
+    <button type="button" class="set-row set-row--tap">
       <span class="set-row__k">${label}</span>
-      <span class="set-row__v set-row__v--select">
-        <select class="select--inline" ${raw(attr)}>${raw(options)}</select>
-        ${raw(ICON.down)}
-      </span>
-    </div>
+      <span class="set-row__v"><span data-value>${labelOf(current)}</span>${raw(ICON.down)}</span>
+    </button>
   `);
-  row.querySelector('select').onchange = (e) => onChange(e.target.value);
+
+  row.onclick = async () => {
+    const picked = await pickSheet({ title: label, options, value: current });
+    if (picked == null || picked === current) return;
+    current = picked;
+    row.querySelector('[data-value]').textContent = labelOf(picked);
+    onPick(picked);
+  };
   return row;
 }
 
 /** Linha so de leitura, com valor a direita. `onClick` a torna tocavel. */
 function infoRow(label, value, onClick = null) {
+  const tag = onClick ? 'button' : 'div';
   const row = node(html`
-    <div class="set-row${onClick ? ' set-row--tap' : ''}">
+    <${raw(tag)} ${onClick ? raw('type="button"') : ''} class="set-row${onClick ? ' set-row--tap' : ''}">
       <span class="set-row__k">${label}</span>
       <span class="set-row__v"><span data-value>${value}</span>${onClick ? raw(ICON.chevron) : ''}</span>
-    </div>
+    </${raw(tag)}>
   `);
   if (onClick) row.onclick = onClick;
   return row;
@@ -176,25 +184,24 @@ function showJson(backup) {
  * mudam so a aparencia. Separados, cada titulo ja diz o que esperar embaixo
  * dele — e a tela deixa de parecer uma lista arbitraria de quatro campos. */
 
-const option = (value, label, selected) =>
-  `<option value="${value}"${selected ? ' selected' : ''}>${label}</option>`;
-
 function logSection(cfg) {
-  const unit = selectRow(
+  const unit = pickerRow(
     t('settings.preferences.unit.label'),
-    'data-unit',
-    option('kg', t('settings.preferences.unit.kg'), cfg.unit === 'kg')
-      + option('lb', t('settings.preferences.unit.lb'), cfg.unit === 'lb'),
+    [
+      { value: 'kg', label: t('settings.preferences.unit.kg') },
+      { value: 'lb', label: t('settings.preferences.unit.lb') },
+    ],
+    cfg.unit,
     async (value) => {
       await db.setSetting('unit', value);
       toast(t('settings.preferences.unit.toast'));
     },
   );
 
-  const step = selectRow(
+  const step = pickerRow(
     t('settings.preferences.step.label'),
-    'data-increment',
-    INCREMENTS.map((v) => option(v, String(v).replace('.', ','), Number(cfg.weightIncrement) === v)).join(''),
+    INCREMENTS.map((v) => ({ value: String(v), label: String(v).replace('.', ',') })),
+    cfg.weightIncrement,
     async (value) => {
       await db.setSetting('weightIncrement', Number(value));
       toast(t('settings.preferences.step.toast'));
@@ -205,23 +212,27 @@ function logSection(cfg) {
 }
 
 function lookSection(cfg) {
-  const theme = selectRow(
+  const theme = pickerRow(
     t('settings.preferences.theme.label'),
-    'data-theme',
-    option('auto', t('settings.preferences.theme.auto'), cfg.theme === 'auto')
-      + option('dark', t('settings.preferences.theme.dark'), cfg.theme === 'dark')
-      + option('light', t('settings.preferences.theme.light'), cfg.theme === 'light'),
+    [
+      { value: 'auto', label: t('settings.preferences.theme.auto') },
+      { value: 'dark', label: t('settings.preferences.theme.dark') },
+      { value: 'light', label: t('settings.preferences.theme.light') },
+    ],
+    cfg.theme,
     async (value) => {
       await db.setSetting('theme', value);
       window.dispatchEvent(new CustomEvent('theme:changed', { detail: value }));
     },
   );
 
-  const language = selectRow(
+  const language = pickerRow(
     t('settings.preferences.language.label'),
-    'data-language',
-    option('pt', t('settings.preferences.language.pt'), cfg.language === 'pt')
-      + option('en', t('settings.preferences.language.en'), cfg.language === 'en'),
+    [
+      { value: 'pt', label: t('settings.preferences.language.pt') },
+      { value: 'en', label: t('settings.preferences.language.en') },
+    ],
+    cfg.language,
     async (value) => {
       await db.setSetting('language', value);
       window.dispatchEvent(new CustomEvent('language:changed', { detail: value }));

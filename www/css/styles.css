@@ -398,13 +398,20 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   padding: 10px 2px;
+  border: 0;
   border-bottom: 1px solid var(--border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   min-height: var(--tap);
 }
 .set-row:last-child { border-bottom: 0; }
 .set-row--tap { cursor: pointer; }
 .set-row--tap:active { background: var(--surface-2); }
+.set-row--tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
 .set-row__k { font-size: .92rem; }
 .set-row__v {
   display: flex;
@@ -418,35 +425,30 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .set-row__v svg { width: 16px; height: 16px; margin-right: -4px; }
 
-/* O select da linha vira o proprio valor a direita: sem moldura, sem fundo e
-   sem a seta nativa — a seta e desenhada ao lado, a mesma das linhas de
-   leitura, senao apareciam duas e cada navegador de um jeito.
-   font-size 16px continua obrigatorio: menos que isso e o Safari da zoom ao
-   focar (ver CLAUDE.md). */
-.set-row__v--select { gap: 6px; }
-.select--inline {
-  appearance: none;
-  -webkit-appearance: none;
-  width: auto;
-  max-width: 58vw;
-  min-height: 0;
-  padding: 0;
+/* A folha de escolha (pickSheet). Uma opcao por linha, alvo cheio: e o que
+   substituiu o menu do sistema, que nao seguia paleta nem tipo do app. */
+.pick { display: flex; flex-direction: column; }
+.pick__o {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px 2px;
   border: 0;
-  border-radius: 0;
+  border-bottom: 1px solid var(--border);
   background: none;
-  color: var(--muted);
-  font-family: var(--display);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: .01em;
-  text-align: right;
-  text-align-last: right;
+  color: var(--text);
+  font: inherit;
+  font-size: .98rem;
+  text-align: left;
   cursor: pointer;
 }
-.select--inline:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-/* A seta do select aponta pra baixo (abre uma lista), a das linhas de leitura
-   aponta pra frente (abre outra tela) — a diferenca e informacao. */
-.set-row__v--select svg { width: 15px; height: 15px; margin-right: 0; }
+.pick__o:last-child { border-bottom: 0; }
+.pick__o:active { background: var(--surface-2); }
+.pick__o--on { color: var(--accent); font-weight: 600; }
+.pick__o svg { width: 18px; height: 18px; flex: none; }
 
 .select {
   width: 100%;

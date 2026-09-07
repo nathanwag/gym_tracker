@@ -174,6 +174,42 @@ export function confirmSheet({
   });
 }
 
+/**
+ * Escolha de uma opcao entre poucas, em bottom sheet. Existe pra tirar o
+ * `<select>` nativo da frente: o menu do sistema nao obedece paleta, tipo nem
+ * raio de canto do app, entao o unico momento em que a tela sumia era
+ * justamente o de escolher. Mesmo racional do confirmSheet contra o confirm().
+ *
+ * @param {{title: string, options: {value: string, label: string}[], value: string}} opts
+ * @returns {Promise<string|null>} null quando a folha e fechada sem escolher
+ */
+export function pickSheet({ title, options, value }) {
+  return new Promise((resolve) => {
+    let answered = false;
+    const finish = (picked) => {
+      if (answered) return;
+      answered = true;
+      resolve(picked);
+    };
+
+    const body = openSheet(title, node(html`
+      <div class="pick">
+        ${raw(options.map((o) => `
+          <button class="pick__o${o.value === String(value) ? ' pick__o--on' : ''}" data-v="${esc(o.value)}">
+            <span>${esc(o.label)}</span>
+            ${o.value === String(value) ? ICON.check : ''}
+          </button>
+        `).join(''))}
+      </div>
+    `));
+
+    sheetOnClose = () => finish(null);
+    for (const button of body.querySelectorAll('[data-v]')) {
+      button.onclick = () => { finish(button.dataset.v); closeSheet(); };
+    }
+  });
+}
+
 /* ---------- Formatacao ---------- */
 
 /** 60 -> "60"; 62.5 -> "62,5" em pt-BR, "62.5" em en-US. */
