@@ -1,4 +1,8 @@
-/* Ajustes: backup, preferencias e informacoes. */
+/* Voce: seus dados (backup, figuras), suas preferencias e a versao instalada.
+ *
+ * Chamava-se Ajustes. O nome mudou junto com a estrutura: depois que o backup
+ * subiu pro topo, metade da tela deixou de ser ajuste e passou a ser o que e
+ * seu — e o app nao tem servidor, entao isso e o assunto principal daqui. */
 
 import * as db from '../db.js';
 import { prepareBackup, exportBackup, readFile, restore } from '../backup.js';
@@ -51,10 +55,16 @@ function section(title, ...content) {
  *  abre o seletor do sistema num toque so — trocar por um sheet proprio
  *  deixaria a tela mais uniforme e cada ajuste mais caro. */
 function selectRow(label, attr, options, onChange) {
+  // O <select> perde a aparencia nativa e ganha a MESMA seta das linhas de
+  // leitura: com a seta do sistema por cima, cada navegador desenhava uma
+  // coisa e as linhas de ajuste destoavam das de informacao logo abaixo.
   const row = node(html`
     <div class="set-row">
       <span class="set-row__k">${label}</span>
-      <select class="select select--inline" ${raw(attr)}>${raw(options)}</select>
+      <span class="set-row__v set-row__v--select">
+        <select class="select--inline" ${raw(attr)}>${raw(options)}</select>
+        ${raw(ICON.down)}
+      </span>
     </div>
   `);
   row.querySelector('select').onchange = (e) => onChange(e.target.value);

@@ -44,7 +44,7 @@ export const DICT = {
     'app.tab.workout': 'Treino',
     'app.tab.history': 'Histórico',
     'app.tab.exercises': 'Exercícios',
-    'app.tab.settings': 'Ajustes',
+    'app.tab.settings': 'Você',
     'app.back': 'Voltar',
     'app.metaDescription': 'Registro de cargas e repetições com gráficos de progressão e recordes.',
     'app.fab.resume': 'Retomar treino em andamento',
@@ -56,7 +56,7 @@ export const DICT = {
     'app.dbError.privateTab': 'Se estiver numa aba privada do Safari, abra o app numa aba normal.',
 
     // ---------- views/settings.js ----------
-    'settings.title': 'Ajustes',
+    'settings.title': 'Você',
     'settings.section.data': 'Seus dados',
     'settings.section.log': 'Registro',
     'settings.section.look': 'Aparência',
@@ -471,7 +471,7 @@ export const DICT = {
     'app.tab.workout': 'Workout',
     'app.tab.history': 'History',
     'app.tab.exercises': 'Exercises',
-    'app.tab.settings': 'Settings',
+    'app.tab.settings': 'You',
     'app.back': 'Back',
     'app.metaDescription': 'Log your loads and reps, with progress charts and personal records.',
     'app.fab.resume': 'Resume workout in progress',
@@ -483,7 +483,7 @@ export const DICT = {
     'app.dbError.privateTab': "If you're in a private Safari tab, open the app in a regular tab.",
 
     // ---------- views/settings.js ----------
-    'settings.title': 'Settings',
+    'settings.title': 'You',
     'settings.section.data': 'Your data',
     'settings.section.log': 'Logging',
     'settings.section.look': 'Appearance',

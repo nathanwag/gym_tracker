@@ -22,7 +22,7 @@ import { t } from './i18n.js';
 export const MEDIA_CACHE = 'workout-media';
 
 // Prefixo do cache versionado do app (`anilha-v33`), tambem duplicado do
-// sw.js pelo mesmo motivo. Ajustes usa isto pra descobrir qual versao esta
+// sw.js pelo mesmo motivo. A aba Voce usa isto pra descobrir qual versao esta
 // realmente instalada: e o dado que responde "por que nao atualizou?".
 export const APP_CACHE_PREFIX = 'anilha-v';
 
@@ -121,7 +121,7 @@ export function prefetchPhotos(slug) {
  *
  *  Roda so uma vez por versao do catalogo, e so quando a conexao permite: sao
  *  ~2 MB, o que e barato no wi-fi e caro no celular. Quem quiser forcar tem o
- *  botao em Ajustes. */
+ *  botao na aba Voce. */
 export async function precacheMedia({ force = false } = {}) {
   const reg = await navigator.serviceWorker?.ready?.catch(() => null);
   if (!reg?.active) return false;

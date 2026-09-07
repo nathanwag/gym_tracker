@@ -418,22 +418,35 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .set-row__v svg { width: 16px; height: 16px; margin-right: -4px; }
 
-/* O select da linha perde a moldura e vira o proprio valor a direita.
+/* O select da linha vira o proprio valor a direita: sem moldura, sem fundo e
+   sem a seta nativa — a seta e desenhada ao lado, a mesma das linhas de
+   leitura, senao apareciam duas e cada navegador de um jeito.
    font-size 16px continua obrigatorio: menos que isso e o Safari da zoom ao
    focar (ver CLAUDE.md). */
+.set-row__v--select { gap: 6px; }
 .select--inline {
+  appearance: none;
+  -webkit-appearance: none;
   width: auto;
+  max-width: 58vw;
   min-height: 0;
-  padding: 4px 0;
+  padding: 0;
   border: 0;
+  border-radius: 0;
   background: none;
   color: var(--muted);
   font-family: var(--display);
   font-size: 16px;
   font-weight: 700;
+  letter-spacing: .01em;
   text-align: right;
   text-align-last: right;
+  cursor: pointer;
 }
+.select--inline:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+/* A seta do select aponta pra baixo (abre uma lista), a das linhas de leitura
+   aponta pra frente (abre outra tela) — a diferenca e informacao. */
+.set-row__v--select svg { width: 15px; height: 15px; margin-right: 0; }
 
 .select {
   width: 100%;
