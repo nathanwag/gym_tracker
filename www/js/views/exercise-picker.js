@@ -13,12 +13,12 @@
 
 import * as db from '../db.js';
 import * as catalog from '../catalog.js';
-import { MUSCLE_GROUPS, groupBy, groupLabel } from '../seed.js';
+import { groupBy, groupLabel } from '../seed.js';
 import { thumbHtml, prefetchPhotos, preloadCustomThumbs } from '../media.js';
 import { t } from '../i18n.js';
 import {
   html, raw, node, ICON, ICON_GROUPS, toast, setTop, openSheet, closeSheet, goBack,
-  stripAccents, listInCard,
+  stripAccents, listInCard, groupField,
 } from '../ui.js';
 
 // Etapa atual: null = grade de grupos; nome do grupo = lista dele.
@@ -306,12 +306,7 @@ function newExerciseForm(suggestedName, choose) {
         <span class="field__label">${t('exercise.form.name')}</span>
         <input class="input" data-name value="${suggestedName}" autocapitalize="sentences">
       </label>
-      <label class="field">
-        <span class="field__label">${t('exercise.form.muscleGroup')}</span>
-        <select class="select" data-group>
-          ${raw(MUSCLE_GROUPS.map((g) => `<option value="${g}">${groupLabel(g)}</option>`).join(''))}
-        </select>
-      </label>
+      ${raw(groupField())}
       <button class="btn btn--primary btn--block" data-save>${t('picker.createAndAdd')}</button>
     </div>
   `);

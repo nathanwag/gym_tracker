@@ -116,9 +116,26 @@ três, e é o que separa "planilha" de "painel". Escala em `--fs-xs` … `--fs-h
 | `.livebar` | tempo/volume/séries correndo | sessão |
 | `.exc-done` | exercício concluído, com régua do grupo | sessão |
 | `.hero-photo` / `.recs` | foto sangrada + recordes em linha | tela de exercício |
+| `.set-row` | linha de ajuste: rótulo à esquerda, valor à direita (`--tap` a torna acionável) | Você |
+| `.pick` | opções da folha de escolha, a atual em destaque | qualquer `pickSheet()` |
+| `.gidx` | índice por grupo: barra com referência em 100, a linha inteira navega | Progresso |
+| `.srow` | sessão de um grupo: data + exercícios do dia, volume à direita | Progresso · grupo |
+| `.delta` | o que mudou desde a última vez, exercício por exercício | detalhe do treino |
+| `.chip` | pastilha de grupo com cor e, quando há, o índice | Progresso |
+| `.sec` | seção com título e respiro próprio | Você |
 
 Cartão (`.card`) virou **exceção**, não regra: só o que precisa mesmo estar
 contido. Se for pôr algo num cartão, justifique.
+
+### A família das linhas
+
+`.hrow`, `.srow`, `.delta__row`, `.set-row` e `.gidx__row` são **a mesma ideia
+em cinco contextos**: flex, leitura à esquerda, número à direita, um filete
+embaixo, `min-height` de toque. O que muda de verdade é o miolo — e é só isso
+que justifica cada uma existir.
+
+Antes de criar a sexta, pergunte qual coluna é diferente. Se a resposta for
+"nenhuma", use a que já existe.
 
 ## Peças compartilhadas (não duplique)
 
@@ -128,8 +145,79 @@ contido. Se for pôr algo num cartão, justifique.
   anterior na posição da próxima.
 - `exerciseBanner()` (`media.js`) — cabeçalho com foto. `actions` muda por tela.
 - `signatureHtml()`, `groupColor()` (`ui.js`).
+- `pickSheet()` (`ui.js`) — escolher um valor entre poucos. Ver "Nada de menu
+  do sistema" abaixo.
+- `groupField()` (`ui.js`) — o campo "grupo muscular" dos formulários. Estava
+  copiado em quatro telas com a lista de `MUSCLE_GROUPS` montada à mão nas
+  quatro.
+- `historySwitch()` (`views/progress.js`) — o alternador *Lista · Progresso*.
+  Mora na tela que o introduziu; o histórico importa de lá.
 
 Duas cópias divergem no primeiro ajuste de coluna. Já aconteceu.
+
+## Controles e alvos de toque
+
+**Nada de menu do sistema.** `<select>` como *valor de uma linha* está proibido:
+o menu que ele abre não obedece paleta, tipo nem raio de canto, então o único
+momento em que a tela some é justamente o de escolher. Use **`pickSheet()`**,
+pelo mesmo motivo que `confirmSheet()` existe contra o `confirm()` nativo.
+
+A exceção é o **campo de formulário**: ao lado de um `<input>` de texto com a
+mesma moldura, o `<select>` nativo é coerente — é o caso de `groupField()`. A
+regra não é "select é feio", é **valor de linha usa folha, campo usa campo**.
+
+**A linha inteira é o alvo, nunca só o texto.** Uma linha acionável é
+`<button>` ou `<a>` de altura cheia (`min-height: var(--tap)`), nunca um `div`
+com `onclick` — que além do alvo curto não recebe foco por teclado. Já
+aconteceu: a seta ao lado do valor em Você era decorativa, e é exatamente onde
+a mão ia.
+
+**As duas setas dizem coisas diferentes**, e isso é informação, não enfeite:
+
+| Seta | Significa |
+|---|---|
+| `ICON.down` | abre uma lista de valores ali mesmo |
+| `ICON.chevron` | leva pra outra tela ou outra folha |
+
+## O que um número precisa ter ao lado
+
+**Barra sem referência não diz nada.** Comprimento sozinho só compara com o
+vizinho — não responde "foi suficiente?". Toda barra carrega a sua:
+
+| Barra | Referência | O que ela é |
+|---|---|---|
+| `.muscle-group` (semana) | 10 séries | dose-resposta da literatura |
+| `.gidx` (Progresso) | 100 | a mediana da própria pessoa |
+
+E **a escala tem que incluir a referência** (`Math.max(ref, maior)`), senão o
+traço sai da barra.
+
+**Quilo só compara com quilo do mesmo grupo.** Um agachamento vale sete roscas
+diretas na mesma soma, então volume agregado entre grupos mede *se houve dia de
+perna*, não se a semana rendeu. Onde grupos diferentes aparecem lado a lado, o
+número tem que ser adimensional — séries, ou o índice contra a própria mediana.
+
+**Número grande não repete o gráfico.** Se o `.week__big` mostra o mesmo que o
+último ponto da linha logo abaixo, ele não é hierarquia, é eco. Na tela de
+grupo isso aconteceu e o número virou o índice — que é o que trouxe a pessoa
+até ali e não estava em lugar nenhum.
+
+## Uma pergunta por nível
+
+Cada tela responde **uma** pergunta que nenhuma outra responde. É o que impede
+a próxima métrica de ser jogada na home por falta de lugar:
+
+| Tela | Pergunta | Leitura |
+|---|---|---|
+| Início · semana | Estou treinando o suficiente? | séries por grupo vs. meta |
+| Progresso | Qual grupo saiu do meu normal? | índice, 100 = mediana |
+| Progresso · grupo | Esse grupo está subindo? | séries e volume por sessão |
+| Treino | Melhorei desde a última vez? | delta da sessão anterior |
+| Exercício | A carga subiu? | e1RM e peso máximo |
+| Você | — | não é leitura; é o que é seu |
+
+Antes de acrescentar um número a uma tela, ache a pergunta dele nesta tabela.
+Se ela já está respondida em outra linha, o número pertence àquela tela.
 
 ## Regras que quebram em silêncio
 
@@ -151,3 +239,12 @@ Duas cópias divergem no primeiro ajuste de coluna. Já aconteceu.
   maior)`), senão o traço de referência sai da barra.
 - **A aba ativa é tinta, não o destaque**: o vermelho já é o botão de treino no
   meio da tabbar, e dois vermelhos lado a lado brigavam.
+- **`.section-title` dentro do próprio bloco perde a margem de cima.** Ele cai
+  em `.section-title:first-child`, que existe pra encostar o primeiro título no
+  topo da tela — com seis seções seguidas, todas colavam. O respiro entre
+  seções mora no `.sec`, não no título.
+- **O rótulo da tabbar existe duas vezes**: em `i18n-strings.js` e, estático,
+  em `index.html`. O do HTML aparece antes do i18n rodar, então trocar só um
+  faz o rótulo piscar o nome antigo.
+- **Ícone e rótulo da aba mudam juntos.** A engrenagem sobreviveu meia hora ao
+  lado de "Você" e lia como duas abas diferentes.

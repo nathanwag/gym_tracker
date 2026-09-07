@@ -6,7 +6,7 @@ import {
   bests, prSetIds, sessionSummaries, bestSessionVolume, bestSessionDuration, progressPct,
 } from '../models.js';
 import {
-  MUSCLE_GROUPS, groupLabel, usesDuration,
+  groupLabel, usesDuration,
 } from '../seed.js';
 import { lineChart } from '../charts.js';
 import * as catalog from '../catalog.js';
@@ -20,7 +20,7 @@ import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
   fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented,
-  groupedList, listInCard, groupColor, librarySwitch,
+  groupedList, listInCard, groupColor, librarySwitch, groupField,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -604,13 +604,7 @@ export async function renderEdit(view, exId) {
         <input class="input" data-name value="${exercise.name}" autocapitalize="sentences">
       </label>
       <div class="row" style="align-items:flex-end">
-        <label class="field grow">
-          <span class="field__label">${t('exercise.form.muscleGroup')}</span>
-          <select class="select" data-group>
-            ${raw(MUSCLE_GROUPS.map((g) =>
-              `<option value="${g}"${g === exercise.muscleGroup ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
-          </select>
-        </label>
+        ${raw(groupField(exercise.muscleGroup, { grow: true }))}
         <label class="field--chip" title="${t('exercise.form.unilateral')}">
           <input type="checkbox" data-unilateral${exercise.unilateral ? ' checked' : ''}>
           <span>${t('exercise.editScreen.unilateralShort')}</span>
@@ -946,12 +940,7 @@ function exerciseForm() {
         <span class="field__label">${t('exercise.form.name')}</span>
         <input class="input" data-name value="" autocapitalize="sentences">
       </label>
-      <label class="field">
-        <span class="field__label">${t('exercise.form.muscleGroup')}</span>
-        <select class="select" data-group>
-          ${raw(MUSCLE_GROUPS.map((g) => `<option value="${g}">${groupLabel(g)}</option>`).join(''))}
-        </select>
-      </label>
+      ${raw(groupField())}
       <label class="field field--check">
         <input type="checkbox" data-unilateral>
         <span>${t('exercise.form.unilateral')}</span>

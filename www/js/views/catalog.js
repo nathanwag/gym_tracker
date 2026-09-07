@@ -6,13 +6,13 @@
 
 import * as catalog from '../catalog.js';
 import * as db from '../db.js';
-import { MUSCLE_GROUPS, groupLabel } from '../seed.js';
+import { groupLabel } from '../seed.js';
 import {
   thumbHtml, createAnimation, prefetchPhotos, fullUrl,
 } from '../media.js';
 import { t, language } from '../i18n.js';
 import {
-  ICON, html, node, raw, setTop, toast, refresh, groupedList, listInCard,
+  ICON, html, node, raw, setTop, toast, refresh, groupedList, listInCard, groupField,
 } from '../ui.js';
 import { normalizeName as normalize } from '../text.js';
 
@@ -173,12 +173,7 @@ export async function renderDetail(view, slug) {
   } else {
     const action = node(html`
       <div class="card card__pad stack--sm">
-        <label class="field">
-          <span class="field__label">${t('catalog.muscleGroup')}</span>
-          <select class="select" data-group>
-            ${raw(MUSCLE_GROUPS.map((g) => `<option value="${g}"${g === item.grupo ? ' selected' : ''}>${groupLabel(g)}</option>`).join(''))}
-          </select>
-        </label>
+        ${raw(groupField(item.grupo))}
         <button class="btn btn--block" data-add>${raw(ICON.plus)} ${t('catalog.addToMine')}</button>
       </div>
     `);

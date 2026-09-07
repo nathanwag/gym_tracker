@@ -6,7 +6,7 @@ import { t, tn, locale } from './i18n.js';
 import {
   isDurationSet, isUnilateralSet, setE1rm, workoutGroupBreakdown, workoutSummary,
 } from './models.js';
-import { groupBy, groupLabel } from './seed.js';
+import { groupBy, groupLabel, MUSCLE_GROUPS } from './seed.js';
 
 /** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
 export const APP_NAME = 'Anilha';
@@ -479,6 +479,25 @@ export function workoutRow(workout, sets, exercisesById, { unit, prCount = 0, ba
       </span>
     </a>
   `);
+}
+
+/** Campo "grupo muscular" dos formularios de exercicio. Estava copiado em
+ *  quatro telas (catalogo, seletor, criar e editar exercicio) — a lista de
+ *  MUSCLE_GROUPS montada a mao nas quatro, com a mesma `selected` no meio.
+ *
+ *  Segue sendo `<select>` nativo, e nao pickSheet: aqui ele e um CAMPO de
+ *  formulario, ao lado de um <input> de texto com a mesma moldura. pickSheet e
+ *  pro valor que mora numa linha de leitura (ver a aba Voce), onde uma moldura
+ *  de campo nao existiria pra dar contexto. */
+export function groupField(selected = null, { grow = false } = {}) {
+  const options = MUSCLE_GROUPS
+    .map((g) => `<option value="${esc(g)}"${g === selected ? ' selected' : ''}>${esc(groupLabel(g))}</option>`)
+    .join('');
+  return `
+    <label class="field${grow ? ' grow' : ''}">
+      <span class="field__label">${esc(t('exercise.form.muscleGroup'))}</span>
+      <select class="select" data-group>${options}</select>
+    </label>`;
 }
 
 /* ---------- Livro-razao das series ----------

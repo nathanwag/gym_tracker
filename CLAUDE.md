@@ -80,6 +80,13 @@ Dois caches no SW, de propósito diferente:
 `www/js/views/` (uma tela por arquivo). Views nunca abrem IndexedDB nem `.json`
 direto — passam pelas camadas abaixo.
 
+A aba **Você** (`views/settings.js`) atende a rota `/ajustes`, que ficou com o
+nome antigo de propósito: ela não aparece como rótulo em lugar nenhum e o store
+do IndexedDB também se chama `settings`. **Progresso** (`views/progress.js`) não
+tem aba: mora dentro de Histórico, atrás do `historySwitch()`, e leva o grupo no
+hash sem acento (`#/progresso/quadriceps`) pelo mesmo motivo do slug do
+catálogo.
+
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,
   `settings`, `exerciseImages`, `workoutTemplates` (modelo de treino = nome +
@@ -114,9 +121,29 @@ séries, nunca gravados — editar/apagar uma série não deixa PR fantasma. 1RM
 Epley (`peso × (1 + reps/30)`). Séries de aquecimento ficam fora de tudo. Série
 unilateral guarda `repsLeft`/`repsRight` em vez de `reps`.
 
+**Comparação por grupo muscular** — volume em kg só é honesto *dentro* de um
+grupo: um agachamento vale sete roscas diretas na mesma soma, então total
+agregado mede se houve dia de perna, não se a semana rendeu. Daí três funções
+em `models.js`, todas puras e testadas:
+
+- `groupSessionSummaries()` — sessões de um grupo. Um treino de costas e bíceps
+  alimenta os dois **sem contar série duas vezes**, porque cada exercício tem um
+  `muscleGroup` só (`db.js`). Efeito colateral a conhecer: remada não empresta
+  nada ao bíceps — é contagem de série direta, e é o que o dado suporta
+  (`primarios`/`secundarios` ficam no catálogo, não são copiados).
+- `groupIndex()` — mediana das 3 sessões recentes ÷ mediana das ~8 anteriores.
+  **Sessões, não dias**: grupos têm cadências diferentes, e numa janela de dias
+  um teria o dobro de amostra do outro. **Mediana, não média**: um deload
+  isolado não pode virar alarme. Abaixo de 6 sessões devolve `null`, e a tela
+  mostra `—` em vez de inventar.
+- `workoutDeltas()` — cada exercício contra a última vez que **ele** foi feito,
+  não contra o treino anterior: dois treinos seguidos podem não ter exercício
+  nenhum em comum.
+
 **Identidade visual (direção "Anilha")** — está em [`DESIGN.md`](DESIGN.md):
-paleta, escala de tipo, vocabulário de componentes e as peças de UI que não
-devem ser duplicadas. **Leia antes de mexer em `styles.css` ou em qualquer
+paleta, escala de tipo, vocabulário de componentes, os controles e alvos de
+toque, e a tabela de *uma pergunta por nível* — consulte-a antes de acrescentar
+um número a qualquer tela. **Leia antes de mexer em `styles.css` ou em qualquer
 tela.** O que quebra o app, e por isso fica aqui:
 
 - **`groupColor()` tem que ficar acima de `ICON_GROUPS`** em `ui.js`: os ícones
