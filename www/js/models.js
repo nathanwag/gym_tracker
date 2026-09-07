@@ -324,6 +324,63 @@ export function workoutGroupBreakdown(sets, exercisesById) {
   return [...byGroup.values()].sort((a, b) => b.sets - a.sets);
 }
 
+const sessionReps = (summary) => summary.sets.reduce((acc, s) => acc + totalReps(s), 0);
+
+/** A mudanca que resume a sessao, em ordem de importancia: carga antes de
+ *  serie antes de repeticao. Serie vem antes de repeticao porque uma serie a
+ *  mais ja explica sozinha as reps que vieram junto — anunciar "+12 reps"
+ *  esconderia que o que mudou foi o numero de series. */
+function headlineOf(change) {
+  // Duracao primeiro: numa serie de cardio/alongamento peso e reps sao sempre
+  // zero, entao sem esta linha a sessao inteira leria como "igual".
+  if (change.duration) return 'duration';
+  if (change.weight) return 'weight';
+  if (change.sets) return 'sets';
+  if (change.reps) return 'reps';
+  return 'same';
+}
+
+/**
+ * Cada exercicio do treino comparado com a ultima vez que ELE foi feito — nao
+ * com o treino anterior, que pode ter tido outros exercicios.
+ * @param {object} workout
+ * @param {object[]} allSets todas as series do banco
+ * @param {Map<number, object>} workoutsById
+ * @returns {{exerciseId, current, previous, change, headline}[]} na ordem do treino
+ */
+export function workoutDeltas(workout, allSets, workoutsById) {
+  const sets = workingSets(allSets).filter((s) => s.workoutId === workout.id);
+  const out = [];
+
+  for (const exerciseId of orderedWorkoutExercises(workout?.exerciseIds, sets)) {
+    const summaries = sessionSummaries(allSets.filter((s) => s.exerciseId === exerciseId), workoutsById);
+    const index = summaries.findIndex((r) => r.workoutId === workout.id);
+    if (index < 0) continue;
+
+    const current = summaries[index];
+    const previous = index > 0 ? summaries[index - 1] : null;
+    // Estreia zera o delta em vez de comparar com nada: sem isso a primeira
+    // vez do exercicio anunciaria "+34 kg" contra uma sessao que nao existe.
+    const change = previous ? {
+      weight: current.maxWeight - previous.maxWeight,
+      reps: sessionReps(current) - sessionReps(previous),
+      sets: current.sets.length - previous.sets.length,
+      duration: current.totalDuration - previous.totalDuration,
+    } : {
+      weight: 0, reps: 0, sets: 0, duration: 0,
+    };
+
+    out.push({
+      exerciseId,
+      current,
+      previous,
+      change,
+      headline: previous ? headlineOf(change) : 'new',
+    });
+  }
+  return out;
+}
+
 /* ---------- Resumo semanal por grupo muscular ---------- */
 
 /** Segunda-feira 00:00:00.000 (hora local) da semana que contem `date`. */

@@ -3,6 +3,7 @@
 import * as db from '../db.js';
 import {
   workoutSummary, workoutGroupBreakdown, prSetIds, allPrIds, orderedWorkoutExercises, moveInOrder,
+  workoutDeltas, bests,
 } from '../models.js';
 import { exerciseBanner } from '../media.js';
 import { openShareSheet } from '../share-image.js';
@@ -11,7 +12,7 @@ import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet, workoutRow, setLedger, signatureHtml,
-  fmtNum, fmtDate, fmtWeekday, fmtDuration,
+  fmtNum, fmtDate, fmtWeekday, fmtDuration, fmtSet, fmtTempoSerie, fmtWeight,
 } from '../ui.js';
 
 // So o nome do mes; o ano entra so quando nao e o corrente. "AGOSTO DE 2026"
@@ -148,17 +149,19 @@ export async function renderWorkout(view, workoutId) {
 }
 
 async function reloadWorkout() {
-  const [workout, sets, exercises, allSets] = await Promise.all([
+  const [workout, sets, exercises, allSets, workouts] = await Promise.all([
     db.getWorkout(ctx.workoutId),
     db.listSetsByWorkout(ctx.workoutId),
     db.listExercises(),
     db.listAllSets(),
+    db.listWorkouts(),
   ]);
   ctx.workout = workout;
   ctx.sets = sets;
   ctx.exercises = exercises;
   ctx.allSets = allSets;
   ctx.byId = new Map(exercises.map((e) => [e.id, e]));
+  ctx.workoutsById = new Map(workouts.map((w) => [w.id, w]));
 }
 
 /** Topbar do detalhe. Em leitura: compartilhar + Editar. Em edicao: so
@@ -229,6 +232,13 @@ function paintWorkout() {
 
   root.append(statsCard());
 
+  // So em leitura: no modo de edicao as series mudam a cada toque, e um bloco
+  // de comparacao que se reescreve embaixo do dedo atrapalha mais que informa.
+  if (!editMode) {
+    const deltas = deltaSection();
+    if (deltas) root.append(deltas);
+  }
+
   if (!workout.finishedAt) {
     const resume = node(`<button class="btn btn--primary btn--block">${t('history.resume')}</button>`);
     resume.onclick = () => { location.hash = '#/sessao'; };
@@ -289,6 +299,72 @@ function statsCard() {
       ${breakdown.length ? raw(`<div style="padding-top:8px">${signatureHtml(breakdown)}</div>`) : ''}
     </div>
   `);
+}
+
+/* ---------- Desde a ultima vez ----------
+ *
+ * Cada exercicio e comparado com a ultima sessao DELE, nao com o treino
+ * anterior: dois treinos seguidos podem nao ter exercicio nenhum em comum.
+ * Por isso o bloco nao tem um percentual unico no cabecalho — cada linha tem
+ * a sua propria sessao de referencia, e um numero so em cima estaria somando
+ * comparacoes de datas diferentes. */
+
+/** A mudanca que o cabecalho da linha anuncia, ja com sinal e unidade. */
+function deltaLabel(headline, change, unit) {
+  const sign = (v) => (v > 0 ? '+' : '-');
+  if (headline === 'weight') return `${sign(change.weight)}${fmtWeight(Math.abs(change.weight), unit)}`;
+  if (headline === 'sets') return `${sign(change.sets)}${tn('common.set', Math.abs(change.sets))}`;
+  if (headline === 'reps') return `${sign(change.reps)}${tn('history.delta.reps', Math.abs(change.reps))}`;
+  if (headline === 'duration') return `${sign(change.duration)}${fmtTempoSerie(Math.abs(change.duration))}`;
+  return t('history.delta.same');
+}
+
+/** "32×10×3 → 34×10×3": melhor serie de cada sessao seguida do numero de
+ *  series. Cardio/alongamento nao tem melhor serie que resuma — mostra o
+ *  tempo total das duas sessoes. */
+function deltaDetail(row) {
+  const { current, previous } = row;
+  if (current.totalDuration || previous.totalDuration) {
+    return `${fmtTempoSerie(previous.totalDuration)} → ${fmtTempoSerie(current.totalDuration)}`;
+  }
+  const top = (summary) => bests(summary.sets).setWeight || summary.sets[0];
+  return `${fmtSet(top(previous))}×${previous.sets.length} → ${fmtSet(top(current))}×${current.sets.length}`;
+}
+
+function deltaSection() {
+  const {
+    workout, allSets, workoutsById, byId, unit,
+  } = ctx;
+
+  // Exercicio estreando neste treino nao entra: nao ha sessao anterior pra
+  // comparar, e uma linha "estreia" so ocuparia espaco.
+  const rows = workoutDeltas(workout, allSets, workoutsById).filter((r) => r.previous);
+  if (!rows.length) return null;
+
+  const wrap = node(html`
+    <div>
+      <div class="lab"><span>${t('history.delta.title')}</span></div>
+      <div class="delta"></div>
+      <p class="muted small" style="margin:8px 0 0">${t('history.delta.hint')}</p>
+    </div>
+  `);
+
+  const list = wrap.querySelector('.delta');
+  for (const row of rows) {
+    const value = row.change[row.headline] || 0;
+    const tone = row.headline === 'same' ? 'flat' : (value > 0 ? 'up' : 'down');
+
+    list.append(node(html`
+      <div class="delta__row">
+        <span class="delta__mid">
+          <span class="delta__name">${byId.get(row.exerciseId)?.name || t('history.removedExercise')}</span>
+          <span class="delta__from">${deltaDetail(row)}</span>
+        </span>
+        <span class="delta__v delta__v--${tone}">${deltaLabel(row.headline, row.change, unit)}</span>
+      </div>
+    `));
+  }
+  return wrap;
 }
 
 function workoutExerciseCard(exId, order) {

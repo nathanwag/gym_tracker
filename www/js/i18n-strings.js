@@ -303,6 +303,10 @@ export const DICT = {
     'history.confirmRemoveExercise.message': 'As {sets} registradas neste exercício serão apagadas.',
     'history.confirmRemoveExercise.label': 'Remover',
     'history.toastExerciseAdded': 'Exercício adicionado.',
+    'history.delta.title': 'Desde a última vez',
+    'history.delta.hint': 'Cada exercício comparado com a última vez que você o fez.',
+    'history.delta.same': 'igual',
+    'history.delta.reps': { one: '{n} rep', other: '{n} reps' },
     'history.toastExerciseRemoved': 'Exercício removido do treino.',
 
     // ---------- share-image.js ----------
@@ -695,6 +699,10 @@ export const DICT = {
     'history.confirmRemoveExercise.message': 'The {sets} logged on this exercise will be deleted.',
     'history.confirmRemoveExercise.label': 'Remove',
     'history.toastExerciseAdded': 'Exercise added.',
+    'history.delta.title': 'Since last time',
+    'history.delta.hint': 'Each exercise compared with the last time you did it.',
+    'history.delta.same': 'same',
+    'history.delta.reps': { one: '{n} rep', other: '{n} reps' },
     'history.toastExerciseRemoved': 'Exercise removed.',
 
     // ---------- share-image.js ----------

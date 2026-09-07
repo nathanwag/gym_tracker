@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
   orderedWorkoutExercises, workoutHighlights, workoutGroupBreakdown, allPrIds, weekMuscleGroupSummary,
-  progressPct, moveInOrder, existingInOrder,
+  progressPct, moveInOrder, existingInOrder, workoutDeltas,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -233,4 +233,96 @@ test('existingInOrder tira o exercicio que sumiu da biblioteca e mantem a ordem'
 
 test('existingInOrder aceita modelo sem lista de exercicios', () => {
   assert.deepEqual(existingInOrder(undefined, new Set([1])), []);
+});
+
+/* ---------- workoutDeltas ---------- */
+
+const twoSessions = () => {
+  const workouts = new Map([
+    [1, { id: 1, startedAt: '2026-08-16T10:00:00', exerciseIds: [7] }],
+    [2, { id: 2, startedAt: '2026-08-23T10:00:00', exerciseIds: [7] }],
+  ]);
+  return { workouts, current: workouts.get(2) };
+};
+
+test('workoutDeltas mede a carga que subiu desde a sessao anterior do exercicio', () => {
+  const { workouts, current } = twoSessions();
+  const sets = [
+    { id: 1, workoutId: 1, exerciseId: 7, weight: 32, reps: 10 },
+    { id: 2, workoutId: 2, exerciseId: 7, weight: 34, reps: 10 },
+  ];
+
+  const [row] = workoutDeltas(current, sets, workouts);
+  assert.equal(row.exerciseId, 7);
+  assert.equal(row.change.weight, 2);
+  assert.equal(row.headline, 'weight');
+});
+
+test('workoutDeltas aponta as reps quando a carga ficou igual', () => {
+  const { workouts, current } = twoSessions();
+  const sets = [
+    { id: 1, workoutId: 1, exerciseId: 7, weight: 12, reps: 15 },
+    { id: 2, workoutId: 2, exerciseId: 7, weight: 12, reps: 17 },
+  ];
+
+  const [row] = workoutDeltas(current, sets, workouts);
+  assert.equal(row.change.weight, 0);
+  assert.equal(row.change.reps, 2);
+  assert.equal(row.headline, 'reps');
+});
+
+test('workoutDeltas prefere a serie a mais quando as reps so subiram por causa dela', () => {
+  const { workouts, current } = twoSessions();
+  const sets = [
+    { id: 1, workoutId: 1, exerciseId: 7, weight: 60, reps: 12 },
+    { id: 2, workoutId: 1, exerciseId: 7, weight: 60, reps: 12 },
+    { id: 3, workoutId: 2, exerciseId: 7, weight: 60, reps: 12 },
+    { id: 4, workoutId: 2, exerciseId: 7, weight: 60, reps: 12 },
+    { id: 5, workoutId: 2, exerciseId: 7, weight: 60, reps: 12 },
+  ];
+
+  const [row] = workoutDeltas(current, sets, workouts);
+  assert.equal(row.change.sets, 1);
+  assert.equal(row.headline, 'sets');
+});
+
+test('workoutDeltas marca estreia, sem ganho fantasma, no exercicio sem sessao anterior', () => {
+  const { workouts, current } = twoSessions();
+  const sets = [{ id: 1, workoutId: 2, exerciseId: 7, weight: 34, reps: 10 }];
+
+  const [row] = workoutDeltas(current, sets, workouts);
+  assert.equal(row.previous, null);
+  assert.equal(row.headline, 'new');
+  assert.equal(row.change.weight, 0, 'sem sessao anterior nao ha ganho a anunciar');
+  assert.equal(row.change.reps, 0);
+  assert.equal(row.change.sets, 0);
+});
+
+test('workoutDeltas compara duracao no exercicio de cardio, onde peso e reps sao zero', () => {
+  const { workouts, current } = twoSessions();
+  const sets = [
+    { id: 1, workoutId: 1, exerciseId: 7, weight: 0, durationSec: 600 },
+    { id: 2, workoutId: 2, exerciseId: 7, weight: 0, durationSec: 900 },
+  ];
+
+  const [row] = workoutDeltas(current, sets, workouts);
+  assert.equal(row.change.duration, 300);
+  assert.equal(row.headline, 'duration');
+});
+
+test('workoutDeltas devolve os exercicios na ordem do treino', () => {
+  const workouts = new Map([
+    [1, { id: 1, startedAt: '2026-08-16T10:00:00', exerciseIds: [7, 3] }],
+    [2, { id: 2, startedAt: '2026-08-23T10:00:00', exerciseIds: [3, 7] }],
+  ]);
+  const sets = [
+    { id: 1, workoutId: 1, exerciseId: 7, weight: 32, reps: 10 },
+    { id: 2, workoutId: 1, exerciseId: 3, weight: 12, reps: 15 },
+    { id: 3, workoutId: 2, exerciseId: 7, weight: 34, reps: 10 },
+    { id: 4, workoutId: 2, exerciseId: 3, weight: 12, reps: 15 },
+  ];
+
+  const rows = workoutDeltas(workouts.get(2), sets, workouts);
+  assert.deepEqual(rows.map((r) => r.exerciseId), [3, 7]);
+  assert.deepEqual(rows.map((r) => r.headline), ['same', 'weight']);
 });

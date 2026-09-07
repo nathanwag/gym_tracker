@@ -650,6 +650,46 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .mo__name { font-family: var(--display); font-size: 1.5rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .mo__total { font-family: var(--display); font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
 
+/* ---------- Desde a ultima vez (detalhe do treino) ----------
+   Mesma anatomia da .hrow — leitura principal a esquerda, numero a direita —
+   sem o bloco de data: aqui a data de referencia muda por linha, entao ela
+   nao pode virar coluna fixa. */
+.delta__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.delta__row:last-child { border-bottom: 0; }
+.delta__mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.delta__name {
+  font-size: .95rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.delta__from {
+  font-family: var(--display);
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.delta__v {
+  flex: none;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.delta__v--up { color: var(--success); }
+.delta__v--down { color: var(--danger); }
+.delta__v--flat { color: var(--muted); }
+
 .hrow {
   display: flex;
   align-items: center;
