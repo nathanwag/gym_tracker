@@ -324,25 +324,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .section-title:first-child { margin-top: 4px; }
 
-.shortcuts { display: flex; gap: 10px; margin: 22px 0 10px; }
-.shortcut {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-}
-.shortcut:active { background: var(--surface-2); }
-
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -402,6 +383,58 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 /* ---------- Campos ---------- */
 
 .input,
+/* Secao de Ajustes. O respiro entre secoes vive aqui, e nao no .section-title:
+   como o titulo e o primeiro filho do bloco, ele cai em `.section-title:first-child`
+   e perderia a margem de cima — com seis secoes, todas colariam umas nas outras. */
+.sec > .section-title { margin: 0 0 10px; }
+.stack > .sec + .sec { margin-top: 26px; }
+
+/* ---------- Linha de ajuste (Ajustes) ----------
+   Rotulo a esquerda, controle a direita, uma linha por ajuste. Antes eram
+   campos empilhados dentro de um cartao, com o rotulo acima do select: o dobro
+   da altura, e nada agrupando os quatro por assunto. */
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
+  min-height: var(--tap);
+}
+.set-row:last-child { border-bottom: 0; }
+.set-row--tap { cursor: pointer; }
+.set-row--tap:active { background: var(--surface-2); }
+.set-row__k { font-size: .92rem; }
+.set-row__v {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.set-row__v svg { width: 16px; height: 16px; margin-right: -4px; }
+
+/* O select da linha perde a moldura e vira o proprio valor a direita.
+   font-size 16px continua obrigatorio: menos que isso e o Safari da zoom ao
+   focar (ver CLAUDE.md). */
+.select--inline {
+  width: auto;
+  min-height: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: right;
+  text-align-last: right;
+}
+
 .select {
   width: 100%;
   min-height: var(--tap);
@@ -649,6 +682,57 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .mo:first-child { margin-top: 4px; }
 .mo__name { font-family: var(--display); font-size: 1.5rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .mo__total { font-family: var(--display); font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+/* ---------- Sessoes de um grupo (Progresso) ----------
+   Mesma anatomia da .hrow do historico — leitura no meio, numero a direita —
+   sem o bloco de dia a esquerda: aqui a data e a leitura principal da linha,
+   nao a etiqueta dela. */
+.srow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+}
+.srow:last-child { border-bottom: 0; }
+.srow:active { background: var(--surface-2); }
+.srow__mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.srow__day { font-size: .92rem; font-weight: 600; }
+.srow__detail {
+  font-size: .76rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.srow__end { flex: none; text-align: right; }
+.srow__v { display: block; font-family: var(--display); font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.srow__u {
+  display: block;
+  font-family: var(--display);
+  font-size: .62rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.srow__go { flex: none; color: var(--muted); display: flex; }
+.srow__go svg { width: 16px; height: 16px; }
+
+/* Contagem de sessoes no lugar das acoes da topbar: e contexto, nao botao. */
+.topbar__meta {
+  font-family: var(--display);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* O indice viaja junto com o chip: o destino ja diz o que se vai encontrar. */
+.chip b { font-family: var(--display); font-size: .95rem; font-weight: 700; color: var(--text); }
 
 /* ---------- Indice por grupo (Progresso) ----------
    Parece a barra da semana, mas nao e ela: la a referencia e uma meta externa

@@ -4,7 +4,7 @@ import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
   orderedWorkoutExercises, workoutHighlights, workoutGroupBreakdown, allPrIds, weekMuscleGroupSummary,
   progressPct, moveInOrder, existingInOrder, workoutDeltas,
-  groupSessionSummaries, groupIndex,
+  groupSessionSummaries, groupIndex, groupMedians,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -382,4 +382,28 @@ test('groupIndex usa so as ultimas sessoes como base, nao a historia inteira', (
   // 2000 repetido), recentes = 2000 -> 100. Com a historia inteira daria mais.
   const summaries = vols(100, 100, 100, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000);
   assert.equal(groupIndex(summaries, { recent: 3, baseline: 8 }), 100);
+});
+
+/* ---------- groupMedians ---------- */
+
+test('groupMedians separa a janela recente da base e devolve a mediana de cada campo', () => {
+  // base: 3 series / 90 kg de mediana; recentes: 2 series / 95 kg
+  const summaries = [
+    { setCount: 3, maxWeight: 80 },
+    { setCount: 3, maxWeight: 85 },
+    { setCount: 3, maxWeight: 90 },
+    { setCount: 3, maxWeight: 95 },
+    { setCount: 3, maxWeight: 100 },
+    { setCount: 2, maxWeight: 95 },
+    { setCount: 2, maxWeight: 95 },
+    { setCount: 2, maxWeight: 95 },
+  ];
+
+  const out = groupMedians(summaries, ['setCount', 'maxWeight'], { recent: 3, baseline: 5 });
+  assert.deepEqual(out.recent, { setCount: 2, maxWeight: 95 });
+  assert.deepEqual(out.base, { setCount: 3, maxWeight: 90 });
+});
+
+test('groupMedians devolve null quando nao ha as duas janelas cheias', () => {
+  assert.equal(groupMedians([{ setCount: 3 }, { setCount: 3 }], ['setCount']), null);
 });

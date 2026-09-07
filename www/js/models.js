@@ -247,6 +247,29 @@ export function groupIndex(summaries, { recent = 3, baseline = 8, field = 'volum
   return (median(head) / reference) * 100;
 }
 
+/**
+ * As duas janelas que groupIndex compara, com a mediana de cada campo pedido.
+ *
+ * Existe para a tela poder dizer POR QUE o indice esta onde esta: "72" sozinho
+ * nao acusa se o grupo perdeu serie, perdeu carga, ou as duas coisas. Devolve
+ * medianas, nao a conta pronta — a frase e decisao da view.
+ *
+ * @param {object[]} summaries sessoes do grupo em ordem cronologica
+ * @param {string[]} fields campos numericos a resumir
+ * @returns {{recent: object, base: object}|null} null quando falta historico
+ */
+export function groupMedians(summaries, fields, { recent = 3, baseline = 8 } = {}) {
+  if (summaries.length < recent * 2) return null;
+
+  const head = summaries.slice(-recent);
+  const base = summaries.slice(Math.max(0, summaries.length - recent - baseline), summaries.length - recent);
+
+  const medians = (rows) => Object.fromEntries(
+    fields.map((f) => [f, median(rows.map((r) => Number(r[f]) || 0))]),
+  );
+  return { recent: medians(head), base: medians(base) };
+}
+
 /** Melhor volume de uma unica sessao (o terceiro tipo de recorde). */
 export function bestSessionVolume(summaries) {
   return summaries.reduce((max, r) => Math.max(max, r.volume), 0);

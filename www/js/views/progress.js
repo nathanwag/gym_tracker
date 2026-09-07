@@ -13,13 +13,15 @@
  */
 
 import * as db from '../db.js';
-import { groupSessionSummaries, groupIndex, progressPct } from '../models.js';
+import {
+  groupSessionSummaries, groupIndex, groupMedians, progressPct,
+} from '../models.js';
 import { lineChart } from '../charts.js';
 import { t, tn } from '../i18n.js';
 import { MUSCLE_GROUPS, groupLabel, usesDuration } from '../seed.js';
 import {
   setTop, html, raw, node, ICON, groupColor, wireSegmented, stripAccents,
-  fmtNum, fmtDateShort, fmtTempoSerie,
+  fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet,
 } from '../ui.js';
 
 /* O grupo vai na URL como slug sem acento ("quadriceps") pelo mesmo motivo do
@@ -37,6 +39,9 @@ const INDEX_REF = 100;
 const MIN_SESSIONS_FOR_INDEX = 6;
 // Com uma sessao so nao ha linha pra desenhar, so um ponto.
 const MIN_SESSIONS_FOR_CHART = 2;
+// Sessoes listadas antes do "ver todas". Seis cobre as duas janelas que o
+// indice compara (3 recentes + 3 da base), que e o que a tela esta explicando.
+const SESSIONS_SHOWN = 6;
 
 /** O alternador que as duas telas do Historico compartilham. Fica aqui, e nao
  *  em history.js, porque quem o introduziu foi esta tela. */
@@ -74,7 +79,7 @@ async function loadGroups() {
       index: summaries.length >= MIN_SESSIONS_FOR_INDEX ? groupIndex(summaries, { field }) : null,
     });
   }
-  return rows;
+  return { rows, exercisesById };
 }
 
 /* ==========================================================================
@@ -84,7 +89,7 @@ async function loadGroups() {
 export async function render(view) {
   setTop({ title: t('history.title') });
 
-  const rows = await loadGroups();
+  const { rows } = await loadGroups();
   const root = node('<div></div>');
   root.append(historySwitch('progress'));
 
@@ -158,32 +163,79 @@ function chartMetrics(timeBased, unit) {
     };
 }
 
+/** Por que o indice esta onde esta. O numero sozinho nao acusa se o grupo
+ *  perdeu serie, perdeu carga, ou as duas — e sem isso "72" nao aciona nada. */
+function indexReason(summaries, timeBased) {
+  const fields = timeBased ? ['setCount', 'minutes'] : ['setCount', 'maxWeight'];
+  const m = groupMedians(summaries, fields);
+  if (!m) return null;
+
+  const setsDelta = m.recent.setCount - m.base.setCount;
+  const loadKey = timeBased ? 'minutes' : 'maxWeight';
+  const loadDelta = m.recent[loadKey] - m.base[loadKey];
+  const fmtLoad = (v) => (timeBased ? `${fmtNum(v, 0)} ${t('common.min')}` : fmtNum(v, 2));
+
+  // So o que mudou entra na frase: listar "series iguais, carga igual" num
+  // grupo estavel seria ruido com cara de diagnostico.
+  const parts = [];
+  if (setsDelta) parts.push(t('progress.reason.sets', { recent: fmtNum(m.recent.setCount, 1), base: fmtNum(m.base.setCount, 1) }));
+  if (loadDelta) parts.push(t('progress.reason.load', { recent: fmtLoad(m.recent[loadKey]), base: fmtLoad(m.base[loadKey]) }));
+  if (!parts.length) return t('progress.reason.steady');
+  return t('progress.reason.frame', { parts: parts.join(t('progress.reason.join')) });
+}
+
+/** As sessoes que formaram o indice, da mais recente pra tras. Cada uma leva
+ *  ao treino — e o caminho que a tela de exercicio ja oferece e esta nao. */
+function sessionList(summaries, exercisesById, unit, timeBased) {
+  const wrap = node('<div></div>');
+
+  for (const r of [...summaries].reverse().slice(0, SESSIONS_SHOWN)) {
+    // Uma linha por sessao, com os exercicios do grupo naquele dia e as
+    // series de cada um — e o que diferencia duas sessoes de mesmo volume.
+    const byExercise = new Map();
+    for (const set of r.sets) {
+      const name = exercisesById.get(set.exerciseId)?.name;
+      if (!name) continue;
+      if (!byExercise.has(name)) byExercise.set(name, []);
+      byExercise.get(name).push(set);
+    }
+    const detail = [...byExercise.entries()]
+      .map(([name, sets]) => `${name} · ${sets.map((set) => fmtSet(set)).join(', ')}`)
+      .join(' · ');
+
+    wrap.append(node(html`
+      <a class="srow" href="#/historico/${r.workoutId}">
+        <span class="srow__mid">
+          <span class="srow__day">${fmtDate(r.when)}</span>
+          <span class="srow__detail">${detail}</span>
+        </span>
+        <span class="srow__end">
+          <span class="srow__v">${timeBased ? fmtTempoSerie(r.totalDuration) : fmtNum(r.volume, 0)}</span>
+          <span class="srow__u">${timeBased ? t('progress.total') : unit}</span>
+        </span>
+        <span class="srow__go">${raw(ICON.chevron)}</span>
+      </a>
+    `));
+  }
+  return wrap;
+}
+
 export async function renderGroup(view, slug) {
   const group = groupFromSlug(slug);
   if (!group) { location.hash = '#/progresso'; return; }
 
-  setTop({ title: groupLabel(group), back: '#/progresso' });
-
-  const rows = await loadGroups();
+  const { rows, exercisesById } = await loadGroups();
   const current = rows.find((r) => r.group === group);
   const unit = db.settings().unit;
   const timeBased = usesDuration(group);
 
-  const root = node('<div class="stack"></div>');
+  setTop({
+    title: groupLabel(group),
+    back: '#/progresso',
+    actions: current ? `<span class="topbar__meta">${tn('progress.sessions', current.summaries.length)}</span>` : '',
+  });
 
-  // Chips com os outros grupos que tem historico: trocar de grupo sem voltar
-  // pra lista e o gesto mais provavel depois de olhar um.
-  if (rows.length > 1) {
-    const chips = node('<div class="chips"></div>');
-    for (const row of rows) {
-      chips.append(node(html`
-        <a class="chip${row.group === group ? ' chip--on' : ''}" href="#/progresso/${groupSlug(row.group)}">
-          <i style="background:${groupColor(row.group)}"></i>${groupLabel(row.group)}
-        </a>
-      `));
-    }
-    root.append(chips);
-  }
+  const root = node('<div class="stack"></div>');
 
   if (!current || current.summaries.length < MIN_SESSIONS_FOR_CHART) {
     root.append(node(html`
@@ -201,15 +253,23 @@ export async function renderGroup(view, slug) {
   const summaries = current.summaries.map((r) => ({
     ...r, setCount: r.sets.length, minutes: r.totalDuration / 60,
   }));
-  const last = summaries[summaries.length - 1];
 
-  root.append(node(html`
-    <div class="lab">
-      <span>${tn('progress.sessions', summaries.length)}</span>
-      <span data-change></span>
+  /* --- 1. o indice, que e o numero que trouxe voce ate aqui --- */
+  const header = node(html`
+    <div>
+      <div class="lab"><span>${t('progress.index')}</span><span data-change></span></div>
+      <div class="week__big" style="padding-top:2px">
+        <span class="data" style="color:${groupColor(group)}">${current.index == null ? '—' : fmtNum(current.index, 0)}</span>
+        <span class="week__unit">${t('progress.ofNormal')}</span>
+      </div>
     </div>
-  `));
+  `);
+  root.append(header);
 
+  const reason = current.index == null ? t('progress.reason.tooFew') : indexReason(summaries, timeBased);
+  if (reason) root.append(node(html`<p class="muted small" style="margin:0">${reason}</p>`));
+
+  /* --- 2. a prova: a serie temporal do grupo --- */
   const metrics = chartMetrics(timeBased, unit);
   const card = node(html`
     <div>
@@ -218,30 +278,16 @@ export async function renderGroup(view, slug) {
     .map(([key, metric], i) => `<button class="segmented__btn" data-m="${key}" aria-pressed="${i === 0}">${metric.short}</button>`)
     .join(''))}
       </div>
-      <div class="week__big week__big--sm" style="padding-top:10px">
-        <span class="data" data-big></span>
-        <span class="week__unit" data-bigunit></span>
-      </div>
-      <div class="week__sub">
-        <span><span class="data">${fmtNum(last.sets.length, 0)}</span> ${tn('home.stat.sets', last.sets.length)}</span>
-        ${timeBased
-    ? raw(`<span><span class="data">${fmtTempoSerie(last.totalDuration)}</span> ${t('progress.total')}</span>`)
-    : raw(`<span><span class="data">${fmtNum(last.volume, 0)}</span> ${unit}</span>`)}
-        <span><span class="data">${fmtDateShort(last.when)}</span> ${t('progress.lastSession')}</span>
-      </div>
       <div data-chart style="padding:10px 0 2px;--accent:${groupColor(group)}"></div>
     </div>
   `);
 
   const chartArea = card.querySelector('[data-chart]');
-  const changeText = root.querySelector('[data-change]');
+  const changeText = header.querySelector('[data-change]');
 
   const draw = (key) => {
     const metric = metrics[key];
     chartArea.innerHTML = '';
-
-    card.querySelector('[data-big]').textContent = fmtNum(last[metric.field], 0);
-    card.querySelector('[data-bigunit]').textContent = metric.suffix.trim() || t('progress.metric.sets');
 
     chartArea.append(lineChart({
       points: summaries.map((r) => ({
@@ -251,17 +297,44 @@ export async function renderGroup(view, slug) {
       })),
       suffix: metric.suffix,
       decimals: 0,
+      onTap: null,
     }));
 
     const change = progressPct(summaries, metric.field);
     changeText.textContent = change == null ? ''
-      : t('common.pct', { sign: change >= 0 ? '+' : '', value: fmtNum(change, 1) });
+      : t('progress.changeIn', {
+        pct: t('common.pct', { sign: change >= 0 ? '+' : '', value: fmtNum(change, 1) }),
+        metric: metric.short.toLowerCase(),
+      });
     changeText.style.color = change == null || change === 0 ? '' : `var(--${change > 0 ? 'success' : 'danger'})`;
   };
 
   wireSegmented(card, (button) => draw(button.dataset.m));
   draw(Object.keys(metrics)[0]);
-
   root.append(card);
+
+  /* --- 3. as sessoes que formaram o numero --- */
+  root.append(node(`<h2 class="section-title">${t('progress.sessionsTitle')}</h2>`));
+  root.append(sessionList(summaries, exercisesById, unit, timeBased));
+
+  /* --- 4. so entao a saida pra outro grupo. Antes ficavam no topo, e trocar
+     de grupo e um gesto de DEPOIS de ler, nao de antes: oito chips empurravam
+     o grafico pra fora da dobra. Levam o indice junto pra ja dizer o que se
+     vai encontrar. --- */
+  const others = rows.filter((r) => r.group !== group);
+  if (others.length) {
+    root.append(node(`<h2 class="section-title">${t('progress.otherGroup')}</h2>`));
+    const chips = node('<div class="chips"></div>');
+    for (const row of others) {
+      chips.append(node(html`
+        <a class="chip" href="#/progresso/${groupSlug(row.group)}">
+          <i style="background:${groupColor(row.group)}"></i>${groupLabel(row.group)}
+          ${row.index == null ? '' : raw(`<b>${fmtNum(row.index, 0)}</b>`)}
+        </a>
+      `));
+    }
+    root.append(chips);
+  }
+
   view.append(root);
 }

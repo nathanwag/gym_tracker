@@ -2,7 +2,7 @@
 
 import * as db from '../db.js';
 import { prepareBackup, exportBackup, readFile, restore } from '../backup.js';
-import { MEDIA_CACHE, precacheMedia } from '../media.js';
+import { MEDIA_CACHE, APP_CACHE_PREFIX, precacheMedia } from '../media.js';
 import { t } from '../i18n.js';
 import {
   setTop, html, raw, node, toast, openSheet, confirmSheet, isIOS, isStandalone, ICON,
@@ -21,37 +21,61 @@ export async function render(view) {
   let backup = null;
   const backupReady = prepareBackup().then((b) => { backup = b; return b; });
 
-  root.append(preferencesCard(cfg));
-  root.append(shortcuts(backupReady, () => backup));
+  // Ordem por importancia, nao por frequencia de uso: o app nao tem servidor,
+  // entao "seus treinos so existem neste aparelho" e a informacao mais
+  // consequente da tela — e antes ela estava atras de um icone, com o aviso
+  // dentro do sheet, lido so por quem ja tinha decidido abrir.
+  root.append(dataSection(backupReady, () => backup));
+  root.append(logSection(cfg));
+  root.append(lookSection(cfg));
+  root.append(photosSection());
+  root.append(aboutSection());
   root.append(dangerZoneCard());
 
   view.append(root);
 }
 
-/* ---------- Atalhos: Backup e Figuras abrem num sheet em vez de ocupar
- * espaco fixo na tela — sao acoes ocasionais, ao contrario das preferencias
- * logo acima, que se mexe toda vez que se abre Ajustes. ---------- */
+/* ---------- Pecas comuns ----------
+ * Uma gramatica so pra tela inteira: titulo de secao + linhas "rotulo a
+ * esquerda, controle a direita". Antes conviviam tres (campos empilhados num
+ * cartao, dois botoes de icone, e um botao solto), e nada dizia que eram o
+ * mesmo nivel de coisa. */
 
-function shortcuts(backupReady, getBackup) {
-  const el = node(html`
-    <div class="shortcuts">
-      <button class="shortcut" type="button" data-open-backup>${raw(ICON.download)}<span>${t('settings.shortcuts.backup')}</span></button>
-      <button class="shortcut" type="button" data-open-photos>${raw(ICON.image)}<span>${t('settings.shortcuts.photos')}</span></button>
+function section(title, ...content) {
+  const el = node(`<div class="sec"><h2 class="section-title">${title}</h2><div data-body></div></div>`);
+  el.querySelector('[data-body]').append(...content);
+  return el;
+}
+
+/** Linha de ajuste com <select> nativo a direita. Segue nativo de proposito:
+ *  abre o seletor do sistema num toque so — trocar por um sheet proprio
+ *  deixaria a tela mais uniforme e cada ajuste mais caro. */
+function selectRow(label, attr, options, onChange) {
+  const row = node(html`
+    <div class="set-row">
+      <span class="set-row__k">${label}</span>
+      <select class="select select--inline" ${raw(attr)}>${raw(options)}</select>
     </div>
   `);
-  // Montados uma unica vez e reaproveitados a cada abertura do sheet: o de
-  // Figuras registra um listener de mensagem do service worker que nao pode
-  // se acumular a cada toque.
-  const backupNode = backupBody(backupReady, getBackup);
-  const photosNode = photosBody();
-  el.querySelector('[data-open-backup]').onclick = () => openSheet(t('settings.shortcuts.backup'), backupNode);
-  el.querySelector('[data-open-photos]').onclick = () => openSheet(t('settings.photos.sheetTitle'), photosNode);
-  return el;
+  row.querySelector('select').onchange = (e) => onChange(e.target.value);
+  return row;
+}
+
+/** Linha so de leitura, com valor a direita. `onClick` a torna tocavel. */
+function infoRow(label, value, onClick = null) {
+  const row = node(html`
+    <div class="set-row${onClick ? ' set-row--tap' : ''}">
+      <span class="set-row__k">${label}</span>
+      <span class="set-row__v"><span data-value>${value}</span>${onClick ? raw(ICON.chevron) : ''}</span>
+    </div>
+  `);
+  if (onClick) row.onclick = onClick;
+  return row;
 }
 
 /* ---------- Backup ---------- */
 
-function backupBody(backupReady, getBackup) {
+function dataSection(backupReady, getBackup) {
   const body = node(html`
     <div class="stack">
       <p class="muted small" style="margin:0">${t('settings.backup.explanation')}</p>
@@ -110,7 +134,7 @@ function backupBody(backupReady, getBackup) {
     location.hash = '#/';
   };
 
-  return body;
+  return section(t('settings.section.data'), body);
 }
 
 function showJson(backup) {
@@ -136,72 +160,115 @@ function showJson(backup) {
   };
 }
 
-/* ---------- Preferencias ---------- */
+/* ---------- Registro e Aparencia ----------
+ * Os quatro ajustes eram um bloco so, empilhados num cartao. Sao duas
+ * familias: unidade e passo mudam COMO voce registra a serie; tema e idioma
+ * mudam so a aparencia. Separados, cada titulo ja diz o que esperar embaixo
+ * dele — e a tela deixa de parecer uma lista arbitraria de quatro campos. */
 
-function preferencesCard(cfg) {
-  const card = node(html`
-    <div>
-      <h2 class="section-title" style="margin-top:4px">${t('settings.preferences.title')}</h2>
-      <div class="card card__pad stack">
-        <label class="field">
-          <span class="field__label">${t('settings.preferences.unit.label')}</span>
-          <select class="select" data-unit>
-            <option value="kg"${cfg.unit === 'kg' ? ' selected' : ''}>${t('settings.preferences.unit.kg')}</option>
-            <option value="lb"${cfg.unit === 'lb' ? ' selected' : ''}>${t('settings.preferences.unit.lb')}</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="field__label">${t('settings.preferences.step.label')}</span>
-          <select class="select" data-increment>
-            ${raw(INCREMENTS.map((v) =>
-              `<option value="${v}"${Number(cfg.weightIncrement) === v ? ' selected' : ''}>${String(v).replace('.', ',')}</option>`).join(''))}
-          </select>
-        </label>
-        <label class="field">
-          <span class="field__label">${t('settings.preferences.theme.label')}</span>
-          <select class="select" data-theme>
-            <option value="auto"${cfg.theme === 'auto' ? ' selected' : ''}>${t('settings.preferences.theme.auto')}</option>
-            <option value="dark"${cfg.theme === 'dark' ? ' selected' : ''}>${t('settings.preferences.theme.dark')}</option>
-            <option value="light"${cfg.theme === 'light' ? ' selected' : ''}>${t('settings.preferences.theme.light')}</option>
-          </select>
-        </label>
-        <label class="field">
-          <span class="field__label">${t('settings.preferences.language.label')}</span>
-          <select class="select" data-language>
-            <option value="pt"${cfg.language === 'pt' ? ' selected' : ''}>${t('settings.preferences.language.pt')}</option>
-            <option value="en"${cfg.language === 'en' ? ' selected' : ''}>${t('settings.preferences.language.en')}</option>
-          </select>
-        </label>
-      </div>
-    </div>
-  `);
+const option = (value, label, selected) =>
+  `<option value="${value}"${selected ? ' selected' : ''}>${label}</option>`;
 
-  card.querySelector('[data-unit]').onchange = async (e) => {
-    await db.setSetting('unit', e.target.value);
-    toast(t('settings.preferences.unit.toast'));
-  };
-  card.querySelector('[data-increment]').onchange = async (e) => {
-    await db.setSetting('weightIncrement', Number(e.target.value));
-    toast(t('settings.preferences.step.toast'));
-  };
-  card.querySelector('[data-theme]').onchange = async (e) => {
-    await db.setSetting('theme', e.target.value);
-    window.dispatchEvent(new CustomEvent('theme:changed', { detail: e.target.value }));
-  };
-  card.querySelector('[data-language]').onchange = async (e) => {
-    await db.setSetting('language', e.target.value);
-    window.dispatchEvent(new CustomEvent('language:changed', { detail: e.target.value }));
-  };
+function logSection(cfg) {
+  const unit = selectRow(
+    t('settings.preferences.unit.label'),
+    'data-unit',
+    option('kg', t('settings.preferences.unit.kg'), cfg.unit === 'kg')
+      + option('lb', t('settings.preferences.unit.lb'), cfg.unit === 'lb'),
+    async (value) => {
+      await db.setSetting('unit', value);
+      toast(t('settings.preferences.unit.toast'));
+    },
+  );
 
-  return card;
+  const step = selectRow(
+    t('settings.preferences.step.label'),
+    'data-increment',
+    INCREMENTS.map((v) => option(v, String(v).replace('.', ','), Number(cfg.weightIncrement) === v)).join(''),
+    async (value) => {
+      await db.setSetting('weightIncrement', Number(value));
+      toast(t('settings.preferences.step.toast'));
+    },
+  );
+
+  return section(t('settings.section.log'), unit, step);
 }
 
-/* ---------- Figuras ---------- */
+function lookSection(cfg) {
+  const theme = selectRow(
+    t('settings.preferences.theme.label'),
+    'data-theme',
+    option('auto', t('settings.preferences.theme.auto'), cfg.theme === 'auto')
+      + option('dark', t('settings.preferences.theme.dark'), cfg.theme === 'dark')
+      + option('light', t('settings.preferences.theme.light'), cfg.theme === 'light'),
+    async (value) => {
+      await db.setSetting('theme', value);
+      window.dispatchEvent(new CustomEvent('theme:changed', { detail: value }));
+    },
+  );
+
+  const language = selectRow(
+    t('settings.preferences.language.label'),
+    'data-language',
+    option('pt', t('settings.preferences.language.pt'), cfg.language === 'pt')
+      + option('en', t('settings.preferences.language.en'), cfg.language === 'en'),
+    async (value) => {
+      await db.setSetting('language', value);
+      window.dispatchEvent(new CustomEvent('language:changed', { detail: value }));
+    },
+  );
+
+  return section(t('settings.section.look'), theme, language);
+}
+
+/* ---------- Sobre ----------
+ * A versao vem do nome do cache do service worker, nao de uma constante no
+ * bundle: e a versao REALMENTE instalada. Uma constante importada diria a
+ * versao do arquivo que acabou de carregar, que e justamente o que nao ajuda
+ * quando a pergunta e "por que nao atualizou?". */
+
+async function installedVersion() {
+  try {
+    const keys = await caches.keys();
+    return keys.find((k) => k.startsWith(APP_CACHE_PREFIX)) || null;
+  } catch {
+    return null;
+  }
+}
+
+function aboutSection() {
+  const row = infoRow(t('settings.about.version'), t('settings.about.noServiceWorker'));
+  installedVersion().then((v) => {
+    if (v) row.querySelector('[data-value]').textContent = v;
+  });
+  return section(t('settings.section.about'), row);
+}
+
+/* ---------- Figuras ----------
+ * O tamanho no aparelho sobe pra linha da secao: era a primeira coisa dentro
+ * do sheet, e e o unico numero que faz alguem querer abrir. O sheet segue
+ * existindo pro que e acao (baixar, apagar). */
+
+function photosSection() {
+  let row = null;
+  // O sheet ja abre o cache pra calcular o uso; a linha recebe o mesmo texto
+  // por callback em vez de abrir de novo — e assim ela tambem se atualiza
+  // depois de baixar ou apagar figuras, sem ninguem reabrir a tela.
+  const body = photosBody((usage) => {
+    row?.querySelector('[data-value]')?.replaceChildren(usage);
+  });
+  row = infoRow(
+    t('settings.photos.onDeviceLabel'),
+    t('settings.photos.calculating'),
+    () => openSheet(t('settings.photos.sheetTitle'), body),
+  );
+  return section(t('settings.section.photos'), row);
+}
 
 /* As fotos podem chegar a dezenas de MB no aparelho. Um cache desse tamanho
  * precisa ser visivel e reversivel — e este e o plano B para quando o download
  * automatico decidir nao rodar (conexao celular, economia de dados). */
-function photosBody() {
+function photosBody(onUsage = () => {}) {
   const body = node(html`
     <div class="stack">
       <p class="muted small" style="margin:0">${t('settings.photos.explanation')}</p>
@@ -224,6 +291,7 @@ function photosBody() {
     } catch {
       usage.textContent = t('settings.photos.cacheUnavailable');
     }
+    onUsage(usage.textContent);
   };
 
   navigator.serviceWorker?.addEventListener('message', (e) => {
@@ -269,14 +337,10 @@ function photosBody() {
 /* ---------- Apagar tudo ---------- */
 
 function dangerZoneCard() {
-  const card = node(html`
-    <div>
-      <h2 class="section-title">${t('settings.dangerZone.title')}</h2>
-      <div class="card card__pad">
-        <button class="btn btn--block btn--danger" data-delete-all>${t('settings.dangerZone.button')}</button>
-      </div>
-    </div>
+  const button = node(html`
+    <button class="btn btn--block btn--danger" data-delete-all>${t('settings.dangerZone.button')}</button>
   `);
+  const card = section(t('settings.dangerZone.title'), button);
 
   card.querySelector('[data-delete-all]').onclick = async () => {
     const ok = await confirmSheet({

@@ -21,6 +21,11 @@ import { t } from './i18n.js';
 // usuario), entao o valor pode mudar livremente sem migracao.
 export const MEDIA_CACHE = 'workout-media';
 
+// Prefixo do cache versionado do app (`anilha-v33`), tambem duplicado do
+// sw.js pelo mesmo motivo. Ajustes usa isto pra descobrir qual versao esta
+// realmente instalada: e o dado que responde "por que nao atualizou?".
+export const APP_CACHE_PREFIX = 'anilha-v';
+
 // Caminho relativo ao documento, nao a rota: o `#/catalogo/x` da URL nao
 // participa da resolucao, entao isto funciona igual no GitHub Pages
 // (/usuario/repo/) e na origem local do WebView nativo.
