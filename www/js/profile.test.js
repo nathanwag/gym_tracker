@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  initials, daysSince, weightLog, parseBodyWeight, todayISO,
+  initials, daysSince, weightLog, parseBodyWeight, todayISO, parseGoal,
 } from './profile.js';
 
 test('iniciais: primeiro e último nome', () => {
@@ -53,4 +53,13 @@ test('hoje é o dia local, não o UTC: pesar às 22h não pode cair no dia segui
 test('dias desde: data sem hora é lida no fuso local, não em UTC', () => {
   assert.equal(daysSince('2026-09-07', new Date(2026, 8, 7, 10, 0)), 0);
   assert.equal(daysSince('2026-09-05', new Date(2026, 8, 7, 10, 0)), 2);
+});
+
+test('meta digitada: inteiro dentro do intervalo, ou null', () => {
+  assert.equal(parseGoal('12', 1, 30), 12);
+  assert.equal(parseGoal('12,7', 1, 30), 13);
+  assert.equal(parseGoal('0', 1, 30), null);
+  assert.equal(parseGoal('31', 1, 30), null);
+  assert.equal(parseGoal('', 1, 30), null);
+  assert.equal(parseGoal('abc', 1, 30), null);
 });

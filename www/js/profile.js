@@ -65,3 +65,12 @@ export function todayISO(now = new Date()) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+
+/** Meta digitada: numero inteiro dentro do intervalo, ou null. Meia serie nao
+ *  existe, entao o que vem com casa decimal e arredondado em vez de recusado —
+ *  quem digitou 12,7 quis 13, nao um erro. */
+export function parseGoal(text, min, max) {
+  const n = Math.round(Number(String(text).replace(',', '.').trim()));
+  if (!Number.isFinite(n) || n < min || n > max) return null;
+  return n;
+}

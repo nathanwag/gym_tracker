@@ -15,8 +15,8 @@ import { parseWeightStep, MIN_STEP, MAX_STEP } from '../weight-step.js';
 import { daysSince } from '../profile.js';
 import { t, tn } from '../i18n.js';
 import {
-  setTop, html, raw, node, toast, openSheet, closeSheet, onSheetClose, confirmSheet,
-  pickerRow, infoRow, fmtNum, ICON,
+  setTop, html, raw, node, toast, openSheet, confirmSheet,
+  pickerRow, infoRow, numberSheet, fmtNum, ICON,
 } from '../ui.js';
 
 export async function render(view) {
@@ -108,80 +108,26 @@ function stepRow(value) {
   let row = null;
 
   row = infoRow(t('settings.preferences.step.label'), stepLabel(current), async () => {
-    const typed = await askStep(current);
-    if (typed == null || Number(typed) === current) return;
+    const typed = await numberSheet({
+      title: t('settings.preferences.step.label'),
+      label: t('settings.preferences.step.field'),
+      // A unidade e lida agora, e nao do cfg da abertura da tela: setSetting
+      // troca o objeto inteiro, entao quem mudou de kg pra lb sem sair da tela
+      // veria a unidade antiga aqui.
+      suffix: db.settings().unit,
+      value: stepLabel(current),
+      hint: t('settings.preferences.step.hint', { min: fmtNum(MIN_STEP, 2), max: fmtNum(MAX_STEP, 2) }),
+      parse: parseWeightStep,
+    });
+    if (typed == null || typed === current) return;
 
-    current = Number(typed);
+    current = typed;
     row.querySelector('[data-value]').textContent = stepLabel(current);
     await db.setSetting('weightIncrement', current);
     toast(t('settings.preferences.step.toast'));
   }, { icon: ICON.plusMinus });
 
   return row;
-}
-
-/** A folha do passo: um campo so. Devolve o valor digitado como string, ou
- *  null quando a folha fecha sem valor. */
-function askStep(current) {
-  // A unidade e lida agora, e nao do cfg da abertura da tela: setSetting troca
-  // o objeto inteiro, entao quem mudou de kg pra lb sem sair da tela veria a
-  // unidade antiga aqui.
-  const unit = db.settings().unit;
-  const hint = t('settings.preferences.step.hint', {
-    min: fmtNum(MIN_STEP, 2), max: fmtNum(MAX_STEP, 2),
-  });
-
-  return new Promise((resolve) => {
-    let answered = false;
-    const finish = (value) => {
-      if (answered) return;
-      answered = true;
-      resolve(value);
-    };
-
-    // type="text" com inputmode decimal, nao type="number": o campo precisa
-    // aceitar a virgula que o teclado do celular oferece em pt.
-    const body = node(html`
-      <div class="stack">
-        <label class="field">
-          <span class="field__label">${t('settings.preferences.step.field')} <span class="muted">${unit}</span></span>
-          <input class="input" data-step type="text" inputmode="decimal" enterkeyhint="done"
-                 value="${fmtNum(Number(current), 2)}">
-        </label>
-        <p class="muted small" data-hint aria-live="polite" style="margin:0">${hint}</p>
-        <button type="button" class="btn btn--primary btn--block" data-use>${t('common.save')}</button>
-      </div>
-    `);
-    openSheet(t('settings.preferences.step.label'), body);
-    onSheetClose(() => finish(null));
-
-    const input = body.querySelector('[data-step]');
-    const hintEl = body.querySelector('[data-hint]');
-
-    const submit = () => {
-      const parsed = parseWeightStep(input.value);
-      // O recado do erro e a propria dica que ja esta ali, em vermelho: um
-      // toast repetiria a mesma frase dois centimetros acima dela.
-      hintEl.classList.toggle('hint--err', parsed == null);
-      input.setAttribute('aria-invalid', String(parsed == null));
-      if (parsed == null) {
-        input.focus();
-        input.select();
-        return;
-      }
-      finish(String(parsed));
-      closeSheet();
-    };
-
-    body.querySelector('[data-use]').onclick = submit;
-    input.onkeydown = (e) => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      submit();
-    };
-    input.focus();
-    input.select();
-  });
 }
 
 /* ---------- Seus dados ---------- */

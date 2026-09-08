@@ -151,6 +151,9 @@ Antes de criar a sexta, pergunte qual coluna é diferente. Se a resposta for
   do sistema" abaixo.
 - `pickerRow()` / `infoRow()` (`ui.js`) — as linhas de ajuste. Moravam em
   `views/settings.js`; subiram quando o Perfil passou a desenhar as mesmas.
+- `numberSheet()` (`ui.js`) — a folha de um campo só, para ajuste que é número.
+  `parse` devolve o valor ou `null`, e é a dica embaixo do campo que vira o
+  recado do erro.
 - `groupField()` (`ui.js`) — o campo "grupo muscular" dos formulários. Estava
   copiado em quatro telas com a lista de `MUSCLE_GROUPS` montada à mão nas
   quatro.
@@ -192,9 +195,12 @@ regras que saíram disso, e que valem pra qualquer tela nova de lista:
 uma lista de sete incrementos, e a lista era o problema: quem tem anilha de
 1,5 kg, converte 5 lb ou usa máquina que pula de 20 em 20 batia num conjunto
 fechado, e mesmo quem cabia nele pagava uma tela pra reencontrar o próprio
-valor. Hoje a linha abre direto a folha com o campo, já preenchido e
-selecionado. Só o que é **conjunto fechado** (unidade, tema, idioma) usa
-`pickSheet()`.
+valor. A meta de séries por grupo tinha a mesma doença — 6/8/10/12 não tem 9
+nem 11. Hoje as duas linhas abrem direto a folha com o campo, já preenchido e
+selecionado, e é sempre a mesma: **`numberSheet()`** em `ui.js`.
+
+Só o que é **conjunto fechado de verdade** usa `pickSheet()`: unidade, tema,
+idioma — e treinos por semana, que a semana já limita a sete.
 
 Duas consequências no detalhe: a linha leva `ICON.chevron`, não `ICON.down` —
 não há lista de valores ali, há outra folha; e o campo aceita vírgula, que é o

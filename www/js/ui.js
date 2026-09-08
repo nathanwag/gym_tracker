@@ -267,6 +267,72 @@ export function infoRow(label, value, onClick = null, { icon = '', hint = '', mu
   return row;
 }
 
+/**
+ * Folha de um campo so, pra ajuste que e NUMERO e nao escolha entre poucos:
+ * lista fechada deixa de fora quem faz 9 series ou usa anilha de 1,5 kg (ver
+ * DESIGN.md, "Folha de escolha e para escolha; numero e campo").
+ *
+ * `parse` devolve o valor valido ou null; a dica embaixo do campo e que vira
+ * o recado do erro, em vermelho — um toast repetiria a mesma frase dois
+ * centimetros acima dela, e ainda por cima em cima do campo.
+ *
+ * @param {{title: string, label: string, suffix?: string, value: string|number,
+ *          hint: string, parse: (text: string) => any}} opts
+ * @returns {Promise<any|null>} null quando a folha fecha sem valor
+ */
+export function numberSheet({
+  title, label, suffix = '', value, hint, parse,
+}) {
+  return new Promise((resolve) => {
+    let answered = false;
+    const finish = (v) => {
+      if (answered) return;
+      answered = true;
+      resolve(v);
+    };
+
+    // type="text" com inputmode decimal, e nao type="number": o campo precisa
+    // aceitar a virgula que o teclado do celular oferece em portugues.
+    const body = node(html`
+      <div class="stack">
+        <label class="field">
+          <span class="field__label">${label}${suffix ? raw(` <span class="muted">${esc(suffix)}</span>`) : ''}</span>
+          <input class="input" data-value type="text" inputmode="decimal" enterkeyhint="done" value="${value}">
+        </label>
+        <p class="muted small" data-hint aria-live="polite" style="margin:0">${hint}</p>
+        <button type="button" class="btn btn--primary btn--block" data-save>${t('common.save')}</button>
+      </div>
+    `);
+    openSheet(title, body);
+    onSheetClose(() => finish(null));
+
+    const input = body.querySelector('[data-value]');
+    const hintEl = body.querySelector('[data-hint]');
+
+    const submit = () => {
+      const parsed = parse(input.value);
+      hintEl.classList.toggle('hint--err', parsed == null);
+      input.setAttribute('aria-invalid', String(parsed == null));
+      if (parsed == null) {
+        input.focus();
+        input.select();
+        return;
+      }
+      finish(parsed);
+      closeSheet();
+    };
+
+    body.querySelector('[data-save]').onclick = submit;
+    input.onkeydown = (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      submit();
+    };
+    input.focus();
+    input.select();
+  });
+}
+
 /* ---------- Formatacao ---------- */
 
 /** 60 -> "60"; 62.5 -> "62,5" em pt-BR, "62.5" em en-US. */

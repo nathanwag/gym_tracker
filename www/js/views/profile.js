@@ -13,11 +13,11 @@
 
 import * as db from '../db.js';
 import { workingSets, allPrIds } from '../models.js';
-import { initials, daysSince } from '../profile.js';
+import { initials, daysSince, parseGoal } from '../profile.js';
 import { t, tn } from '../i18n.js';
 import {
   setTop, html, raw, node, toast, openSheet, closeSheet, onSheetClose,
-  pickerRow, infoRow, fmtNum, fmtMonthYear, ICON, APP_NAME,
+  pickerRow, infoRow, numberSheet, fmtNum, fmtMonthYear, ICON, APP_NAME,
 } from '../ui.js';
 
 // Sem ficha nas lojas ainda: as duas primeiras abrem quando existirem, a de
@@ -211,6 +211,32 @@ function statsBlock(workouts, sets) {
  * mesmo grupo por ser sobre voce, mas nao e meta — por isso a linha leva pra
  * tela dele, e nao abre uma lista de valores. */
 
+const SETS_GOAL_MIN = 1;
+const SETS_GOAL_MAX = 30;
+
+function setsGoalRow(value) {
+  let current = Number(value);
+  let row = null;
+
+  row = infoRow(t('profile.goal.sets'), String(current), async () => {
+    const typed = await numberSheet({
+      title: t('profile.goal.sets'),
+      label: t('profile.goal.setsField'),
+      value: String(current),
+      hint: t('profile.goal.setsHint', { min: SETS_GOAL_MIN, max: SETS_GOAL_MAX }),
+      parse: (text) => parseGoal(text, SETS_GOAL_MIN, SETS_GOAL_MAX),
+    });
+    if (typed == null || typed === current) return;
+
+    current = typed;
+    row.querySelector('[data-value]').textContent = String(current);
+    await db.setSetting('goalSetsPerGroup', current);
+    toast(t('profile.goal.toast'));
+  });
+
+  return row;
+}
+
 function goalsSection(cfg, weights) {
   const workoutGoal = pickerRow(
     t('profile.goal.workouts'),
@@ -222,15 +248,11 @@ function goalsSection(cfg, weights) {
     },
   );
 
-  const setsGoal = pickerRow(
-    t('profile.goal.sets'),
-    [6, 8, 10, 12, 14, 16, 18, 20].map((n) => ({ value: String(n), label: String(n) })),
-    cfg.goalSetsPerGroup,
-    async (value) => {
-      await db.setSetting('goalSetsPerGroup', Number(value));
-      toast(t('profile.goal.toast'));
-    },
-  );
+  // Numero, e nao escolha entre poucos: uma lista de 6/8/10/12 deixa de fora
+  // quem faz 9 ou 11, e o intervalo util aqui vai de 1 a 30. Mesma decisao do
+  // passo do peso — a linha abre o campo, e por isso leva chevron, nao a seta
+  // pra baixo (ver DESIGN.md).
+  const setsGoal = setsGoalRow(cfg.goalSetsPerGroup);
 
   const last = [...weights].sort((a, b) => String(a.date).localeCompare(String(b.date))).pop();
   const days = last ? daysSince(last.date) : null;
