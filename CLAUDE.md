@@ -91,10 +91,19 @@ propósito: ela não aparece como rótulo em lugar nenhum e o store do IndexedDB
 também se chama `settings`. Atrás dela ainda ficam **Backup**
 (`views/backup.js`, `/backup`) e **Peso corporal** (`views/body-weight.js`,
 `/peso`) — as duas saíram de dentro de Configurações porque um parágrafo com
-dois botões no meio da rolagem pesava mais que qualquer ajuste em volta. **Progresso** (`views/progress.js`) não
-tem aba: mora dentro de Histórico, atrás do `historySwitch()`, e leva o grupo no
-hash sem acento (`#/progresso/quadriceps`) pelo mesmo motivo do slug do
-catálogo.
+dois botões no meio da rolagem pesava mais que qualquer ajuste em volta.
+
+A quarta aba é **Progresso** (`views/progress.js`, rota `/progresso`): índice
+por grupo em cima, biblioteca de exercícios embaixo, os dois contra a própria
+mediana da pessoa. Era a aba **Exercícios**, que guardava três inquilinos
+(biblioteca, catálogo e modelos) e abria em oito acordeões fechados; e o
+Progresso morava escondido dentro do Histórico. Os dois trocaram de lugar.
+O grupo vai no hash sem acento (`#/progresso/quadriceps`) pelo mesmo motivo do
+slug do catálogo. Atrás dela: **busca de exercício** (`views/exercise.js`,
+`/exercicios`) — os seus e os 873 do catálogo na mesma lista, com criar no fim —
+e a **ficha do catálogo** (`views/catalog.js`, `/catalogo/<slug>`). **Modelos**
+(`views/templates.js`, `/modelos`) entra pela aba Treino, ao lado de onde o
+treino começa.
 
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,

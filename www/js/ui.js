@@ -6,7 +6,7 @@ import { t, tn, locale } from './i18n.js';
 import {
   isDurationSet, isUnilateralSet, setE1rm, workoutGroupBreakdown, workoutSummary,
 } from './models.js';
-import { groupBy, groupLabel, MUSCLE_GROUPS } from './seed.js';
+import { groupLabel, MUSCLE_GROUPS } from './seed.js';
 
 /** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
 export const APP_NAME = 'Anilha';
@@ -767,56 +767,6 @@ export function listInCard(items) {
   return card;
 }
 
-/**
- * Lista de itens agrupados por `getGroup(item)`, em cards que expandem e
- * recolhem ao toque — usado pelo catalogo e pelo seletor de exercicios da
- * sessao pra nao rolar uma lista de dezenas/centenas de itens de uma vez so.
- * `openGroups` e um Set&lt;string&gt; de nomes de grupo, de quem chama: cada tela
- * guarda o seu (o que ficou aberto no catalogo nao e o mesmo que ficou
- * aberto no seletor de exercicios da sessao).
- * @param {{items: object[], getGroup: (item: object) => string,
- *          openGroups: Set<string>, renderItem: (item: object) => HTMLElement}} opts
- * @returns {HTMLElement} elemento transparente ao layout (display:contents) —
- *   os cards de grupo caem direto no container de quem chama, como se nao
- *   houvesse wrapper.
- */
-export function groupedList({
-  items, getGroup, openGroups, renderItem,
-}) {
-  const root = node('<div class="contents"></div>');
-
-  const redraw = () => {
-    root.innerHTML = '';
-    for (const { group, items: groupItems } of groupBy(items, getGroup)) {
-      const open = openGroups.has(group);
-      const section = node(html`
-        <div class="card catalog__group">
-          <button class="catalog__header" type="button" aria-expanded="${String(open)}">
-            <span class="catalog__icon" aria-hidden="true">${raw(ICON_GROUPS[group] || '')}</span>
-            <span class="grow" style="font-weight:600">${groupLabel(group)}</span>
-            <span class="muted small">${groupItems.length}</span>
-            <span class="list__chev catalog__arrow">${raw(ICON.chevron)}</span>
-          </button>
-        </div>
-      `);
-
-      section.querySelector('button').onclick = () => {
-        if (open) openGroups.delete(group); else openGroups.add(group);
-        redraw();
-      };
-
-      if (open) {
-        const ul = node('<ul class="list"></ul>');
-        for (const item of groupItems) ul.append(renderItem(item));
-        section.append(ul);
-      }
-      root.append(section);
-    }
-  };
-
-  redraw();
-  return root;
-}
 
 /** Vibracao curta ao registrar. Ignorado no iOS, que nao expoe a API. */
 export function buzz(ms = 12) {
@@ -940,20 +890,4 @@ export function wireSegmented(container, onChange) {
       onChange(button);
     };
   }
-}
-
-/** Alternador entre as duas listas da aba Exercicios: a biblioteca e os
- *  modelos de treino. Fica aqui, e nao numa das duas views, porque as duas o
- *  desenham identico no topo — e o unico jeito de a pessoa descobrir a outra. */
-export function librarySwitch(active) {
-  const el = node(html`
-    <div class="segmented">
-      <button class="segmented__btn" data-to="#/exercicios"
-              aria-pressed="${String(active === 'exercises')}">${t('exercise.listTitle')}</button>
-      <button class="segmented__btn" data-to="#/modelos"
-              aria-pressed="${String(active === 'templates')}">${t('templates.listTitle')}</button>
-    </div>
-  `);
-  wireSegmented(el, (button) => { location.hash = button.dataset.to; });
-  return el;
 }

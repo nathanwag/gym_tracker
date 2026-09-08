@@ -4,8 +4,9 @@
  * nem peso alvo. Iniciar um treino a partir dele abre a sessao ja com os cards
  * no lugar; dali pra frente e um treino como qualquer outro.
  *
- * Vive dentro da aba Exercicios (librarySwitch), pelo mesmo motivo do catalogo:
- * a tabbar de 4 esta no limite confortavel de toque. */
+ * Entra pela aba Treino: e onde o treino comeca, e um modelo so existe pra
+ * virar treino. Antes dividia a aba Exercicios com a biblioteca, num
+ * alternador que trocava dois objetos que nao se falam. */
 
 import * as db from '../db.js';
 import { moveInOrder, existingInOrder } from '../models.js';
@@ -14,7 +15,7 @@ import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
 import {
   html, raw, node, ICON, setTop, openSheet, closeSheet, confirmSheet, toast,
-  listInCard, librarySwitch, refresh,
+  listInCard, refresh,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -25,7 +26,7 @@ export async function renderList(view) {
   const [templates, exercises] = await Promise.all([db.listTemplates(), db.listExercises()]);
   const byId = new Map(exercises.map((e) => [e.id, e]));
 
-  setTop({ title: t('templates.listTitle') });
+  setTop({ title: t('templates.listTitle'), back: '#/' });
 
   const root = node(html`
     <div class="stack">
@@ -33,7 +34,6 @@ export async function renderList(view) {
       <button class="btn btn--primary btn--block" data-add>${raw(ICON.plus)} ${t('templates.new')}</button>
     </div>
   `);
-  root.prepend(librarySwitch('templates'));
   root.querySelector('[data-add]').onclick = () => nameSheet();
 
   const list = root.querySelector('[data-list]');

@@ -77,9 +77,9 @@ async function loadGroups() {
 export async function render(view) {
   setTop({
     title: t('app.tab.progress'),
-    actions: `<button class="icon-btn" type="button" data-search aria-label="${t('exercise.searchPlaceholder')}">${ICON.search}</button>`,
+    actions: `<button class="icon-btn" type="button" data-find aria-label="${t('exercise.searchPlaceholder')}">${ICON.search}</button>`,
   });
-  document.querySelector('[data-search]').onclick = () => { location.hash = '#/exercicios'; };
+  document.querySelector('[data-find]').onclick = () => { location.hash = '#/exercicios'; };
 
   const {
     rows, sets, workoutsById, exercises,

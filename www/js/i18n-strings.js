@@ -24,6 +24,7 @@ export const DICT = {
     'common.set': { one: '{n} série', other: '{n} séries' },
     'common.exercise': { one: '{n} exercício', other: '{n} exercícios' },
     'common.step': { one: '{n} passo', other: '{n} passos' },
+    'common.template': { one: '{n} modelo', other: '{n} modelos' },
     'common.workout': 'treino',
     'common.day': { one: '{n} dia', other: '{n} dias' },
     'common.week': { one: '{n} semana', other: '{n} semanas' },
@@ -191,6 +192,8 @@ export const DICT = {
 
     // ---------- views/home.js ----------
     'home.recentWorkouts': 'Últimos treinos',
+    'home.templatesHint': 'rotinas montadas pra reusar',
+    'home.noTemplates': 'nenhum',
     'home.firstTime': 'Toque no + na barra de baixo pra começar. Cada série que você registrar vira um ponto no gráfico de evolução.',
     'home.week.this': 'Essa semana',
     'home.week.last': 'Semana passada',
@@ -212,11 +215,6 @@ export const DICT = {
 
     // ---------- views/catalog.js ----------
     'catalog.title': 'Catálogo',
-    'catalog.searchPlaceholder': 'Buscar entre 873 exercícios',
-    'catalog.loading': 'Carregando…',
-    'catalog.loadError': 'Não consegui carregar o catálogo. Verifique a conexão e recarregue.',
-    'catalog.alreadyInLibrary': 'Já está na sua biblioteca',
-    'catalog.noneFound': 'Nenhum exercício encontrado para «{q}».',
     'catalog.showingOf': 'mostrando {shown} de {total} — refine a busca',
     'catalog.notFound': 'Exercício não encontrado no catálogo.',
     'catalog.alsoWorks': 'Também trabalha: {groups}',
@@ -229,12 +227,11 @@ export const DICT = {
     // ---------- views/exercise.js ----------
     'exercise.listTitle': 'Exercícios',
     'exercise.searchPlaceholder': 'Buscar exercício',
-    'exercise.add.title': 'Adicionar exercício',
-    'exercise.add.catalog': 'Do catálogo',
-    'exercise.add.catalogHint': '873 exercícios com figura e passo a passo',
-    'exercise.add.create': 'Criar do zero',
-    'exercise.add.createHint': 'nome, grupo e pronto',
-    'exercise.emptyLibrary': 'Sua biblioteca está vazia. Toque em + para adicionar exercícios.',
+    'exercise.mine': 'Meus',
+    'exercise.catalogSection': 'Catálogo · {total}',
+    'exercise.create': 'Criar exercício',
+    'exercise.createNamed': 'Criar “{q}”',
+    'exercise.emptyLibrary': 'Sua biblioteca está vazia. Busque no catálogo acima ou crie o seu.',
     'exercise.noneFound': 'Nenhum exercício encontrado.',
     'exercise.bestWeight': 'melhor {weight} {unit}',
     'exercise.bestDurationLabel': 'melhor {duration}',
@@ -514,6 +511,7 @@ export const DICT = {
     'common.set': { one: '{n} set', other: '{n} sets' },
     'common.exercise': { one: '{n} exercise', other: '{n} exercises' },
     'common.step': { one: '{n} step', other: '{n} steps' },
+    'common.template': { one: '{n} template', other: '{n} templates' },
     'common.workout': 'workout',
     'common.day': { one: '{n} day', other: '{n} days' },
     'common.week': { one: '{n} week', other: '{n} weeks' },
@@ -679,6 +677,8 @@ export const DICT = {
 
     // ---------- views/home.js ----------
     'home.recentWorkouts': 'Recent workouts',
+    'home.templatesHint': 'routines you build once and reuse',
+    'home.noTemplates': 'none',
     'home.firstTime': 'Tap the + in the bottom bar to get started. Every set you log becomes a point on the progress chart.',
     'home.week.this': 'This week',
     'home.week.last': 'Last week',
@@ -699,11 +699,6 @@ export const DICT = {
 
     // ---------- views/catalog.js ----------
     'catalog.title': 'Catalog',
-    'catalog.searchPlaceholder': 'Search 873 exercises',
-    'catalog.loading': 'Loading…',
-    'catalog.loadError': "Couldn't load the catalog. Check your connection and reload.",
-    'catalog.alreadyInLibrary': 'Already in your library',
-    'catalog.noneFound': 'No exercise found for "{q}".',
     'catalog.showingOf': 'showing {shown} of {total} — refine your search',
     'catalog.notFound': 'Exercise not found in the catalog.',
     'catalog.alsoWorks': 'Also works: {groups}',
@@ -716,12 +711,11 @@ export const DICT = {
     // ---------- views/exercise.js ----------
     'exercise.listTitle': 'Exercises',
     'exercise.searchPlaceholder': 'Search exercise',
-    'exercise.add.title': 'Add exercise',
-    'exercise.add.catalog': 'From the catalog',
-    'exercise.add.catalogHint': '873 exercises with photos and steps',
-    'exercise.add.create': 'Create from scratch',
-    'exercise.add.createHint': 'name, group, done',
-    'exercise.emptyLibrary': 'Your library is empty. Tap + to add exercises.',
+    'exercise.mine': 'Mine',
+    'exercise.catalogSection': 'Catalog · {total}',
+    'exercise.create': 'Create exercise',
+    'exercise.createNamed': 'Create “{q}”',
+    'exercise.emptyLibrary': 'Your library is empty. Search the catalog above or create your own.',
     'exercise.noneFound': 'No exercise found.',
     'exercise.bestWeight': 'best {weight} {unit}',
     'exercise.bestDurationLabel': 'best {duration}',

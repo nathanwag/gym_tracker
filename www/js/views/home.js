@@ -8,7 +8,7 @@ import { lineChart } from '../charts.js';
 import { t, tn } from '../i18n.js';
 import { groupLabel } from '../seed.js';
 import {
-  setTop, html, raw, node, ICON, groupColor, workoutRow, wireSegmented,
+  setTop, html, raw, node, ICON, groupColor, workoutRow, wireSegmented, infoRow,
   fmtNum, fmtDateRange, fmtMinutes,
 } from '../ui.js';
 
@@ -25,11 +25,12 @@ const weeklySetGoal = () => Number(db.settings().goalSetsPerGroup) || 10;
 export async function render(view) {
   setTop({ title: t('app.tab.workout') });
 
-  const [active, workouts, sets, exercises] = await Promise.all([
+  const [active, workouts, sets, exercises, templates] = await Promise.all([
     db.getActiveWorkout(),
     db.listWorkouts(),
     db.listAllSets(),
     db.listExercises(),
+    db.listTemplates(),
   ]);
 
   const unit = db.settings().unit;
@@ -57,6 +58,18 @@ export async function render(view) {
     container.append(node(`<h2 class="section-title">${t('home.recentWorkouts')}</h2>`));
     container.append(recentList(finished.slice(0, 5), setsByWorkout, exercisesById, sets, unit));
   }
+
+  // Modelos entram por aqui: montar uma rotina e gesto de ANTES do treino, e a
+  // folha do botao de treinar so sabe usar as que ja existem. Sem cabecalho de
+  // secao — uma linha so nao merece um, e o rotulo ja diz o que e.
+  const templatesRow = node('<div style="margin-top:22px"></div>');
+  templatesRow.append(infoRow(
+    t('templates.listTitle'),
+    templates.length ? tn('common.template', templates.length) : t('home.noTemplates'),
+    () => { location.hash = '#/modelos'; },
+    { icon: ICON.steps, hint: t('home.templatesHint') },
+  ));
+  container.append(templatesRow);
 
   view.append(container);
 }

@@ -121,7 +121,7 @@ três, e é o que separa "planilha" de "painel". Escala em `--fs-xs` … `--fs-h
 | `.pstats` | três números em colunas com filete entre elas | Perfil |
 | `.pick` | opções da folha de escolha, a atual em destaque | qualquer `pickSheet()` |
 | `.gidx` | índice por grupo: barra com referência em 100, a linha inteira navega | Progresso |
-| `.srow` | sessão de um grupo: data + exercícios do dia, volume à direita | Progresso · grupo |
+| `.srow` | linha de duas leituras + número à direita: sessão de um grupo (data + exercícios do dia, volume) e exercício da biblioteca (nome + última carga, índice) | Progresso, Progresso · grupo |
 | `.delta` | o que mudou desde a última vez, exercício por exercício | detalhe do treino |
 | `.chip` | pastilha de grupo com cor e, quando há, o índice | Progresso |
 | `.sec` | seção com título e respiro próprio | Perfil, Configurações |
@@ -157,8 +157,10 @@ Antes de criar a sexta, pergunte qual coluna é diferente. Se a resposta for
 - `groupField()` (`ui.js`) — o campo "grupo muscular" dos formulários. Estava
   copiado em quatro telas com a lista de `MUSCLE_GROUPS` montada à mão nas
   quatro.
-- `historySwitch()` (`views/progress.js`) — o alternador *Lista · Progresso*.
-  Mora na tela que o introduziu; o histórico importa de lá.
+- `exerciseProgressRows()` (`models.js`) — a lista de exercícios com índice.
+  Reusa `groupIndex()` em vez de ter a sua própria conta: grupo e exercício
+  aparecem um embaixo do outro na mesma tela, e duas noções de "andou pra
+  frente" se contradiriam ali.
 
 Duas cópias divergem no primeiro ajuste de coluna. Já aconteceu.
 
@@ -255,7 +257,7 @@ a próxima métrica de ser jogada na home por falta de lugar:
 | Tela | Pergunta | Leitura |
 |---|---|---|
 | Início · semana | Estou treinando o suficiente? | séries por grupo vs. meta |
-| Progresso | Qual grupo saiu do meu normal? | índice, 100 = mediana |
+| Progresso | Onde a carga está subindo, e onde eu travei? | índice por grupo e por exercício, 100 = mediana |
 | Progresso · grupo | Esse grupo está subindo? | séries e volume por sessão |
 | Treino | Melhorei desde a última vez? | delta da sessão anterior |
 | Exercício | A carga subiu? | e1RM e peso máximo |

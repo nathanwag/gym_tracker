@@ -1,121 +1,22 @@
-/* Catalogo: os 873 exercicios de onde saem os "meus exercicios".
+/* Ficha de um exercicio do catalogo: figura animada, dados e o botao de por na
+ * biblioteca.
  *
- * A lista completa nunca e renderizada de uma vez — 873 linhas travam o celular.
- * Sem busca, as secoes por grupo vem fechadas; com busca, o corte e em 80.
+ * A LISTA do catalogo nao mora mais aqui — ela era uma segunda busca e um
+ * segundo acordeao ao lado dos "meus exercicios", e achar um exercicio exigia
+ * saber de antemao em qual das duas ele estava. Hoje a busca e uma so, em
+ * views/exercise.js, e esta tela e o destino dela.
  */
 
 import * as catalog from '../catalog.js';
 import * as db from '../db.js';
 import { groupLabel } from '../seed.js';
 import {
-  thumbHtml, createAnimation, prefetchPhotos, fullUrl,
+  createAnimation, prefetchPhotos, fullUrl,
 } from '../media.js';
 import { t, language } from '../i18n.js';
 import {
-  ICON, html, node, raw, setTop, toast, refresh, groupedList, listInCard, groupField,
+  ICON, html, node, raw, setTop, toast, refresh, groupField,
 } from '../ui.js';
-import { normalizeName as normalize } from '../text.js';
-
-/* ==========================================================================
-   Lista
-   ========================================================================== */
-
-// Lembra a secao aberta e o texto buscado entre visitas ao catalogo nesta
-// sessao — sem isso, voltar de um exercicio sempre reabria a lista do zero
-// (grupo fechado, busca vazia). Escopo de modulo, nao da funcao: sobrevive a
-// renderList() rodar de novo a cada navegacao pro #/catalogo.
-const openGroups = new Set();
-let search = '';
-
-export async function renderList(view) {
-  setTop({ title: t('catalog.title'), back: '#/exercicios' });
-
-  const root = node(html`
-    <div class="stack">
-      <input class="input" data-search type="search" placeholder="${t('catalog.searchPlaceholder')}"
-             autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
-      <div data-list><div class="card card__pad muted">${t('catalog.loading')}</div></div>
-    </div>
-  `);
-  view.append(root);
-
-  const list = root.querySelector('[data-list]');
-
-  let items;
-  try {
-    items = await catalog.load();
-  } catch {
-    list.innerHTML = '';
-    list.append(node(html`
-      <div class="card"><div class="empty">
-        ${raw(ICON.dumbbell)}
-        <p>${t('catalog.loadError')}</p>
-      </div></div>
-    `));
-    return;
-  }
-
-  // Quem ja esta na biblioteca aparece marcado, para nao adicionar duas vezes.
-  const mine = new Set((await db.listExercises()).map((e) => e.slug).filter(Boolean));
-
-  const row = (item) => node(html`
-    <li class="list__item">
-      <a class="list__link" href="#/catalogo/${item.slug}">
-        ${raw(thumbHtml(item))}
-        <div class="grow">
-          <div class="catalog__name">
-            ${catalog.displayName(item)}
-          </div>
-          <div class="muted small">${item.equipamento}${item.nivel ? ` · ${item.nivel}` : ''}</div>
-        </div>
-        ${mine.has(item.slug)
-          ? raw(`<span class="catalog__owned" title="${t('catalog.alreadyInLibrary')}"
-                       aria-label="${t('catalog.alreadyInLibrary')}">${ICON.check}</span>`)
-          : raw(`<span class="list__chev">${ICON.chevron}</span>`)}
-      </a>
-    </li>
-  `);
-
-  const draw = () => {
-    list.innerHTML = '';
-
-    if (search.trim()) {
-      const q = search.trim();
-      const matches = items.filter((i) => i.searchKey.includes(normalize(q)));
-      if (!matches.length) {
-        list.append(node(html`
-          <div class="card"><div class="empty">
-            ${raw(ICON.dumbbell)}<p>${t('catalog.noneFound', { q })}</p>
-          </div></div>
-        `));
-        return;
-      }
-      const shown = matches.slice(0, 80);
-      list.append(listInCard(shown.map(row)));
-      if (matches.length > shown.length) {
-        list.append(node(html`
-          <p class="muted small" style="text-align:center">
-            ${t('catalog.showingOf', { shown: shown.length, total: matches.length })}
-          </p>
-        `));
-      }
-      return;
-    }
-
-    // Sem busca: por grupo, colapsavel — abrir 873 linhas de uma vez trava a
-    // rolagem no celular.
-    list.append(groupedList({
-      items, getGroup: (item) => item.grupo, openGroups, renderItem: row,
-    }));
-  };
-
-  root.querySelector('[data-search]').addEventListener('input', (e) => {
-    search = e.target.value;
-    draw();
-  });
-
-  draw();
-}
 
 /* ==========================================================================
    Detalhe
@@ -124,12 +25,12 @@ export async function renderList(view) {
 export async function renderDetail(view, slug) {
   const item = await catalog.get(slug);
   if (!item) {
-    setTop({ title: t('catalog.title'), back: '#/catalogo' });
+    setTop({ title: t('catalog.title'), back: '#/exercicios' });
     view.append(node(`<div class="card card__pad">${t('catalog.notFound')}</div>`));
     return;
   }
 
-  setTop({ title: catalog.displayName(item), back: '#/catalogo' });
+  setTop({ title: catalog.displayName(item), back: '#/exercicios' });
 
   const mine = await db.listExercises();
   const alreadyHave = mine.find((e) => e.slug === slug) || null;

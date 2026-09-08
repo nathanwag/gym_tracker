@@ -1380,33 +1380,12 @@ a.chip:active { background: var(--border); }
 :root[data-theme="dark"] .flip__frame,
 :root[data-theme="dark"] .thumb__img { filter: brightness(.88); }
 
-/* ---------- Catalogo ---------- */
-
-.catalog__header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 13px 14px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.catalog__header:active { background: var(--surface-2); }
-.catalog__icon { display: inline-flex; color: var(--muted); }
-.catalog__icon svg { width: 20px; height: 20px; }
-.catalog__arrow { transition: transform .15s ease; }
-.catalog__header[aria-expanded="true"] .catalog__arrow { transform: rotate(90deg); }
-.catalog__group > .list { border-top: 1px solid var(--border); }
+/* ---------- Catalogo ----------
+   Sobrou o que a ficha de um exercicio usa, mais a linha que a busca de
+   #/exercicios desenha pros itens do catalogo. O acordeao por grupo saiu junto
+   com a lista: com a busca unica, nao ha mais 873 linhas pra esconder. */
 
 .catalog__name { display: flex; align-items: center; gap: 6px; font-weight: 600; }
-/* Icone em vez de "na biblioteca" escrito: o texto roubava largura do nome do
-   exercicio e o jogava para duas linhas. */
-.catalog__owned { flex: 0 0 auto; display: inline-flex; color: var(--accent); }
-.catalog__owned svg { width: 19px; height: 19px; }
 .catalog__title { font-size: 1.15rem; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }

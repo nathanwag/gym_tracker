@@ -41,7 +41,9 @@ const ROUTES = [
   [/^\/modelos\/(\d+)\/adicionar$/, (view, id) => picker.renderForTemplate(view, Number(id))],
   // Sem ambiguidade com /exercicios/(\d+): la o parametro e o id numerico do
   // banco, aqui e o slug do catalogo.
-  [/^\/catalogo$/, (view) => catalog.renderList(view)],
+  // A lista do catalogo virou a busca de #/exercicios. A rota sobrevive porque
+  // pode estar salva num link antigo.
+  [/^\/catalogo$/, () => { location.hash = '#/exercicios'; }],
   [/^\/catalogo\/([a-z0-9-]+)$/, (view, slug) => catalog.renderDetail(view, slug)],
   [/^\/perfil$/, (view) => profile.render(view)],
   // Rota com o nome antigo de proposito: /ajustes nunca aparece como rotulo e

@@ -15,28 +15,39 @@ import {
   preloadCustomThumbs, invalidateCustomThumbs, compressImage,
 } from '../media.js';
 import { t, tn, language } from '../i18n.js';
-import { cleanSteps, sameSteps } from '../text.js';
+import { cleanSteps, sameSteps, normalizeName } from '../text.js';
 import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
   fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented,
-  groupedList, listInCard, groupColor, librarySwitch, groupField,
+  listInCard, groupColor, groupField,
 } from '../ui.js';
 
 /* ==========================================================================
    Lista
    ========================================================================== */
 
-// Lembra o texto buscado entre visitas nesta sessao — mesmo motivo do
-// catalogo (catalog.js): sem isso, voltar de um exercicio reabria a lista do
-// zero.
+// Lembra o texto buscado entre visitas nesta sessao: sem isso, voltar de um
+// exercicio reabria a busca do zero. Escopo de modulo, nao da funcao.
 let search = '';
-// Grupos que o usuario abriu. Nasce vazio: todos fechados, senao 8 cabecalhos
-// abertos gastam a tela inteira pra poucos exercicios. Escopo de modulo pelo
-// mesmo motivo de `search` acima — sobrevive a abrir um exercicio e voltar.
-const openGroups = new Set();
 
+// Teto de resultados do catalogo. Renderizar 873 linhas trava a rolagem no
+// celular, e quem precisa de mais de 40 precisa mesmo e refinar a busca.
+const CATALOG_SHOWN = 40;
+
+/* Achar exercicio: os seus e os 873 do catalogo na MESMA lista.
+ *
+ * Eram duas telas, cada uma com sua busca e seu acordeao por grupo, e achar
+ * "supino inclinado" exigia saber de antemao se ele ja era seu — o botao +
+ * abria uma folha so pra perguntar por qual das duas comecar.
+ *
+ * Sem busca digitada mostra a biblioteca inteira, inclusive quem nunca foi
+ * registrado: e a unica tela que os alcanca, ja que o Progresso so lista
+ * quem tem serie (sem serie nao ha o que comparar).
+ */
 export async function renderList(view) {
+  setTop({ title: t('exercise.listTitle'), back: '#/progresso' });
+
   const [exercises, sets] = await Promise.all([db.listExercises(), db.listAllSets()]);
   const unit = db.settings().unit;
 
@@ -55,24 +66,23 @@ export async function renderList(view) {
     if (!s.warmup && s.weight > r.bestWeight) r.bestWeight = s.weight;
   }
 
-  setTop({ title: t('exercise.listTitle') });
-
   const root = node(html`
     <div class="stack">
-      <div class="row">
-        <input class="input grow" data-search type="search" placeholder="${t('exercise.searchPlaceholder')}"
-               autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
-        <button class="btn btn--primary btn--square" data-add aria-label="${t('exercise.add.title')}">${raw(ICON.plus)}</button>
-      </div>
+      <input class="input" data-search type="search" placeholder="${t('exercise.searchPlaceholder')}"
+             autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
       <div data-list></div>
+      <button class="btn btn--block" data-create></button>
     </div>
   `);
-  root.prepend(librarySwitch('exercises'));
-  root.querySelector('[data-add]').onclick = addExerciseSheet;
-
   const list = root.querySelector('[data-list]');
+  const createButton = root.querySelector('[data-create]');
 
-  const exerciseItem = (ex) => {
+  // Quem ja esta na biblioteca sai do resultado do catalogo: ele apareceu logo
+  // acima, em "Meus", e la com o historico junto.
+  const mineSlugs = new Set(exercises.map((e) => e.slug).filter(Boolean));
+  let catalogItems = null;
+
+  const mineItem = (ex) => {
     const r = summaries.get(ex.id);
     const detail = r
       ? `${fmtRelativeDay(r.last)} · ${t('exercise.bestWeight', { weight: fmtNum(r.bestWeight, 2), unit })}`
@@ -91,82 +101,81 @@ export async function renderList(view) {
     `);
   };
 
+  const catalogRow = (item) => node(html`
+    <li class="list__item">
+      <a class="list__link" href="#/catalogo/${item.slug}">
+        ${raw(thumbHtml(item))}
+        <div class="grow">
+          <div class="catalog__name">${catalog.displayName(item)}</div>
+          <div class="muted small">${item.equipamento}${item.nivel ? ` · ${item.nivel}` : ''}</div>
+        </div>
+        <span class="list__chev">${raw(ICON.chevron)}</span>
+      </a>
+    </li>
+  `);
+
   const draw = () => {
-    const q = stripAccents(search.trim());
-    const items = q
-      ? exercises.filter((e) => stripAccents(e.name).includes(q) || stripAccents(e.muscleGroup).includes(q))
+    const q = search.trim();
+    const term = stripAccents(q);
+    list.innerHTML = '';
+
+    const mine = term
+      ? exercises.filter((e) => stripAccents(e.name).includes(term)
+        || stripAccents(e.muscleGroup).includes(term))
       : exercises;
 
-    list.innerHTML = '';
-    if (!items.length) {
+    if (mine.length) {
+      if (q) list.append(node(`<h2 class="section-title">${t('exercise.mine')}</h2>`));
+      list.append(listInCard(mine.map(mineItem)));
+    }
+
+    let matches = [];
+    if (q && catalogItems) {
+      const needle = normalizeName(q);
+      matches = catalogItems.filter((i) => i.searchKey.includes(needle) && !mineSlugs.has(i.slug));
+      const shown = matches.slice(0, CATALOG_SHOWN);
+      if (shown.length) {
+        list.append(node(`<h2 class="section-title">${t('exercise.catalogSection', { total: matches.length })}</h2>`));
+        list.append(listInCard(shown.map(catalogRow)));
+        if (matches.length > shown.length) {
+          list.append(node(html`
+            <p class="muted small" style="text-align:center;margin-top:10px">
+              ${t('catalog.showingOf', { shown: shown.length, total: matches.length })}
+            </p>
+          `));
+        }
+      }
+    }
+
+    if (!mine.length && !matches.length) {
       list.append(node(html`
         <div class="card"><div class="empty">
           ${raw(ICON.dumbbell)}
           <p>${q ? t('exercise.noneFound') : t('exercise.emptyLibrary')}</p>
         </div></div>
       `));
-      return;
     }
 
-    // Buscando, o agrupamento atrapalha: o resultado sai plano, como no
-    // catalogo. Sem busca, grupos fechados — 8 cabecalhos abertos gastavam a
-    // tela inteira pra 9 exercicios.
-    if (q) {
-      list.append(listInCard(items.map(exerciseItem)));
-    } else {
-      list.append(groupedList({
-        items,
-        getGroup: (ex) => ex.muscleGroup,
-        openGroups,
-        renderItem: exerciseItem,
-      }));
-    }
+    createButton.innerHTML = html`${raw(ICON.plus)} ${q ? t('exercise.createNamed', { q }) : t('exercise.create')}`;
   };
 
+  createButton.onclick = () => exerciseForm(search.trim());
   root.querySelector('[data-search]').addEventListener('input', (e) => {
     search = e.target.value;
     draw();
   });
 
   draw();
-  // Miniaturas personalizadas nao atrasam a primeira pintura: desenha de
-  // novo so quando (e se) o cache terminar de carregar, igual ao passo a
-  // passo do detalhe (linha ~253) — mesmo motivo, arquivo/leitura separada.
+  // O catalogo e um JSON de 873 itens: carregar antes da primeira pintura
+  // atrasaria a tela por uma lista que so serve depois de digitar algo.
+  catalog.load().then((items) => {
+    catalogItems = items;
+    if (list.isConnected) draw();
+  }).catch(() => {});
+  // Miniaturas personalizadas nao atrasam a primeira pintura: desenha de novo
+  // so quando (e se) o cache terminar de carregar.
   preloadCustomThumbs().then(() => { if (list.isConnected) draw(); }).catch(() => {});
   view.append(root);
-}
-
-/** As duas fontes de exercicio novo. Ficavam como dois botoes no topo da lista,
- *  antes de qualquer exercicio; aqui a escolha so aparece depois de voce
- *  decidir adicionar, e da pra dizer no que uma difere da outra. */
-function addExerciseSheet() {
-  const body = node(html`
-    <div class="card"><ul class="list">
-      <li class="list__item">
-        <a class="list__link" href="#/catalogo">
-          <span class="editor-sec__icon">${raw(ICON.search)}</span>
-          <div class="grow">
-            <div style="font-weight:650">${t('exercise.add.catalog')}</div>
-            <div class="muted small">${t('exercise.add.catalogHint')}</div>
-          </div>
-          <span class="list__chev">${raw(ICON.chevron)}</span>
-        </a>
-      </li>
-      <li class="list__item">
-        <button class="list__link" type="button" data-create>
-          <span class="editor-sec__icon">${raw(ICON.plus)}</span>
-          <div class="grow">
-            <div style="font-weight:650">${t('exercise.add.create')}</div>
-            <div class="muted small">${t('exercise.add.createHint')}</div>
-          </div>
-          <span class="list__chev">${raw(ICON.chevron)}</span>
-        </button>
-      </li>
-    </ul></div>
-  `);
-  openSheet(t('exercise.add.title'), body);
-  // exerciseForm() reabre o sheet no lugar deste — e o mesmo elemento.
-  body.querySelector('[data-create]').onclick = () => exerciseForm();
 }
 
 /* ==========================================================================
@@ -933,12 +942,12 @@ function openFigurePicker({ name, currentSlug, onPick }) {
 
 /** Sheet de criar exercicio (nome + grupo + unilateral). Editar um exercicio
  *  que ja existe e a tela cheia `renderEdit`. */
-function exerciseForm() {
+function exerciseForm(name = '') {
   const body = node(html`
     <div class="stack">
       <label class="field">
         <span class="field__label">${t('exercise.form.name')}</span>
-        <input class="input" data-name value="" autocapitalize="sentences">
+        <input class="input" data-name value="${name}" autocapitalize="sentences">
       </label>
       ${raw(groupField())}
       <label class="field field--check">
