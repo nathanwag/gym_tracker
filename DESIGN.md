@@ -161,6 +161,8 @@ Antes de criar a sexta, pergunte qual coluna é diferente. Se a resposta for
   Reusa `groupIndex()` em vez de ter a sua própria conta: grupo e exercício
   aparecem um embaixo do outro na mesma tela, e duas noções de "andou pra
   frente" se contradiriam ali.
+- `lastDoneLabel()` (`ui.js`) — "Hoje · 135 kg": a última vez que o exercício
+  foi feito e com quanto. Progresso e a busca desenham a mesma frase.
 
 Duas cópias divergem no primeiro ajuste de coluna. Já aconteceu.
 
@@ -293,7 +295,15 @@ Se ela já está respondida em outra linha, o número pertence àquela tela.
 - **O rótulo da tabbar existe duas vezes**: em `i18n-strings.js` e, estático,
   em `index.html`. O do HTML aparece antes do i18n rodar, então trocar só um
   faz o rótulo piscar o nome antigo. O `data-tab` do HTML tem que casar com o
-  nome usado em `TABS` (`app.js`) e com a chave `app.tab.<nome>`.
+  nome usado em `TABS` (`app.js`) e com a chave `app.tab.<nome>` — **e com a
+  lista de `applyStaticLanguage()`**, que é um quarto lugar: ela ficou pedindo
+  `'settings'` meses depois de Configurações sair da tabbar, e o rótulo do
+  Perfil simplesmente nunca traduzia. Sem erro, sem teste quebrado.
+- **Duas telas que falam do mesmo dado têm que ler a mesma fonte.** A busca de
+  exercício dizia "última vez" a partir de `createdAt` da série (quando a
+  *linha* foi gravada) e o Progresso, a partir da data do treino. Num backup
+  importado os dois divergem, e o mesmo exercício aparecia como "Hoje" numa
+  tela e "há 4 dias" na outra — nenhuma das duas errada sozinha.
 - **Data sem hora ("2026-09-07") é meia-noite UTC pro `new Date()`**, o que
   volta um dia em fuso negativo — a pesagem de hoje aparecia como ontem. Os
   formatadores de `ui.js` e o `daysSince` de `profile.js` já tratam isso; quem
