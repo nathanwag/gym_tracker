@@ -161,7 +161,7 @@ function exerciseSection(sets, workoutsById, exercises, unit) {
 
   const wrap = node(html`
     <div>
-      <div class="lab"><span>${t('progress.exercises')}</span><span>${t('progress.indexRef')}</span></div>
+      <div class="lab"><span>${t('progress.exercises')}</span></div>
     </div>
   `);
 

@@ -377,7 +377,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .btn--lg { min-height: 56px; font-size: 1.2rem; }
 .btn--sm { min-height: 36px; padding: 0 14px; font-size: 1rem; }
 /* So o icone, no tamanho de um alvo de toque — o + ao lado da busca. */
-.btn--square { width: var(--tap); padding: 0; flex: 0 0 auto; }
 .btn svg { width: 20px; height: 20px; }
 
 /* Secao de Ajustes. O respiro entre secoes vive aqui, e nao no .section-title:
