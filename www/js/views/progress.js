@@ -43,21 +43,6 @@ const MIN_SESSIONS_FOR_CHART = 2;
 // indice compara (3 recentes + 3 da base), que e o que a tela esta explicando.
 const SESSIONS_SHOWN = 6;
 
-/** O alternador que as duas telas do Historico compartilham. Fica aqui, e nao
- *  em history.js, porque quem o introduziu foi esta tela. */
-export function historySwitch(active) {
-  const el = node(html`
-    <div class="segmented" style="margin-bottom:14px">
-      <button class="segmented__btn" data-go="#/historico" aria-pressed="${String(active === 'list')}">${t('progress.tab.list')}</button>
-      <button class="segmented__btn" data-go="#/progresso" aria-pressed="${String(active === 'progress')}">${t('progress.tab.progress')}</button>
-    </div>
-  `);
-  for (const button of el.querySelectorAll('[data-go]')) {
-    button.onclick = () => { location.hash = button.dataset.go; };
-  }
-  return el;
-}
-
 /** Sessoes de cada grupo que tem historico, ja com o indice calculado. Uma
  *  passada so pelo banco serve as duas telas. */
 async function loadGroups() {
@@ -87,11 +72,14 @@ async function loadGroups() {
    ========================================================================== */
 
 export async function render(view) {
-  setTop({ title: t('history.title') });
+  setTop({
+    title: t('app.tab.progress'),
+    actions: `<button class="icon-btn" type="button" data-search aria-label="${t('exercise.searchPlaceholder')}">${ICON.search}</button>`,
+  });
+  document.querySelector('[data-search]').onclick = () => { location.hash = '#/exercicios'; };
 
   const { rows } = await loadGroups();
   const root = node('<div></div>');
-  root.append(historySwitch('progress'));
 
   if (!rows.length) {
     root.append(node(html`

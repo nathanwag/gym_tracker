@@ -9,7 +9,6 @@ import {
 import { exerciseBanner } from '../media.js';
 import { openShareSheet } from '../share-image.js';
 import { takeLastAdded } from './exercise-picker.js';
-import { historySwitch } from './progress.js';
 import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
@@ -61,7 +60,6 @@ export async function render(view) {
   const thisYear = new Date().getFullYear();
 
   const root = node('<div></div>');
-  root.append(historySwitch('list'));
   let currentMonth = null;
 
   for (const workout of workouts) {

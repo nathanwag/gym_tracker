@@ -53,11 +53,13 @@ const ROUTES = [
 
 const TABS = [
   [/^\/(sessao)?$/, 'workout'],
+  // Modelo nao tem aba propria: mora atras do Treino, que e onde ele vira
+  // treino de verdade — a folha do botao de treinar ja o usa.
+  [/^\/modelos/, 'workout'],
   [/^\/historico/, 'history'],
-  [/^\/progresso/, 'history'],
-  // Catalogo e modelos nao tem aba propria: a tabbar de 4 ja esta no limite
-  // confortavel de toque. Vivem dentro de Exercicios e mantem essa aba acesa.
-  [/^\/(exercicios|catalogo|modelos)/, 'exercises'],
+  // Biblioteca e catalogo tambem nao tem: sao manutencao de umas poucas vezes
+  // na vida, e vivem atras da lupa do Progresso.
+  [/^\/(progresso|exercicios|catalogo)/, 'progress'],
   // Perfil e tudo que mora atras dele: configuracoes, backup e peso corporal.
   [/^\/(perfil|ajustes|backup|peso)/, 'profile'],
 ];
@@ -209,7 +211,7 @@ function applyTheme(theme) {
  *  valor novo em db.js antes de disparar. */
 function applyStaticLanguage() {
   document.documentElement.lang = t('app.htmlLang');
-  for (const tab of ['workout', 'history', 'exercises', 'settings']) {
+  for (const tab of ['workout', 'history', 'progress', 'profile']) {
     const span = document.querySelector(`.tabbar__item[data-tab="${tab}"] span`);
     if (span) span.textContent = t(`app.tab.${tab}`);
   }
