@@ -210,6 +210,63 @@ export function pickSheet({ title, options, value }) {
   });
 }
 
+/* ---------- Linhas de ajuste ----------
+ * A familia .set-row: rotulo a esquerda, valor a direita, linha inteira como
+ * alvo. Moravam em views/settings.js; subiram quando o Perfil passou a
+ * desenhar as mesmas linhas (ver DESIGN.md, "Pecas compartilhadas").
+ *
+ * `icon` e o desenho a esquerda, so em Configuracoes: dentro de um grupo, e o
+ * que deixa achar "idioma" sem ler a coluna inteira. */
+
+function rowInner({
+  label, value = '', hint = '', icon = '', arrow = '',
+}) {
+  return html`
+    ${icon ? raw(`<span class="set-row__i">${icon}</span>`) : ''}
+    <span class="set-row__k">${label}${hint ? raw(`<span class="set-row__hint">${esc(hint)}</span>`) : ''}</span>
+    <span class="set-row__v"><span data-value>${value}</span>${arrow ? raw(arrow) : ''}</span>
+  `;
+}
+
+/** Linha que abre a folha de escolha. A LINHA INTEIRA e o alvo, nao so o
+ *  texto: a seta ao lado do valor e onde a mao vai, e um <select> nativo
+ *  terminava o alvo no fim do texto (ver pickSheet). */
+export function pickerRow(label, options, value, onPick, { icon = '' } = {}) {
+  const labelOf = (v) => options.find((o) => o.value === String(v))?.label ?? String(v);
+  let current = String(value);
+
+  // <button>, nao <div> com onclick: como alvo, a linha precisa receber foco
+  // pelo teclado e anunciar-se como acionavel.
+  const row = node(html`
+    <button type="button" class="set-row set-row--tap">
+      ${raw(rowInner({ label, value: labelOf(current), icon, arrow: ICON.down }))}
+    </button>
+  `);
+
+  row.onclick = async () => {
+    const picked = await pickSheet({ title: label, options, value: current });
+    if (picked == null || picked === current) return;
+    current = picked;
+    row.querySelector('[data-value]').textContent = labelOf(picked);
+    onPick(picked);
+  };
+  return row;
+}
+
+/** Linha de leitura, com valor a direita. `onClick` a torna tocavel — e ai a
+ *  seta e o chevron, que significa "leva pra outra tela ou folha", enquanto a
+ *  seta pra baixo do pickerRow significa "abre uma lista aqui mesmo". */
+export function infoRow(label, value, onClick = null, { icon = '', hint = '', muted = false } = {}) {
+  const tag = onClick ? 'button' : 'div';
+  const row = node(html`
+    <${raw(tag)} ${onClick ? raw('type="button"') : ''} class="set-row${onClick ? ' set-row--tap' : ''}${muted ? ' set-row--muted' : ''}">
+      ${raw(rowInner({ label, value, hint, icon, arrow: onClick ? ICON.chevron : '' }))}
+    </${raw(tag)}>
+  `);
+  if (onClick) row.onclick = onClick;
+  return row;
+}
+
 /* ---------- Formatacao ---------- */
 
 /** 60 -> "60"; 62.5 -> "62,5" em pt-BR, "62.5" em en-US. */
@@ -227,14 +284,30 @@ export function fmtWeight(value, unit = 'kg') {
 // Numerico (20/08/2026) e nao "20 de ago. de 2026": e a data que aparece em
 // lista, onde a versao por extenso ocupa a linha toda. A ORDEM dos campos vem
 // do locale — pt-BR da 20/08/2026 e en-US da 08/20/2026.
+/** "2026-09-07" e interpretado pelo `new Date()` como meia-noite UTC, o que
+ *  volta um dia em qualquer fuso negativo — a medicao de peso de hoje
+ *  aparecia como ontem. Data com hora nao tem esse problema e passa direto. */
+function parseDate(value) {
+  if (value instanceof Date) return value;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+  if (!dateOnly) return new Date(value);
+  return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+}
+
 export const fmtDate = (iso) =>
-  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso));
+  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(parseDate(iso));
 export const fmtDateShort = (iso) =>
-  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit' }).format(new Date(iso));
+  new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit' }).format(parseDate(iso));
 export const fmtWeekday = (iso) =>
-  new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(new Date(iso));
+  new Intl.DateTimeFormat(locale(), { weekday: 'long' }).format(parseDate(iso));
+
+/** "junho de 2026" / "June 2026" — o "treinando desde" do Perfil, onde o dia
+ *  nao acrescenta nada. */
+export const fmtMonthYear = (iso) =>
+  new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(parseDate(iso));
 
 /** Ex: "10 de ago. – 16 de ago." (pt) / "Aug 10 – Aug 16" (en). Aceita Date ou string ISO. */
+
 export function fmtDateRange(start, end) {
   const fmt = new Intl.DateTimeFormat(locale(), { day: '2-digit', month: 'short' });
   return `${fmt.format(new Date(start))} – ${fmt.format(new Date(end))}`;
@@ -331,6 +404,18 @@ export const ICON = {
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h3.2L8.6 6h6.8l1.4 2.5H20a1 1 0 011 1v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-8a1 1 0 011-1z"/><circle cx="12" cy="13" r="3.2"/></svg>',
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.5a6.5 6.5 0 106.5 6.5M20.5 20.5l-4.6-4.6"/></svg>',
   steps: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h3M4 12h3M4 17.5h3M10 6.5h10M10 12h10M10 17.5h10"/></svg>',
+  // Mesmo desenho da aba Perfil na tabbar (index.html): o icone da conta e o
+  // da pessoa, e dois desenhos diferentes leriam como assuntos diferentes.
+  person: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="3.6"/><path d="M5.4 20a6.6 6.6 0 0 1 13.2 0"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.4"/><path d="M19.4 14.2a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H4a2 2 0 010-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H12a1.6 1.6 0 001-1.5V4a2 2 0 014 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V12a1.6 1.6 0 001.5 1h.2a2 2 0 010 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 100 17 8.5 8.5 0 0010.5-6.5z"/></svg>',
+  globe: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5a13 13 0 010 17a13 13 0 010-17z"/></svg>',
+  plusMinus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h6M7 9v6M14 12h6"/></svg>',
+  info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg>',
+  share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8.5 7l3.5-3.5L15.5 7M5.5 13v6.5h13V13"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l7 2.6v5.4c0 4-2.9 7.6-7 9-4.1-1.4-7-5-7-9V5.8z"/></svg>',
+  help: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.7 9.6a2.4 2.4 0 114.3 1.6c-.9.9-2 1.2-2 2.6M12 17.1v.1"/></svg>',
+  scale: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8.5h15l1.5 11H3zM9 8.5a3 3 0 016 0"/><path d="M8.5 12.5h7"/></svg>',
 };
 
 /* ---------- Cor por grupo muscular ----------
@@ -432,10 +517,10 @@ export const ICON_GROUPS = {
 /** Dia do mes e abreviacao do dia da semana (ou do mes), pro bloco de data da
  *  linha. A lista de treinos usa o dia da semana; a de sessoes de um exercicio
  *  usa o mes, porque ali as datas atravessam meses e "29 QUI" seria ambiguo. */
-export const fmtDayNum = (iso) => new Intl.DateTimeFormat(locale(), { day: 'numeric' }).format(new Date(iso));
-export const fmtMonthShort = (iso) => new Intl.DateTimeFormat(locale(), { month: 'short' }).format(new Date(iso))
+export const fmtDayNum = (iso) => new Intl.DateTimeFormat(locale(), { day: 'numeric' }).format(parseDate(iso));
+export const fmtMonthShort = (iso) => new Intl.DateTimeFormat(locale(), { month: 'short' }).format(parseDate(iso))
   .replace(/\.$/, '');
-const fmtWeekdayShort = (iso) => new Intl.DateTimeFormat(locale(), { weekday: 'short' }).format(new Date(iso))
+const fmtWeekdayShort = (iso) => new Intl.DateTimeFormat(locale(), { weekday: 'short' }).format(parseDate(iso))
   .replace(/\.$/, '');
 
 /**

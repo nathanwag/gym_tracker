@@ -116,13 +116,15 @@ três, e é o que separa "planilha" de "painel". Escala em `--fs-xs` … `--fs-h
 | `.livebar` | tempo/volume/séries correndo | sessão |
 | `.exc-done` | exercício concluído, com régua do grupo | sessão |
 | `.hero-photo` / `.recs` | foto sangrada + recordes em linha | tela de exercício |
-| `.set-row` | linha de ajuste: rótulo à esquerda, valor à direita (`--tap` a torna acionável) | Você |
+| `.set-row` | linha de ajuste: rótulo à esquerda, valor à direita (`--tap` a torna acionável; `__i` põe ícone à esquerda, `__hint` uma segunda linha) | Perfil, Configurações |
+| `.phead` / `.avatar` | identidade: foto ou iniciais, nome, "treinando desde" | Perfil |
+| `.pstats` | três números em colunas com filete entre elas | Perfil |
 | `.pick` | opções da folha de escolha, a atual em destaque | qualquer `pickSheet()` |
 | `.gidx` | índice por grupo: barra com referência em 100, a linha inteira navega | Progresso |
 | `.srow` | sessão de um grupo: data + exercícios do dia, volume à direita | Progresso · grupo |
 | `.delta` | o que mudou desde a última vez, exercício por exercício | detalhe do treino |
 | `.chip` | pastilha de grupo com cor e, quando há, o índice | Progresso |
-| `.sec` | seção com título e respiro próprio | Você |
+| `.sec` | seção com título e respiro próprio | Perfil, Configurações |
 
 Cartão (`.card`) virou **exceção**, não regra: só o que precisa mesmo estar
 contido. Se for pôr algo num cartão, justifique.
@@ -147,6 +149,8 @@ Antes de criar a sexta, pergunte qual coluna é diferente. Se a resposta for
 - `signatureHtml()`, `groupColor()` (`ui.js`).
 - `pickSheet()` (`ui.js`) — escolher um valor entre poucos. Ver "Nada de menu
   do sistema" abaixo.
+- `pickerRow()` / `infoRow()` (`ui.js`) — as linhas de ajuste. Moravam em
+  `views/settings.js`; subiram quando o Perfil passou a desenhar as mesmas.
 - `groupField()` (`ui.js`) — o campo "grupo muscular" dos formulários. Estava
   copiado em quatro telas com a lista de `MUSCLE_GROUPS` montada à mão nas
   quatro.
@@ -165,6 +169,24 @@ pelo mesmo motivo que `confirmSheet()` existe contra o `confirm()` nativo.
 A exceção é o **campo de formulário**: ao lado de um `<input>` de texto com a
 mesma moldura, o `<select>` nativo é coerente — é o caso de `groupField()`. A
 regra não é "select é feio", é **valor de linha usa folha, campo usa campo**.
+
+**Tela de perfil e tela de ajustes têm doenças opostas.** No Perfil eram
+quatro títulos de seção para oito linhas; em Configurações, seis para oito mais
+um parágrafo com dois botões no meio da rolagem. Nos dois casos o rótulo em
+condensada e caixa alta pesa como título, e a tela vira lista de listas. As
+regras que saíram disso, e que valem pra qualquer tela nova de lista:
+
+- **Poucos grupos e grandes**, de 5 a 7 itens; grupo de uma linha não merece
+  cabeçalho. Filete agrupa; divisor entre cada item não agrupa nada.
+- **Identidade e números formam um bloco só no topo**, e é ele que ancora a
+  tela antes de qualquer lista (`.phead` + `.pstats`).
+- **O que é pesado ou pouco frequente vira sub-tela**: backup e peso corporal
+  saíram de dentro de Configurações. Configurações mesmo saiu da aba e foi
+  para a engrenagem da topbar.
+- **Ícone à esquerda só onde há grupo com muitos itens** (Configurações): é o
+  que deixa achar "idioma" sem ler a coluna inteira. No Perfil as linhas não
+  levam ícone — são poucas e cada uma diz o que é.
+- **Ação destrutiva no fim, separada, em vermelho.**
 
 **Folha de escolha é para escolha; número é campo.** O passo do peso já foi
 uma lista de sete incrementos, e a lista era o problema: quem tem anilha de
@@ -231,7 +253,7 @@ a próxima métrica de ser jogada na home por falta de lugar:
 | Progresso · grupo | Esse grupo está subindo? | séries e volume por sessão |
 | Treino | Melhorei desde a última vez? | delta da sessão anterior |
 | Exercício | A carga subiu? | e1RM e peso máximo |
-| Você | — | não é leitura; é o que é seu |
+| Perfil | Quanto eu já fiz, desde o começo? | totais de treinos, séries e recordes |
 
 Antes de acrescentar um número a uma tela, ache a pergunta dele nesta tabela.
 Se ela já está respondida em outra linha, o número pertence àquela tela.
@@ -262,6 +284,11 @@ Se ela já está respondida em outra linha, o número pertence àquela tela.
   seções mora no `.sec`, não no título.
 - **O rótulo da tabbar existe duas vezes**: em `i18n-strings.js` e, estático,
   em `index.html`. O do HTML aparece antes do i18n rodar, então trocar só um
-  faz o rótulo piscar o nome antigo.
+  faz o rótulo piscar o nome antigo. O `data-tab` do HTML tem que casar com o
+  nome usado em `TABS` (`app.js`) e com a chave `app.tab.<nome>`.
+- **Data sem hora ("2026-09-07") é meia-noite UTC pro `new Date()`**, o que
+  volta um dia em fuso negativo — a pesagem de hoje aparecia como ontem. Os
+  formatadores de `ui.js` e o `daysSince` de `profile.js` já tratam isso; quem
+  escrever outro parse precisa lembrar.
 - **Ícone e rótulo da aba mudam juntos.** A engrenagem sobreviveu meia hora ao
   lado de "Você" e lia como duas abas diferentes.

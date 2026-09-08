@@ -421,6 +421,14 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   font-variant-numeric: tabular-nums;
 }
 .set-row__v svg { width: 16px; height: 16px; margin-right: -4px; }
+/* Icone a esquerda, so em Configuracoes: dentro de um grupo, e o que deixa
+   achar "idioma" sem ler a coluna inteira. */
+.set-row__i { display: flex; flex: none; color: var(--muted); }
+.set-row__i svg { width: 20px; height: 20px; }
+.set-row__k { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.set-row__hint { font-size: .75rem; color: var(--muted); }
+/* Linha que nao e ajuste, e informacao (versao, conta reservada). */
+.set-row--muted .set-row__k { color: var(--muted); }
 
 /* A folha de escolha (pickSheet). Uma opcao por linha, alvo cheio: e o que
    substituiu o menu do sistema, que nao seguia paleta nem tipo do app. */
@@ -751,6 +759,54 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 /* O indice viaja junto com o chip: o destino ja diz o que se vai encontrar. */
 .chip b { font-family: var(--display); font-size: .95rem; font-weight: 700; color: var(--text); }
+
+/* ---------- Perfil ----------
+   Identidade e numeros formam UM bloco no topo: eram duas faixas finas de
+   texto do mesmo peso do resto, e a tela inteira lia como lista de listas. */
+.phead { align-items: center; }
+.phead__id { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.phead__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.phead__name { font-size: 1.0625rem; font-weight: 650; }
+.phead__since { font-size: .8125rem; color: var(--muted); }
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar--lg { width: 72px; height: 72px; font-size: 1.7rem; }
+.pedit { display: flex; align-items: center; gap: 16px; }
+
+/* Filete entre as colunas, e nao cartao: o bloco precisa ancorar a tela sem
+   virar a excecao que o .card e (ver DESIGN.md). */
+.pstats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px 0 18px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.pstats__c { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pstats__c + .pstats__c { border-left: 1px solid var(--border); }
+.pstats .data { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; }
+.pstats__pr { color: var(--pr); }
+
+/* ---------- Peso corporal ---------- */
+.wlog__d { font-family: inherit; font-size: .8125rem; font-weight: 600; }
+.weight-down { color: var(--success); }
+.weight-up { color: var(--danger); }
 
 /* ---------- Indice por grupo (Progresso) ----------
    Parece a barra da semana, mas nao e ela: la a referencia e uma meta externa

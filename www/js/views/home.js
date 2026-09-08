@@ -12,12 +12,15 @@ import {
   fmtNum, fmtDateRange, fmtMinutes,
 } from '../ui.js';
 
-/* Referencia de series semanais por grupo. Nao e meta configuravel nem
- * promessa: e a faixa que a literatura de dose-resposta (Schoenfeld,
- * Baz-Valle) trata como produtiva, desenhada como um traco na barra. Sem
- * nenhuma referencia, comprimento de barra so diz "mais que o outro" — nao
- * diz se a semana foi suficiente. */
-const WEEKLY_SET_GOAL = 10;
+/* Referencia de series semanais por grupo, desenhada como um traco na barra:
+ * sem nenhuma referencia, comprimento de barra so diz "mais que o outro" — nao
+ * diz se a semana foi suficiente.
+ *
+ * O padrao (10) e a faixa que a literatura de dose-resposta (Schoenfeld,
+ * Baz-Valle) trata como produtiva; virou ajuste quando o Perfil ganhou onde
+ * edita-la, porque a meta de quem treina 2x por semana nao e a de quem treina
+ * 6x. */
+const weeklySetGoal = () => Number(db.settings().goalSetsPerGroup) || 10;
 
 export async function render(view) {
   setTop({ title: t('app.tab.workout') });
@@ -109,11 +112,12 @@ function weekBlock(sets, workoutsById, exercisesById, unit, firstWeek) {
     // seguem comparaveis entre si e o traco da meta continua visivel mesmo
     // numa semana em que ninguem chegou perto. A folga de 8% evita que ele
     // caia exatamente na borda direita, onde viraria so mais uma linha.
-    const scale = Math.max(WEEKLY_SET_GOAL, byGroup.reduce((m, g) => Math.max(m, g.sets), 0)) * 1.08;
-    const goalAt = (WEEKLY_SET_GOAL / scale) * 100;
+    const goal = weeklySetGoal();
+    const scale = Math.max(goal, byGroup.reduce((m, g) => Math.max(m, g.sets), 0)) * 1.08;
+    const goalAt = (goal / scale) * 100;
 
     const groupRows = byGroup.map((g) => html`
-      <div class="muscle-group__row${g.sets < WEEKLY_SET_GOAL ? ' muscle-group__row--under' : ''}">
+      <div class="muscle-group__row${g.sets < goal ? ' muscle-group__row--under' : ''}">
         <span class="muscle-group__name">${groupLabel(g.group)}</span>
         <span class="muscle-group__track">
           <span class="muscle-group__fill" style="width:${(g.sets / scale) * 100}%;background:${groupColor(g.group)}"></span>
@@ -143,7 +147,7 @@ function weekBlock(sets, workoutsById, exercisesById, unit, firstWeek) {
       </div>
 
       ${byGroup.length ? raw(`
-        <div class="lab"><span>${t('home.byGroup')}</span><span>${t('home.goal', { n: WEEKLY_SET_GOAL })}</span></div>
+        <div class="lab"><span>${t('home.byGroup')}</span><span>${t('home.goal', { n: goal })}</span></div>
         <div class="muscle-group">${groupRows}</div>
       `) : ''}
     `;

@@ -52,13 +52,15 @@ node --test --test-name-pattern="unilateral"    # por nome
 
 Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`). Só dá
 pra testar módulos **puros** sob `node --test`: `models.js`, `text.js`,
-`curve.js` e `weight-step.js` não têm import nenhum. `seed.js`/`db.js`/`ui.js`
-puxam `i18n.js`, que toca `location` no carregamento e quebra fora do browser. Para testar algo
+`curve.js`, `weight-step.js` e `profile.js` não têm import nenhum.
+`seed.js`/`db.js`/`ui.js` puxam `i18n.js`, que toca `location` no carregamento
+e quebra fora do browser. Para testar algo
 desses, extraia a lógica pura pra um módulo sem dependência de DOM/IndexedDB —
 é o que `text.js` (separado de `ui.js` porque `db.js` precisa dele numa
 migração), `curve.js` (separado de `charts.js`, que importa `ui.js`) e
-`weight-step.js` (validação do passo digitado em Você, saneamento do passo
-gravado nas telas que registram série) fazem.
+`weight-step.js` (validação do passo digitado, saneamento do passo gravado nas
+telas que registram série) e `profile.js` (iniciais, dias desde uma data, série
+de peso corporal) fazem.
 
 ## Deploy e service worker
 
@@ -82,16 +84,21 @@ Dois caches no SW, de propósito diferente:
 `www/js/views/` (uma tela por arquivo). Views nunca abrem IndexedDB nem `.json`
 direto — passam pelas camadas abaixo.
 
-A aba **Você** (`views/settings.js`) atende a rota `/ajustes`, que ficou com o
-nome antigo de propósito: ela não aparece como rótulo em lugar nenhum e o store
-do IndexedDB também se chama `settings`. **Progresso** (`views/progress.js`) não
+A aba **Perfil** (`views/profile.js`, rota `/perfil`) é quem você é, o que já
+fez e o que quer fazer; **Configurações** (`views/settings.js`) mora atrás da
+engrenagem da topbar, na rota `/ajustes`, que ficou com o nome antigo de
+propósito: ela não aparece como rótulo em lugar nenhum e o store do IndexedDB
+também se chama `settings`. Atrás dela ainda ficam **Backup**
+(`views/backup.js`, `/backup`) e **Peso corporal** (`views/body-weight.js`,
+`/peso`) — as duas saíram de dentro de Configurações porque um parágrafo com
+dois botões no meio da rolagem pesava mais que qualquer ajuste em volta. **Progresso** (`views/progress.js`) não
 tem aba: mora dentro de Histórico, atrás do `historySwitch()`, e leva o grupo no
 hash sem acento (`#/progresso/quadriceps`) pelo mesmo motivo do slug do
 catálogo.
 
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,
-  `settings`, `exerciseImages`, `workoutTemplates` (modelo de treino = nome +
+  `settings`, `exerciseImages`, `workoutTemplates`, `bodyWeights` (modelo de treino = nome +
   ordem de `exerciseIds`, a mesma forma do treino; `startWorkoutFromTemplate()`
   é o único caminho de "treinar a partir de um modelo"). `DB_VERSION` +
   `onupgradeneeded` com blocos `if (event.oldVersion < N)`. Migração tem que ser

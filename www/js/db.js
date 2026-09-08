@@ -23,7 +23,8 @@ const DB_NAME = 'treino';
 // v3: nomes de campo em ingles (exercises/workouts/sets/settings).
 // v4: store `exerciseImages`, fotos personalizadas (posicao inicial/final).
 // v5: store `workoutTemplates`, modelos de treino montados pelo usuario.
-const DB_VERSION = 5;
+// v6: store `bodyWeights`, a serie de peso corporal do Perfil.
+const DB_VERSION = 6;
 
 export const DEFAULT_SETTINGS = {
   unit: 'kg',
@@ -31,6 +32,16 @@ export const DEFAULT_SETTINGS = {
   language: 'pt',
   weightIncrement: 2.5,
   repsIncrement: 1,
+  // Perfil. `profileName` vazio = a tela mostra so o avatar sem iniciais.
+  profileName: '',
+  profilePhoto: null,
+  // Metas. A de series por grupo era uma constante em views/home.js; virou
+  // ajuste quando o Perfil ganhou onde edita-la.
+  goalWorkoutsPerWeek: 4,
+  goalSetsPerGroup: 10,
+  // Quando o ultimo backup foi exportado. Sem servidor, "ha quantos dias" e a
+  // unica medida de risco que o app consegue mostrar.
+  lastBackupAt: null,
   // Versao do catalogo cujas miniaturas ja foram baixadas; evita repetir o
   // precache a cada abertura. Vazio = nunca baixou.
   mediaPrecacheVersion: '',
@@ -206,6 +217,13 @@ export function open() {
         // ordem de exerciseIds — a mesma forma que `workouts.exerciseIds` ja
         // tem, e por isso iniciar um treino a partir dele e uma copia.
         db.createObjectStore('workoutTemplates', { keyPath: 'id', autoIncrement: true });
+      }
+
+      if (event.oldVersion < 6) {
+        // Aditiva. Peso corporal e uma serie temporal, nao um ajuste: guardar
+        // so o valor atual apagaria o historico a cada pesagem, e sem
+        // historico nao ha curva nenhuma pra mostrar.
+        db.createObjectStore('bodyWeights', { keyPath: 'id', autoIncrement: true });
       }
     };
 
@@ -616,27 +634,53 @@ export async function listAllSets() {
 /* ---------- Backup ---------- */
 
 /** Copia integral do banco, usada por backup.js para gerar o JSON. */
+/* ---------- Peso corporal ---------- */
+
+export function listBodyWeights() {
+  return tx('bodyWeights', 'readonly', (s) => req(s.getAll()));
+}
+
+/** Uma medicao por dia: pesar de novo no mesmo dia corrige a do dia, em vez
+ *  de empilhar duas linhas com a mesma data na lista. */
+export async function saveBodyWeight({ date, weight }) {
+  const rows = await listBodyWeights();
+  const existing = rows.find((r) => r.date === date);
+  const record = {
+    ...(existing || {}),
+    date,
+    weight: Number(weight),
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+  };
+  return tx('bodyWeights', 'readwrite', (s) => req(s.put(record)));
+}
+
+export function deleteBodyWeight(id) {
+  return tx('bodyWeights', 'readwrite', (s) => req(s.delete(id)));
+}
+
 export async function dumpAll() {
-  const [exercises, workouts, sets, settingsRows, images, templates] = await Promise.all([
+  const [exercises, workouts, sets, settingsRows, images, templates, bodyWeights] = await Promise.all([
     tx('exercises', 'readonly', (s) => req(s.getAll())),
     tx('workouts', 'readonly', (s) => req(s.getAll())),
     tx('sets', 'readonly', (s) => req(s.getAll())),
     tx('settings', 'readonly', (s) => req(s.getAll())),
     tx('exerciseImages', 'readonly', (s) => req(s.getAll())),
     tx('workoutTemplates', 'readonly', (s) => req(s.getAll())),
+    tx('bodyWeights', 'readonly', (s) => req(s.getAll())),
   ]);
   return {
-    exercises, workouts, sets, settings: settingsRows, images, templates,
+    exercises, workouts, sets, settings: settingsRows, images, templates, bodyWeights,
   };
 }
 
 /** Substitui todo o conteudo do banco (restauracao de backup). */
 export async function replaceAll({
   exercises = [], workouts = [], sets = [], settings: settingsRows = [], images = [], templates = [],
+  bodyWeights = [],
 }) {
-  const STORES = ['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates'];
-  await tx(STORES, 'readwrite', (ex, wo, se, st, im, tp) => {
-    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear();
+  const STORES = ['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates', 'bodyWeights'];
+  await tx(STORES, 'readwrite', (ex, wo, se, st, im, tp, bw) => {
+    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear(); bw.clear();
     for (const row of exercises) ex.put(row);
     for (const row of workouts) wo.put(row);
     for (const row of sets) se.put(row);
@@ -645,15 +689,16 @@ export async function replaceAll({
     // Ausente em backup gerado antes dos modelos existirem: o default [] so
     // limpa a loja, sem erro.
     for (const row of templates) tp.put(row);
+    for (const row of bodyWeights) bw.put(row);
   });
   exerciseCache = null;
 }
 
 /** Apaga tudo, incluindo a biblioteca de exercicios. */
 export async function resetAll() {
-  await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates'], 'readwrite',
-    (ex, wo, se, st, im, tp) => {
-      ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear();
+  await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates', 'bodyWeights'], 'readwrite',
+    (ex, wo, se, st, im, tp, bw) => {
+      ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear(); bw.clear();
     });
   exerciseCache = null;
 }

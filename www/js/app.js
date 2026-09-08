@@ -18,6 +18,9 @@ import * as picker from './views/exercise-picker.js';
 import * as catalog from './views/catalog.js';
 import * as templates from './views/templates.js';
 import * as settings from './views/settings.js';
+import * as profile from './views/profile.js';
+import * as backup from './views/backup.js';
+import * as bodyWeight from './views/body-weight.js';
 
 const ROUTES = [
   [/^\/?$/, (view) => home.render(view)],
@@ -40,7 +43,12 @@ const ROUTES = [
   // banco, aqui e o slug do catalogo.
   [/^\/catalogo$/, (view) => catalog.renderList(view)],
   [/^\/catalogo\/([a-z0-9-]+)$/, (view, slug) => catalog.renderDetail(view, slug)],
+  [/^\/perfil$/, (view) => profile.render(view)],
+  // Rota com o nome antigo de proposito: /ajustes nunca aparece como rotulo e
+  // trocar o hash quebraria link salvo de quem ja usa o app.
   [/^\/ajustes$/, (view) => settings.render(view)],
+  [/^\/backup$/, (view) => backup.render(view)],
+  [/^\/peso$/, (view) => bodyWeight.render(view)],
 ];
 
 const TABS = [
@@ -50,7 +58,8 @@ const TABS = [
   // Catalogo e modelos nao tem aba propria: a tabbar de 4 ja esta no limite
   // confortavel de toque. Vivem dentro de Exercicios e mantem essa aba acesa.
   [/^\/(exercicios|catalogo|modelos)/, 'exercises'],
-  [/^\/ajustes/, 'settings'],
+  // Perfil e tudo que mora atras dele: configuracoes, backup e peso corporal.
+  [/^\/(perfil|ajustes|backup|peso)/, 'profile'],
 ];
 
 function currentPath() {

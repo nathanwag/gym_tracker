@@ -89,6 +89,7 @@ export async function prepareBackup() {
     settings: data.settings,
     images,
     templates: data.templates,
+    bodyWeights: data.bodyWeights,
   };
 
   const json = JSON.stringify(payload);
@@ -246,6 +247,16 @@ export async function validate(payload) {
       exerciseIds: Array.isArray(tpl.exerciseIds) ? tpl.exerciseIds.map(toNumber) : [],
       createdAt: tpl.createdAt ?? new Date().toISOString(),
     })),
+    // Mesmo raciocinio dos modelos: ausente em backup anterior ao peso
+    // corporal, e sem data ou peso a linha nao significa nada.
+    bodyWeights: (Array.isArray(payload.bodyWeights) ? payload.bodyWeights : [])
+      .filter((row) => row && row.date && toNumber(row.weight) > 0)
+      .map((row) => ({
+        id: toNumber(row.id),
+        date: String(row.date).slice(0, 10),
+        weight: toNumber(row.weight),
+        createdAt: row.createdAt ?? new Date().toISOString(),
+      })),
   };
 }
 
