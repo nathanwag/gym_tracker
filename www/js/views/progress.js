@@ -14,14 +14,15 @@
 
 import * as db from '../db.js';
 import {
-  groupSessionSummaries, groupIndex, groupMedians, progressPct,
+  groupSessionSummaries, groupIndex, groupMedians, progressPct, exerciseProgressRows,
 } from '../models.js';
 import { lineChart } from '../charts.js';
+import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
 import { MUSCLE_GROUPS, groupLabel, usesDuration } from '../seed.js';
 import {
   setTop, html, raw, node, ICON, groupColor, wireSegmented, stripAccents,
-  fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet,
+  fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet, fmtRelativeDay,
 } from '../ui.js';
 
 /* O grupo vai na URL como slug sem acento ("quadriceps") pelo mesmo motivo do
@@ -64,7 +65,9 @@ async function loadGroups() {
       index: summaries.length >= MIN_SESSIONS_FOR_INDEX ? groupIndex(summaries, { field }) : null,
     });
   }
-  return { rows, exercisesById };
+  return {
+    rows, exercisesById, sets, workoutsById, exercises,
+  };
 }
 
 /* ==========================================================================
@@ -78,7 +81,9 @@ export async function render(view) {
   });
   document.querySelector('[data-search]').onclick = () => { location.hash = '#/exercicios'; };
 
-  const { rows } = await loadGroups();
+  const {
+    rows, sets, workoutsById, exercises,
+  } = await loadGroups();
   const root = node('<div></div>');
 
   if (!rows.length) {
@@ -107,7 +112,7 @@ export async function render(view) {
   // comparaveis entre si e o traco de 100 nao cai na borda direita.
   const scale = Math.max(INDEX_REF, ...rows.map((r) => r.index || 0)) * 1.15;
 
-  root.append(node(`<div class="lab"><span>${t('progress.index')}</span><span>${t('progress.indexRef')}</span></div>`));
+  root.append(node(`<div class="lab"><span>${t('progress.groups')}</span><span>${t('progress.indexRef')}</span></div>`));
 
   const list = node('<div class="gidx"></div>');
   for (const row of rows) {
@@ -125,9 +130,78 @@ export async function render(view) {
     `));
   }
   root.append(list);
+  root.append(exerciseSection(sets, workoutsById, exercises, db.settings().unit));
   root.append(node(`<p class="muted small" style="margin:12px 0 0">${t('progress.indexHint')}</p>`));
 
   view.append(root);
+}
+
+/* ==========================================================================
+   Nivel 1b — os exercicios, na mesma escala
+   ========================================================================== */
+
+/** A biblioteca ordenada pela ultima vez que cada exercicio foi feito, com o
+ *  mesmo indice dos grupos a direita.
+ *
+ *  E a lista que era a aba Exercicios. La ela vinha em acordeao por grupo —
+ *  oito cabecalhos fechados pra doze itens, e nenhuma palavra sobre nenhum
+ *  deles. O acordeao era do catalogo, onde 873 linhas o obrigam; numa
+ *  biblioteca de uma pessoa ele so escondia a tela inteira.
+ *
+ *  Exercicio sem serie nenhuma fica de fora: nao ha o que comparar. A ultima
+ *  linha e a saida pra biblioteca inteira, senao ele ficaria inalcancavel
+ *  daqui. */
+function exerciseSection(sets, workoutsById, exercises, unit) {
+  const rows = exerciseProgressRows(
+    sets, workoutsById, exercises,
+    // Cardio/alongamento nao tem carga: o analogo do e1RM e o tempo total.
+    (ex) => (usesDuration(ex.muscleGroup) ? 'totalDuration' : 'bestE1rm'),
+  );
+  if (!rows.length) return node('<div></div>');
+
+  const wrap = node(html`
+    <div>
+      <div class="lab"><span>${t('progress.exercises')}</span><span>${t('progress.indexRef')}</span></div>
+    </div>
+  `);
+
+  const list = node('<div></div>');
+  const draw = () => {
+    list.innerHTML = '';
+    for (const row of rows) {
+      const below = row.index != null && row.index < INDEX_REF;
+      const timeBased = usesDuration(row.exercise.muscleGroup);
+      const last = timeBased
+        ? fmtTempoSerie(row.lastDuration)
+        : `${fmtNum(row.lastWeight, 2)} ${unit}`;
+      list.append(node(html`
+        <a class="srow${below ? ' srow--under' : ''}" href="#/exercicios/${row.exercise.id}">
+          ${raw(thumbHtml(row.exercise))}
+          <span class="srow__mid">
+            <span class="srow__day">${row.exercise.name}</span>
+            <span class="srow__detail">${fmtRelativeDay(row.lastAt)} · ${last}</span>
+          </span>
+          <span class="srow__end">
+            <span class="srow__v">${row.index == null ? '—' : fmtNum(row.index, 0)}</span>
+          </span>
+          <span class="srow__go">${raw(ICON.chevron)}</span>
+        </a>
+      `));
+    }
+    list.append(node(html`
+      <a class="srow" href="#/exercicios">
+        <span class="srow__mid"><span class="srow__day">${t('progress.allExercises')}</span></span>
+        <span class="srow__go">${raw(ICON.chevron)}</span>
+      </a>
+    `));
+  };
+
+  draw();
+  wrap.append(list);
+  // Miniatura personalizada nao atrasa a primeira pintura: redesenha so quando
+  // (e se) o cache terminar de carregar, como na tela de exercicio.
+  preloadCustomThumbs().then(() => { if (list.isConnected) draw(); }).catch(() => {});
+  return wrap;
 }
 
 /* ==========================================================================

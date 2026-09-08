@@ -746,6 +746,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .srow__go { flex: none; color: var(--muted); display: flex; }
 .srow__go svg { width: 16px; height: 16px; }
+/* Abaixo do proprio normal — mesma tinta do .gidx__row--under, ja que o numero
+   a direita e o mesmo indice. */
+.srow--under .srow__day,
+.srow--under .srow__v { color: var(--muted); }
 
 /* Contagem de sessoes no lugar das acoes da topbar: e contexto, nao botao. */
 .topbar__meta {
