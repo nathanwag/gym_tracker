@@ -11,6 +11,9 @@
  */
 
 import { slugByName } from './seed.js';
+import {
+  CANONICAL_GROUPS, groupSlugFor, uniqueGroupSlug, FALLBACK_GROUP,
+} from './groups.js';
 import { normalizeName } from './text.js';
 import { existingInOrder } from './models.js';
 
@@ -24,7 +27,9 @@ const DB_NAME = 'treino';
 // v4: store `exerciseImages`, fotos personalizadas (posicao inicial/final).
 // v5: store `workoutTemplates`, modelos de treino montados pelo usuario.
 // v6: store `bodyWeights`, a serie de peso corporal do Perfil.
-const DB_VERSION = 6;
+// v7: store `muscleGroups` — grupo vira dado editavel, e `exercises`
+//     .muscleGroup passa a guardar o slug estavel em vez do nome.
+const DB_VERSION = 7;
 
 export const DEFAULT_SETTINGS = {
   unit: 'kg',
@@ -49,6 +54,7 @@ export const DEFAULT_SETTINGS = {
 
 let dbPromise = null;
 let exerciseCache = null;
+let groupCache = null;
 let settingsCache = { ...DEFAULT_SETTINGS };
 
 /* ---------- Infraestrutura ---------- */
@@ -225,6 +231,48 @@ export function open() {
         // historico nao ha curva nenhuma pra mostrar.
         db.createObjectStore('bodyWeights', { keyPath: 'id', autoIncrement: true });
       }
+
+      if (event.oldVersion < 7) {
+        // Grupo muscular deixa de ser lista no codigo e vira dado: o usuario
+        // cria, renomeia e pinta os seus. A chave e o `slug`, nao um id
+        // autoincremento — ele e estavel, e `exercises.muscleGroup` passa a
+        // guarda-lo em vez do nome em portugues, que agora e editavel.
+        //
+        // Tudo sincrono, como as outras (ver o aviso no topo): a semente e um
+        // array estatico e `groupSlugFor` e pura, entao nada aqui espera I/O.
+        const groups = db.createObjectStore('muscleGroups', { keyPath: 'slug' });
+        const known = new Set();
+        for (const group of CANONICAL_GROUPS) {
+          groups.put(group);
+          known.add(group.slug);
+        }
+
+        // Grupo que nao esta na semente (backup antigo, dado de borda) ganha
+        // registro proprio em vez de cair em Outros: fundir dois grupos
+        // diferentes num so nao tem volta. Herda a cor de Outros ate a pessoa
+        // pintar o dele — e o unico par de cores que sobra sem dono.
+        const unknownColors = CANONICAL_GROUPS.find((g) => g.slug === 'outros');
+        const exercisesCursor = request.transaction.objectStore('exercises').openCursor();
+        exercisesCursor.onsuccess = () => {
+          const cursor = exercisesCursor.result;
+          if (!cursor) return;
+          const record = cursor.value;
+          const slug = groupSlugFor(record.muscleGroup);
+          if (!known.has(slug)) {
+            groups.put({
+              order: known.size,
+              slug,
+              name: record.muscleGroup,
+              colorLight: unknownColors.colorLight,
+              colorDark: unknownColors.colorDark,
+              usesDuration: false,
+            });
+            known.add(slug);
+          }
+          if (record.muscleGroup !== slug) cursor.update({ ...record, muscleGroup: slug });
+          cursor.continue();
+        };
+      }
     };
 
     request.onsuccess = () => {
@@ -294,6 +342,81 @@ export async function setSetting(key, value) {
   settingsCache = { ...settingsCache, [key]: value };
 }
 
+/* ---------- Grupos musculares ----------
+ * Sao 17 e mudam quase nunca, mas toda tela pinta alguma coisa com a cor de
+ * um grupo — entao ficam em cache como a biblioteca, e qualquer escrita
+ * invalida. */
+
+export async function listGroups() {
+  if (!groupCache) {
+    const rows = await tx('muscleGroups', 'readonly', (s) => req(s.getAll()));
+    rows.sort((a, b) => a.order - b.order);
+    groupCache = rows;
+  }
+  return groupCache;
+}
+
+export async function getGroup(slug) {
+  return (await listGroups()).find((g) => g.slug === slug) || null;
+}
+
+/** Cria um grupo. O slug sai do nome e nunca mais muda; renomear depois mexe
+ *  so no `name`, e por isso nenhum exercicio se perde. */
+export async function addGroup({
+  name, colorLight, colorDark, usesDuration = false,
+}) {
+  const existing = await listGroups();
+  const record = {
+    slug: uniqueGroupSlug(name, existing.map((g) => g.slug)),
+    name: String(name).trim(),
+    colorLight,
+    colorDark,
+    usesDuration: Boolean(usesDuration),
+    order: existing.length ? Math.max(...existing.map((g) => g.order)) + 1 : 0,
+  };
+  await tx('muscleGroups', 'readwrite', (s) => s.put(record));
+  groupCache = null;
+  return record;
+}
+
+export async function updateGroup(slug, patch) {
+  const updated = await tx('muscleGroups', 'readwrite', (s) => (
+    req(s.get(slug)).then((current) => {
+      if (!current) return null;
+      const next = { ...current, ...patch, slug: current.slug };
+      s.put(next);
+      return next;
+    })
+  ));
+  groupCache = null;
+  return updated;
+}
+
+/** Apaga um grupo e recolhe os exercicios dele para Outros.
+ *
+ *  Na MESMA transacao de proposito: se o grupo sumisse e os exercicios
+ *  ficassem apontando pra um slug morto, eles desapareceriam de toda tela que
+ *  agrupa — sem erro e sem jeito de achar de novo. Outros nao pode ser
+ *  apagado por isso: e o destino de quem perde o grupo. */
+export async function deleteGroup(slug) {
+  if (slug === FALLBACK_GROUP) return false;
+  await tx(['muscleGroups', 'exercises'], 'readwrite', (groups, exercises) => {
+    groups.delete(slug);
+    const cursor = exercises.openCursor();
+    cursor.onsuccess = () => {
+      const current = cursor.result;
+      if (!current) return;
+      if (current.value.muscleGroup === slug) {
+        current.update({ ...current.value, muscleGroup: FALLBACK_GROUP });
+      }
+      current.continue();
+    };
+  });
+  groupCache = null;
+  exerciseCache = null;
+  return true;
+}
+
 /* ---------- Exercicios ----------
  * A biblioteca tem ~80 itens e e lida em quase toda tela, entao fica em cache
  * na memoria; qualquer escrita invalida o cache. */
@@ -323,7 +446,8 @@ export async function addExercise({
 }) {
   const record = {
     name: String(name).trim(),
-    muscleGroup: muscleGroup || 'Outros',
+    // Guarda o slug, nao o nome: o nome do grupo e editavel.
+    muscleGroup: groupSlugFor(muscleGroup),
     slug: slug || null,
     custom,
     unilateral: Boolean(unilateral),

@@ -44,6 +44,10 @@ const SEED = [
 // usuario tambem possa se declarar assim.
 const BY_TIME = new Set(['cardio', 'alongamento']);
 
+/** Destino de quem fica sem grupo: exercicio criado sem escolher um, e
+ *  exercicio recolhido quando o grupo dele e apagado. Nao pode ser apagado. */
+export const FALLBACK_GROUP = 'outros';
+
 export const CANONICAL_GROUPS = SEED.map(([slug, name, colorLight, colorDark], i) => ({
   slug,
   name,
@@ -93,7 +97,7 @@ export function uniqueGroupSlug(name, existing = []) {
  *
  *  Vazio/ausente cai em Outros, o mesmo destino que `addExercise` ja dava. */
 export function groupSlugFor(storedValue) {
-  if (!storedValue) return 'outros';
+  if (!storedValue) return FALLBACK_GROUP;
   return groupSlug(storedValue);
 }
 

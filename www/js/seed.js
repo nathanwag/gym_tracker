@@ -179,14 +179,14 @@ export const SEED_EXERCISES = {
   ],
 };
 
-/** Agrupa `items` pela chave que `getGroup` devolve, na ordem anatomica de
+/** Agrupa `items` pela chave que `groupOf` devolve, na ordem anatomica de
  *  MUSCLE_GROUPS; um grupo que nao esteja em MUSCLE_GROUPS (dado antigo,
  *  borda) sai no fim em vez de sumir. Grupos sem nenhum item nao aparecem no
  *  resultado. */
-export function groupBy(items, getGroup) {
+export function groupBy(items, groupOf) {
   const byGroup = new Map();
   for (const item of items) {
-    const group = getGroup(item);
+    const group = groupOf(item);
     if (!byGroup.has(group)) byGroup.set(group, []);
     byGroup.get(group).push(item);
   }

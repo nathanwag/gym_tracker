@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant,
+  CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP,
 } from './groups.js';
 
 /* Os slugs dos 17 nao podem mudar: a rota #/progresso/<slug> ja os serve, e
@@ -146,4 +146,11 @@ test('derivar as 17 claras chega perto das escuras reais', () => {
 test('themeVariant nao estoura nos extremos', () => {
   assert.match(themeVariant('#ffffff', 'dark'), /^#[0-9a-f]{6}$/);
   assert.match(themeVariant('#000000', 'light'), /^#[0-9a-f]{6}$/);
+});
+
+/* Se alguem renomear o slug 'outros' na semente, o destino de quem perde o
+ * grupo deixa de existir e os exercicios somem de toda tela que agrupa. */
+test('FALLBACK_GROUP aponta pra um grupo que existe na semente', () => {
+  assert.ok(CANONICAL_GROUPS.some((g) => g.slug === FALLBACK_GROUP));
+  assert.equal(groupSlugFor(null), FALLBACK_GROUP);
 });
