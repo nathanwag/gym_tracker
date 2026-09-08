@@ -141,7 +141,7 @@ unilateral guarda `repsLeft`/`repsRight` em vez de `reps`.
 
 **Comparação por grupo muscular** — volume em kg só é honesto *dentro* de um
 grupo: um agachamento vale sete roscas diretas na mesma soma, então total
-agregado mede se houve dia de perna, não se a semana rendeu. Daí três funções
+agregado mede se houve dia de perna, não se a semana rendeu. Daí quatro funções
 em `models.js`, todas puras e testadas:
 
 - `groupSessionSummaries()` — sessões de um grupo. Um treino de costas e bíceps
@@ -154,6 +154,12 @@ em `models.js`, todas puras e testadas:
   um teria o dobro de amostra do outro. **Mediana, não média**: um deload
   isolado não pode virar alarme. Abaixo de 6 sessões devolve `null`, e a tela
   mostra `—` em vez de inventar.
+- `exerciseProgressRows()` — a mesma leitura do `groupIndex()`, por exercício,
+  para a lista do Progresso. **Reusa `groupIndex()` em vez de ter conta
+  própria**: grupo e exercício aparecem um embaixo do outro na mesma tela, e
+  duas noções de "andou pra frente" se contradiriam ali. O campo medido entra
+  por parâmetro (e1RM, ou tempo pro que não tem carga) porque quem sabe disso é
+  `usesDuration` em `seed.js`, e `models.js` não importa nada.
 - `workoutDeltas()` — cada exercício contra a última vez que **ele** foi feito,
   não contra o treino anterior: dois treinos seguidos podem não ter exercício
   nenhum em comum.

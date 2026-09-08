@@ -4,6 +4,7 @@
 import * as db from '../db.js';
 import {
   bests, prSetIds, sessionSummaries, bestSessionVolume, bestSessionDuration, progressPct,
+  exerciseProgressRows,
 } from '../models.js';
 import {
   groupLabel, usesDuration,
@@ -20,7 +21,7 @@ import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
   fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented,
-  listInCard, groupColor, groupField,
+  listInCard, groupColor, groupField, lastDoneLabel,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -48,23 +49,18 @@ const CATALOG_SHOWN = 40;
 export async function renderList(view) {
   setTop({ title: t('exercise.listTitle'), back: '#/progresso' });
 
-  const [exercises, sets] = await Promise.all([db.listExercises(), db.listAllSets()]);
+  const [exercises, sets, workouts] = await Promise.all([
+    db.listExercises(), db.listAllSets(), db.listWorkouts(),
+  ]);
   const unit = db.settings().unit;
 
-  // Resumo por exercicio numa unica passada pelas series.
-  const summaries = new Map();
-  for (const s of sets) {
-    let r = summaries.get(s.exerciseId);
-    if (!r) {
-      r = {
-        total: 0, lastId: 0, last: null, bestWeight: 0,
-      };
-      summaries.set(s.exerciseId, r);
-    }
-    r.total += 1;
-    if (s.id > r.lastId) { r.lastId = s.id; r.last = s.createdAt; }
-    if (!s.warmup && s.weight > r.bestWeight) r.bestWeight = s.weight;
-  }
+  // Mesma fonte que o Progresso usa pra dizer "ultima vez": a data do treino,
+  // nao o createdAt da linha de serie — os dois divergem em backup importado e
+  // as duas telas mostrariam dias diferentes pro mesmo exercicio.
+  const progress = new Map(exerciseProgressRows(
+    sets, new Map(workouts.map((w) => [w.id, w])), exercises,
+    (ex) => (usesDuration(ex.muscleGroup) ? 'totalDuration' : 'bestE1rm'),
+  ).map((r) => [r.exercise.id, r]));
 
   const root = node(html`
     <div class="stack">
@@ -83,10 +79,8 @@ export async function renderList(view) {
   let catalogItems = null;
 
   const mineItem = (ex) => {
-    const r = summaries.get(ex.id);
-    const detail = r
-      ? `${fmtRelativeDay(r.last)} · ${t('exercise.bestWeight', { weight: fmtNum(r.bestWeight, 2), unit })}`
-      : t('exercise.notLogged');
+    const row = progress.get(ex.id);
+    const detail = row ? lastDoneLabel(ex, row, unit) : t('exercise.notLogged');
     return node(html`
       <li class="list__item">
         <a class="list__link" href="#/exercicios/${ex.id}">

@@ -6,7 +6,7 @@ import { t, tn, locale } from './i18n.js';
 import {
   isDurationSet, isUnilateralSet, setE1rm, workoutGroupBreakdown, workoutSummary,
 } from './models.js';
-import { groupLabel, MUSCLE_GROUPS } from './seed.js';
+import { groupLabel, MUSCLE_GROUPS, usesDuration } from './seed.js';
 
 /** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
 export const APP_NAME = 'Anilha';
@@ -767,6 +767,17 @@ export function listInCard(items) {
   return card;
 }
 
+
+/** "Hoje · 135 kg": a ultima vez que o exercicio foi feito e com quanto. O
+ *  Progresso e a busca de exercicio desenham a mesma frase, e duas copias
+ *  divergiriam na primeira troca de unidade. `row` vem de
+ *  exerciseProgressRows() (models.js). */
+export function lastDoneLabel(exercise, row, unit) {
+  const load = usesDuration(exercise.muscleGroup)
+    ? fmtTempoSerie(row.lastDuration)
+    : `${fmtNum(row.lastWeight, 2)} ${unit}`;
+  return `${fmtRelativeDay(row.lastAt)} · ${load}`;
+}
 
 /** Vibracao curta ao registrar. Ignorado no iOS, que nao expoe a API. */
 export function buzz(ms = 12) {

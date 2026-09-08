@@ -22,7 +22,7 @@ import { t, tn } from '../i18n.js';
 import { MUSCLE_GROUPS, groupLabel, usesDuration } from '../seed.js';
 import {
   setTop, html, raw, node, ICON, groupColor, wireSegmented, stripAccents,
-  fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet, fmtRelativeDay,
+  fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet, lastDoneLabel,
 } from '../ui.js';
 
 /* O grupo vai na URL como slug sem acento ("quadriceps") pelo mesmo motivo do
@@ -170,16 +170,12 @@ function exerciseSection(sets, workoutsById, exercises, unit) {
     list.innerHTML = '';
     for (const row of rows) {
       const below = row.index != null && row.index < INDEX_REF;
-      const timeBased = usesDuration(row.exercise.muscleGroup);
-      const last = timeBased
-        ? fmtTempoSerie(row.lastDuration)
-        : `${fmtNum(row.lastWeight, 2)} ${unit}`;
       list.append(node(html`
         <a class="srow${below ? ' srow--under' : ''}" href="#/exercicios/${row.exercise.id}">
           ${raw(thumbHtml(row.exercise))}
           <span class="srow__mid">
             <span class="srow__day">${row.exercise.name}</span>
-            <span class="srow__detail">${fmtRelativeDay(row.lastAt)} · ${last}</span>
+            <span class="srow__detail">${lastDoneLabel(row.exercise, row, unit)}</span>
           </span>
           <span class="srow__end">
             <span class="srow__v">${row.index == null ? '—' : fmtNum(row.index, 0)}</span>

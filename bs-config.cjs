@@ -57,7 +57,7 @@ const SEED = `<!doctype html><meta charset="utf-8">
 <p>Popula o IndexedDB local (<code>treino</code>) deste navegador com treinos de
 exemplo — 6 semanas de push/pull/legs com carga progressiva, pra ver o app com
 histórico, gráficos e recordes — e os três modelos desse mesmo plano, pra ver a
-aba Modelos. Só dev; não vai pro app publicado.</p>
+tela de Modelos. Só dev; não vai pro app publicado.</p>
 <button class="primary" id="seed">Gerar 12 semanas de treino + 3 modelos</button>
 <button id="clear">Apagar treinos e modelos gerados</button>
 <p><a href="/phone">← voltar ao app</a></p>
@@ -164,7 +164,7 @@ document.getElementById('seed').onclick = async (e) => {
         log('treino ' + made + '/' + (WEEKS * DAYS.length));
       }
     }
-    log('\\nPronto. Abra o app → Histórico, e Exercícios → Modelos.');
+    log('\\nPronto. Abra o app → Progresso, e Treino → Modelos.');
   } catch (err) {
     log('ERRO: ' + (err && err.message || err));
   } finally {
