@@ -270,6 +270,55 @@ export function groupMedians(summaries, fields, { recent = 3, baseline = 8 } = {
   return { recent: medians(head), base: medians(base) };
 }
 
+/**
+ * Uma linha por exercicio que ja tem serie registrada: quando foi a ultima
+ * vez, com quanto, e o indice contra a propria mediana da pessoa.
+ *
+ * O indice e o MESMO groupIndex() de proposito — mediana das 3 sessoes
+ * recentes sobre a das ~8 anteriores, nada abaixo de 6 sessoes. Duas nocoes
+ * diferentes de "andou pra frente" dariam dois numeros que se contradizem na
+ * mesma tela, ja que grupo e exercicio aparecem um embaixo do outro.
+ *
+ * `fieldFor` entra por parametro porque nem todo exercicio tem carga: e1RM pro
+ * que levanta peso, tempo total pro cardio/alongamento. Quem sabe disso e
+ * `usesDuration` (seed.js), e este modulo nao importa nada.
+ *
+ * Ordem: mais recente primeiro. Ordenar pelo pior indice poria no topo
+ * justamente o exercicio que a pessoa abandonou — o topo tem que ser o que ela
+ * esta treinando agora.
+ *
+ * @param {object[]} sets todas as series
+ * @param {Map<number, object>} workoutsById
+ * @param {object[]} exercises biblioteca do usuario
+ * @param {(exercise: object) => string} fieldFor campo que o indice mede
+ * @returns {{exercise, sessions, lastAt, lastWeight, lastDuration, index}[]}
+ */
+export function exerciseProgressRows(sets, workoutsById, exercises, fieldFor = () => 'bestE1rm') {
+  const byExercise = new Map();
+  for (const s of sets) {
+    if (!byExercise.has(s.exerciseId)) byExercise.set(s.exerciseId, []);
+    byExercise.get(s.exerciseId).push(s);
+  }
+
+  const rows = [];
+  for (const exercise of exercises) {
+    const summaries = sessionSummaries(byExercise.get(exercise.id) || [], workoutsById);
+    if (!summaries.length) continue;
+    const last = summaries[summaries.length - 1];
+    rows.push({
+      exercise,
+      sessions: summaries.length,
+      lastAt: last.when,
+      lastWeight: last.maxWeight,
+      lastDuration: last.totalDuration,
+      index: groupIndex(summaries, { field: fieldFor(exercise) }),
+    });
+  }
+
+  rows.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  return rows;
+}
+
 /** Melhor volume de uma unica sessao (o terceiro tipo de recorde). */
 export function bestSessionVolume(summaries) {
   return summaries.reduce((max, r) => Math.max(max, r.volume), 0);

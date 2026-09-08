@@ -4,7 +4,7 @@ import {
   isUnilateralSet, totalReps, effectiveReps, setVolume, setE1rm, workingSets, evaluatePR, prSetIds, workoutSummary,
   orderedWorkoutExercises, workoutHighlights, workoutGroupBreakdown, allPrIds, weekMuscleGroupSummary,
   progressPct, moveInOrder, existingInOrder, workoutDeltas,
-  groupSessionSummaries, groupIndex, groupMedians,
+  groupSessionSummaries, groupIndex, groupMedians, exerciseProgressRows,
 } from './models.js';
 
 test('isUnilateralSet reconhece serie com reps por lado', () => {
@@ -406,4 +406,74 @@ test('groupMedians separa a janela recente da base e devolve a mediana de cada c
 
 test('groupMedians devolve null quando nao ha as duas janelas cheias', () => {
   assert.equal(groupMedians([{ setCount: 3 }, { setCount: 3 }], ['setCount']), null);
+});
+
+/* ---------- exerciseProgressRows ---------- */
+
+const wk = (id, day) => [id, {
+  id,
+  startedAt: `2026-03-${String(day).padStart(2, '0')}T10:00:00.000Z`,
+  date: `2026-03-${String(day).padStart(2, '0')}`,
+}];
+
+let nextSetId = 0;
+const st = (exerciseId, workoutId, weight, reps = 5) => ({
+  id: ++nextSetId, exerciseId, workoutId, weight, reps, warmup: false,
+});
+const timeSt = (exerciseId, workoutId, durationSec) => ({
+  id: ++nextSetId, exerciseId, workoutId, weight: 0, durationSec, warmup: false,
+});
+const sixWorkouts = () => new Map([1, 2, 3, 4, 5, 6].map((n) => wk(n, n)));
+
+test('exerciseProgressRows poe no topo o exercicio feito mais recentemente', () => {
+  const rows = exerciseProgressRows(
+    [st(10, 1, 100), st(20, 2, 50)],
+    new Map([wk(1, 1), wk(2, 5)]),
+    [{ id: 10, name: 'Agachamento' }, { id: 20, name: 'Rosca' }],
+  );
+  assert.deepEqual(rows.map((r) => r.exercise.id), [20, 10]);
+});
+
+test('exerciseProgressRows deixa de fora exercicio sem serie registrada', () => {
+  const rows = exerciseProgressRows(
+    [st(10, 1, 100)],
+    new Map([wk(1, 1)]),
+    [{ id: 10, name: 'Agachamento' }, { id: 20, name: 'Rosca' }],
+  );
+  assert.deepEqual(rows.map((r) => r.exercise.id), [10]);
+});
+
+test('exerciseProgressRows leva a carga da ultima sessao, nao o recorde de sempre', () => {
+  // 100 kg na primeira sessao, 80 na ultima: a linha mostra 80.
+  const [row] = exerciseProgressRows(
+    [st(10, 1, 100), st(10, 2, 80)],
+    new Map([wk(1, 1), wk(2, 5)]),
+    [{ id: 10, name: 'Agachamento' }],
+  );
+  assert.equal(row.lastWeight, 80);
+});
+
+test('exerciseProgressRows mede o indice pelo e1RM, com o criterio do groupIndex', () => {
+  // base 100/100/100 -> mediana 100; recentes 110/120/130 -> mediana 120.
+  // O fator constante do Epley (5 reps) cai na divisao: 120.
+  const sets = [100, 100, 100, 110, 120, 130].map((w, i) => st(10, i + 1, w));
+  const [row] = exerciseProgressRows(sets, sixWorkouts(), [{ id: 10, name: 'Agachamento' }]);
+  assert.equal(row.index, 120);
+});
+
+test('exerciseProgressRows nao arrisca um indice com menos de seis sessoes', () => {
+  const sets = [100, 100, 100, 110, 120].map((w, i) => st(10, i + 1, w));
+  const workouts = new Map([1, 2, 3, 4, 5].map((n) => wk(n, n)));
+  const [row] = exerciseProgressRows(sets, workouts, [{ id: 10, name: 'Agachamento' }]);
+  assert.equal(row.index, null);
+});
+
+test('exerciseProgressRows mede por tempo o exercicio que fieldFor manda medir por tempo', () => {
+  // base 60/60/60 -> 60; recentes 90/120/90 -> mediana 90. 90/60 = 150.
+  const sets = [60, 60, 60, 90, 120, 90].map((d, i) => timeSt(30, i + 1, d));
+  const [row] = exerciseProgressRows(
+    sets, sixWorkouts(), [{ id: 30, name: 'Esteira' }], () => 'totalDuration',
+  );
+  assert.equal(row.index, 150);
+  assert.equal(row.lastDuration, 90);
 });
