@@ -85,29 +85,42 @@ Dois caches no SW, de propósito diferente:
 `www/js/views/` (uma tela por arquivo). Views nunca abrem IndexedDB nem `.json`
 direto — passam pelas camadas abaixo.
 
-A aba **Perfil** (`views/profile.js`, rota `/perfil`) é quem você é, o que já
-fez e o que quer fazer; **Configurações** (`views/settings.js`) mora atrás da
-engrenagem da topbar, na rota `/ajustes`, que ficou com o nome antigo de
-propósito: ela não aparece como rótulo em lugar nenhum e o store do IndexedDB
-também se chama `settings`. Atrás dela ainda ficam **Backup**
-(`views/backup.js`, `/backup`) e **Peso corporal** (`views/body-weight.js`,
-`/peso`) — as duas saíram de dentro de Configurações porque um parágrafo com
-dois botões no meio da rolagem pesava mais que qualquer ajuste em volta.
+**Quatro abas, quatro perguntas** — a tabbar é `Treino · Progresso ·
+[botão] · Exercícios · Perfil`, e o rótulo de cada uma vive em **quatro**
+lugares (ver a lista de regras que quebram em silêncio, no fim).
 
-A quarta aba é **Progresso** (`views/progress.js`, rota `/progresso`): índice
-por grupo em cima, biblioteca de exercícios embaixo, os dois contra a própria
-mediana da pessoa. Era a aba **Exercícios**, que guardava três inquilinos
-(biblioteca, catálogo e modelos) e abria em oito acordeões fechados; e o
-Progresso morava escondido dentro do Histórico. Os dois trocaram de lugar.
-O grupo vai no hash sem acento (`#/progresso/quadriceps`) pelo mesmo motivo do
-slug do catálogo. Atrás dela: **busca de exercício** (`views/exercise.js`,
-`/exercicios`) — os seus e os 873 do catálogo na mesma lista, com criar no fim —
-a **ficha do catálogo** (`views/catalog.js`, `/catalogo/<slug>`) e os **grupos
-musculares** (`views/groups.js`, `/grupos`) — criar, renomear, pintar e apagar,
-atrás da própria lista de grupos, porque é onde a pessoa já está olhando pra
-eles. **Modelos**
-(`views/templates.js`, `/modelos`) entra pela aba Treino, ao lado de onde o
-treino começa.
+**Treino** (`views/home.js`, rota `/`) — *"o que eu treinei, e o que vou
+treinar agora?"*. Modelos com cabeçalho no topo, resumo da semana, e **a lista
+inteira de treinos**. Não existe aba Histórico: ela mostrava o resto da mesma
+lista que o Treino já mostrava pela metade, e a duplicata custava uma aba. O
+detalhe de um treino continua em `/historico/<id>` (`views/history.js`), que
+também exporta `workoutListNode()` — quem desenha a lista é ele, quem a mostra
+é o Treino. **Modelos** (`views/templates.js`, `/modelos`) entra por aqui, ao
+lado de onde o treino começa. Precedente: a Home da Hevy é o feed dos treinos.
+
+**Progresso** (`views/progress.js`, `/progresso`) — *"onde a carga sobe, e onde
+eu travei?"*. Índice por grupo em cima, por exercício embaixo, os dois contra a
+própria mediana. **Só leitura**: criar exercício e gerenciar grupo já moraram
+aqui e empilhavam um terceiro emprego numa tela de análise — o mesmo erro que
+dissolveu a aba Exercícios antiga (biblioteca, catálogo e modelos em oito
+acordeões fechados). O grupo vai no hash sem acento (`#/progresso/quadriceps`)
+pelo mesmo motivo do slug do catálogo.
+
+**Exercícios** (`views/exercise.js`, `/exercicios`) — *"o que eu tenho pra
+treinar?"*. Os seus e os 873 do catálogo na mesma busca, **criar no topo**, e a
+linha pros **grupos musculares** (`views/groups.js`, `/grupos` — criar,
+renomear, pintar, apagar). Atrás dela, a **ficha do catálogo**
+(`views/catalog.js`, `/catalogo/<slug>`). O Strong dá aba própria a Exercícios
+pelo mesmo motivo: biblioteca não é leitura de progresso.
+
+**Perfil** (`views/profile.js`, `/perfil`) — *"quem eu sou, e como o app se
+comporta?"*. Quem você é, o que já fez, metas, **Peso corporal**
+(`views/body-weight.js`, `/peso`) e **Backup** (`views/backup.js`, `/backup`) —
+esse subiu pro primeiro nível porque estava a três de distância sendo a única
+defesa contra perder tudo. **Configurações** (`views/settings.js`) continua
+atrás da engrenagem da topbar, na rota `/ajustes`, que ficou com o nome antigo
+de propósito: ela não aparece como rótulo em lugar nenhum e o store do
+IndexedDB também se chama `settings`.
 
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,

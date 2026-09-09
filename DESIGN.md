@@ -258,18 +258,23 @@ a próxima métrica de ser jogada na home por falta de lugar:
 
 | Tela | Pergunta | Leitura |
 |---|---|---|
-| Início · semana | Estou treinando o suficiente? | séries por grupo vs. meta |
+| Treino | O que eu treinei, e o que vou treinar agora? | séries por grupo vs. meta, e a lista de treinos |
 | Progresso | Onde a carga está subindo, e onde eu travei? | índice por grupo e por exercício, 100 = mediana |
+| Exercícios | O que eu tenho pra treinar? | biblioteca, catálogo e grupos |
 | Progresso · grupo | Esse grupo está subindo? | séries e volume por sessão |
 | Treino | Melhorei desde a última vez? | delta da sessão anterior |
 | Exercício | A carga subiu? | e1RM e peso máximo |
-| Perfil | Quanto eu já fiz, desde o começo? | totais de treinos, séries e recordes |
+| Perfil | Quem eu sou, e como o app se comporta? | totais, metas, peso corporal, backup |
 | Grupos | O que eu tenho pra classificar exercício? | nome, cor e uso de cada grupo |
 
 A linha dos Grupos é a única que não responde com número: ela é manutenção do
-vocabulário, não leitura de progresso. Por isso mora **atrás** do Progresso e
-não vira aba — e por isso não pode ganhar gráfico nem índice, que já têm dono
-duas linhas acima.
+vocabulário, não leitura de progresso. Por isso mora **atrás** dos Exercícios,
+não do Progresso — e por isso não pode ganhar gráfico nem índice, que já têm
+dono duas linhas acima.
+
+**Não existe linha de Histórico.** A lista de treinos responde a mesma pergunta
+do Treino em outra escala, e ter as duas era a mesma lista em dois lugares
+disputando qual estava mais completa.
 
 Antes de acrescentar um número a uma tela, ache a pergunta dele nesta tabela.
 Se ela já está respondida em outra linha, o número pertence àquela tela.
