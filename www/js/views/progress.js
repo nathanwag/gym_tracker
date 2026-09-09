@@ -130,6 +130,13 @@ export async function render(view) {
       </a>
     `));
   }
+  // A lista de grupos ja esta acima; manter e criar grupo e a acao dela.
+  list.append(node(html`
+    <a class="gidx__row gidx__row--manage" href="#/grupos">
+      <span class="gidx__name">${t('groups.manage')}</span>
+      <span class="gidx__go">${raw(ICON.chevron)}</span>
+    </a>
+  `));
   root.append(list);
   root.append(exerciseSection(sets, workoutsById, exercises, db.settings().unit));
   root.append(node(`<p class="muted small" style="margin:12px 0 0">${t('progress.indexHint')}</p>`));

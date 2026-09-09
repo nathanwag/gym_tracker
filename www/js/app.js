@@ -18,6 +18,7 @@ import * as exercise from './views/exercise.js';
 import * as picker from './views/exercise-picker.js';
 import * as catalog from './views/catalog.js';
 import * as templates from './views/templates.js';
+import * as groups from './views/groups.js';
 import * as settings from './views/settings.js';
 import * as profile from './views/profile.js';
 import * as backup from './views/backup.js';
@@ -46,6 +47,8 @@ const ROUTES = [
   // pode estar salva num link antigo.
   [/^\/catalogo$/, () => { location.hash = '#/exercicios'; }],
   [/^\/catalogo\/([a-z0-9-]+)$/, (view, slug) => catalog.renderDetail(view, slug)],
+  // Grupos entram pelo Progresso, que e onde a lista deles ja aparece.
+  [/^\/grupos$/, (view) => groups.renderList(view)],
   [/^\/perfil$/, (view) => profile.render(view)],
   // Rota com o nome antigo de proposito: /ajustes nunca aparece como rotulo e
   // trocar o hash quebraria link salvo de quem ja usa o app.
@@ -62,7 +65,7 @@ const TABS = [
   [/^\/historico/, 'history'],
   // Biblioteca e catalogo tambem nao tem: sao manutencao de umas poucas vezes
   // na vida, e vivem atras da lupa do Progresso.
-  [/^\/(progresso|exercicios|catalogo)/, 'progress'],
+  [/^\/(progresso|exercicios|catalogo|grupos)/, 'progress'],
   // Perfil e tudo que mora atras dele: configuracoes, backup e peso corporal.
   [/^\/(perfil|ajustes|backup|peso)/, 'profile'],
 ];
