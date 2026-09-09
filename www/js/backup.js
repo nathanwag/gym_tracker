@@ -14,6 +14,7 @@
 
 import * as db from './db.js';
 import { slugByName } from './seed.js';
+import { groupSlugFor } from './groups.js';
 import { normalizeName } from './text.js';
 import { t } from './i18n.js';
 
@@ -202,7 +203,9 @@ export async function validate(payload) {
       const rec = {
         id: toNumber(e.id),
         name: String(e.name ?? e.nome ?? 'Exercício'),
-        muscleGroup: String(e.muscleGroup ?? e.grupoMuscular ?? 'Outros'),
+        // Backup exportado antes da v7 traz o nome em portugues ('Peito');
+        // o banco agora guarda slug. groupSlugFor aceita os dois.
+        muscleGroup: groupSlugFor(e.muscleGroup ?? e.grupoMuscular),
         slug: e.slug ?? slugByName().get(normalizeName(e.name ?? e.nome ?? '')) ?? null,
         custom: Boolean(e.custom ?? e.personalizado),
         unilateral: Boolean(e.unilateral),

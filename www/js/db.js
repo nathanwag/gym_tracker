@@ -356,6 +356,15 @@ export async function listGroups() {
   return groupCache;
 }
 
+/** Leitura sincrona dos grupos ja carregados. Toda tela pinta alguma coisa com
+ *  a cor de um grupo e nao pode esperar o banco a cada render — mesmo motivo
+ *  de `settings()`. Antes do primeiro `listGroups()` devolve a semente, que e
+ *  exatamente o que o banco contem numa instalacao nova, entao nunca ha um
+ *  quadro sem cor. */
+export function groups() {
+  return groupCache || CANONICAL_GROUPS;
+}
+
 export async function getGroup(slug) {
   return (await listGroups()).find((g) => g.slug === slug) || null;
 }

@@ -19,18 +19,18 @@ import {
 import { lineChart } from '../charts.js';
 import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
-import { MUSCLE_GROUPS, groupLabel, usesDuration } from '../seed.js';
+import { groupLabel, usesDuration } from '../seed.js';
 import {
-  setTop, html, raw, node, ICON, groupColor, wireSegmented, stripAccents,
+  setTop, html, raw, node, ICON, groupColor, wireSegmented,
   fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet, lastDoneLabel,
 } from '../ui.js';
 
-/* O grupo vai na URL como slug sem acento ("quadriceps") pelo mesmo motivo do
- * catalogo: hash com acento vira percent-encoding ilegivel e varia entre
- * navegadores. Nenhum nome de MUSCLE_GROUPS tem espaco, entao stripAccents
- * basta — nao precisa de tabela de-para. */
-export const groupSlug = (group) => stripAccents(group);
-const groupFromSlug = (slug) => MUSCLE_GROUPS.find((g) => groupSlug(g) === slug) || null;
+/* O grupo ja E o slug desde que grupo virou dado (`db.groups()`): o hash
+ * #/progresso/quadriceps le direto o que `exercises.muscleGroup` guarda, sem
+ * conversao no meio. A funcao continua existindo porque a rota e o unico lugar
+ * que precisa dizer isso em voz alta. */
+export const groupSlug = (group) => group;
+const groupFromSlug = (slug) => db.groups().find((g) => g.slug === slug)?.slug || null;
 
 // Referencia do indice. Nao e meta: e o proprio historico da pessoa.
 const INDEX_REF = 100;
@@ -54,7 +54,7 @@ async function loadGroups() {
   const exercisesById = new Map(exercises.map((e) => [e.id, e]));
 
   const rows = [];
-  for (const group of MUSCLE_GROUPS) {
+  for (const { slug: group } of db.groups()) {
     const summaries = groupSessionSummaries(sets, workoutsById, exercisesById, group);
     if (!summaries.length) continue;
     // Cardio/alongamento nao tem carga: o analogo do volume e o tempo total.

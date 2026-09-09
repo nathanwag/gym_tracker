@@ -6,7 +6,9 @@ import { t, tn, locale } from './i18n.js';
 import {
   isDurationSet, isUnilateralSet, setE1rm, workoutGroupBreakdown, workoutSummary,
 } from './models.js';
-import { groupLabel, MUSCLE_GROUPS, usesDuration } from './seed.js';
+import { groupLabel, usesDuration } from './seed.js';
+import * as db from './db.js';
+import { groupSlugFor } from './groups.js';
 
 /** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
 export const APP_NAME = 'Anilha';
@@ -491,27 +493,31 @@ export const ICON = {
  *
  * Devolve `var(--m-x)` em vez do hex: assim a mesma chamada serve nos dois
  * temas, sem a view saber qual esta ativo. */
-const GROUP_COLOR_NAMES = {
-  'Peito': 'peito',
-  'Costas': 'costas',
-  'Lombar': 'lombar',
-  'Ombros': 'ombros',
-  'Trapézio': 'trapezio',
-  'Pescoço': 'pescoco',
-  'Bíceps': 'biceps',
-  'Tríceps': 'triceps',
-  'Quadríceps': 'quadriceps',
-  'Posterior': 'posterior',
-  'Glúteos': 'gluteos',
-  'Panturrilha': 'panturrilha',
-  'Abdômen': 'abdomen',
-  'Antebraço': 'antebraco',
-  'Cardio': 'cardio',
-  'Alongamento': 'alongamento',
-  'Outros': 'outros',
-};
+export const groupColor = (group) => `var(--m-${groupSlugFor(group)})`;
 
-export const groupColor = (group) => `var(--m-${GROUP_COLOR_NAMES[group] || 'outros'})`;
+/* Os tokens --m-* de styles.css deixam de ser a verdade e viram so o valor
+ * inicial: a cor agora e dado, e o usuario pode troca-la. Este <style> repete
+ * a MESMA cascata de tres blocos do CSS (claro; escuro por preferencia do
+ * sistema quando o tema nao esta travado em claro; escuro explicito) para que
+ * `groupColor()` continue devolvendo var() e trocar de tema continue sendo
+ * coisa do CSS, nao do JS. Entra no fim do <head>, entao vence styles.css por
+ * ordem, com a mesma especificidade. */
+export function applyGroupTokens() {
+  const groups = db.groups();
+  const vars = (key) => groups.map((g) => `--m-${g.slug}:${g[key]}`).join(';');
+  const light = vars('colorLight');
+  const dark = vars('colorDark');
+
+  let tag = document.getElementById('group-tokens');
+  if (!tag) {
+    tag = document.createElement('style');
+    tag.id = 'group-tokens';
+    document.head.append(tag);
+  }
+  tag.textContent = `:root{${light}}`
+    + `@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${dark}}}`
+    + `:root[data-theme="dark"]{${dark}}`;
+}
 
 /** A barra de assinatura de um treino: uma faixa por grupo, larga na
  *  proporcao das series. E o que faz um dia de perna ser reconhecivel de um
@@ -550,35 +556,49 @@ const body = (group, ...dots) =>
   + `<path d="${BODY_PATH}" opacity=".62" stroke-width="2.3"/>`
   + `${dots.map((p) => dot(...p)).join('')}</svg>`;
 
-export const ICON_GROUPS = {
-  'Peito': body('Peito', [12, 9.1, 1.95]),
-  'Costas': body('Costas', [12, 10.6, 1.95]),
+const ICON_GROUPS = {
+  peito: body('peito', [12, 9.1, 1.95]),
+  costas: body('costas', [12, 10.6, 1.95]),
   // Abaixo de Costas na silhueta, perto do quadril: hiperextensao/terra e
   // cadeia posterior, nao puxada -- por isso saiu de Costas.
-  'Lombar': body('Lombar', [12, 12.9, 1.49]),
-  'Ombros': body('Ombros', [8.4, 8.2, 1.49], [15.6, 8.2, 1.49]),
+  lombar: body('lombar', [12, 12.9, 1.49]),
+  ombros: body('ombros', [8.4, 8.2, 1.49], [15.6, 8.2, 1.49]),
   // Logo abaixo do pescoço, mais estreito que a mancha de Ombros: e onde
   // o trapezio fica na silhueta (base do pescoço ate o topo do ombro).
-  'Trapézio': body('Trapézio', [12, 7.5, 1.32]),
-  'Pescoço': body('Pescoço', [12, 5.3, 1.15]),
-  'Bíceps': body('Bíceps', [6.8, 10.9, 1.38]),
-  'Tríceps': body('Tríceps', [17.2, 10.9, 1.38]),
+  trapezio: body('trapezio', [12, 7.5, 1.32]),
+  pescoco: body('pescoco', [12, 5.3, 1.15]),
+  biceps: body('biceps', [6.8, 10.9, 1.38]),
+  triceps: body('triceps', [17.2, 10.9, 1.38]),
   // Coxa e uma so regiao na silhueta (sem frente/costas pra distinguir
   // quadriceps de posterior); a marca muda de altura — mais alta vs mais
   // baixa na coxa — pra diferenciar os dois icones.
-  'Quadríceps': body('Quadríceps', [11.2, 16, 1.49], [12.8, 16, 1.49]),
-  'Posterior': body('Posterior', [10.6, 19, 1.21], [13.4, 19, 1.21]),
-  'Glúteos': body('Glúteos', [12, 13.9, 1.72]),
-  'Panturrilha': body('Panturrilha', [10.2, 20.8, 1.03], [13.8, 20.8, 1.03]),
-  'Abdômen': body('Abdômen', [12, 11.2, 1.15], [12, 12.8, 1.15]),
-  'Antebraço': body('Antebraço', [6.7, 13.7, 1.26], [17.3, 13.7, 1.26]),
+  quadriceps: body('quadriceps', [11.2, 16, 1.49], [12.8, 16, 1.49]),
+  posterior: body('posterior', [10.6, 19, 1.21], [13.4, 19, 1.21]),
+  gluteos: body('gluteos', [12, 13.9, 1.72]),
+  panturrilha: body('panturrilha', [10.2, 20.8, 1.03], [13.8, 20.8, 1.03]),
+  abdomen: body('abdomen', [12, 11.2, 1.15], [12, 12.8, 1.15]),
+  antebraco: body('antebraco', [6.7, 13.7, 1.26], [17.3, 13.7, 1.26]),
   // Cardio e alongamento nao sao regiao do corpo, entao fogem da familia
   // "silhueta com mancha" e usam glifo proprio -- mas na cor do grupo, igual
   // aos outros, pra familia toda seguir a mesma legenda.
-  'Cardio': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('Cardio')}"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>`,
-  'Alongamento': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('Alongamento')}"><circle cx="14.5" cy="4.2" r="1.6" fill="currentColor" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
-  'Outros': `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('Outros')}"><path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/></svg>`,
+  cardio: `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('cardio')}"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>`,
+  alongamento: `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('alongamento')}"><circle cx="14.5" cy="4.2" r="1.6" fill="currentColor" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
+  outros: `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('outros')}"><path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/></svg>`,
 };
+
+/** Icone do grupo. Aceita slug ou o nome em portugues do catalogo, como
+ *  groupColor e groupLabel.
+ *
+ *  Grupo criado pelo usuario nao tem desenho: os 17 sao silhuetas com a mancha
+ *  posicionada a mao, e nao ha como gerar uma pra "Adutores". Ate haver, ele
+ *  aparece como um disco na propria cor — a cor ja e a legenda do grupo em
+ *  todo o resto do app. */
+export function groupIcon(group) {
+  const slug = groupSlugFor(group);
+  return ICON_GROUPS[slug]
+    || `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor(slug)}">`
+      + `<circle cx="12" cy="12" r="6.5" fill="currentColor" stroke="none"/></svg>`;
+}
 
 /** Dia do mes e abreviacao do dia da semana (ou do mes), pro bloco de data da
  *  linha. A lista de treinos usa o dia da semana; a de sessoes de um exercicio
@@ -641,8 +661,9 @@ export function workoutRow(workout, sets, exercisesById, { unit, prCount = 0, ba
  *  pro valor que mora numa linha de leitura (ver a aba Voce), onde uma moldura
  *  de campo nao existiria pra dar contexto. */
 export function groupField(selected = null, { grow = false } = {}) {
-  const options = MUSCLE_GROUPS
-    .map((g) => `<option value="${esc(g)}"${g === selected ? ' selected' : ''}>${esc(groupLabel(g))}</option>`)
+  const chosen = selected ? groupSlugFor(selected) : null;
+  const options = db.groups()
+    .map((g) => `<option value="${esc(g.slug)}"${g.slug === chosen ? ' selected' : ''}>${esc(groupLabel(g.slug))}</option>`)
     .join('');
   return `
     <label class="field${grow ? ' grow' : ''}">

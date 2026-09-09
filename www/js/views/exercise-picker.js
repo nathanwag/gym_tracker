@@ -17,7 +17,7 @@ import { groupBy, groupLabel } from '../seed.js';
 import { thumbHtml, prefetchPhotos, preloadCustomThumbs } from '../media.js';
 import { t } from '../i18n.js';
 import {
-  html, raw, node, ICON, ICON_GROUPS, toast, setTop, openSheet, closeSheet, goBack,
+  html, raw, node, ICON, groupIcon, toast, setTop, openSheet, closeSheet, goBack,
   stripAccents, listInCard, groupField,
 } from '../ui.js';
 
@@ -196,7 +196,7 @@ async function renderPicker({
     for (const { group, items } of groupBy(exercises, (e) => e.muscleGroup)) {
       const tile = node(html`
         <button class="tile" type="button">
-          <span class="tile__icon" aria-hidden="true">${raw(ICON_GROUPS[group] || '')}</span>
+          <span class="tile__icon" aria-hidden="true">${raw(groupIcon(group))}</span>
           <span class="tile__name">${groupLabel(group)}</span>
           <span class="tile__n">${items.length}</span>
         </button>

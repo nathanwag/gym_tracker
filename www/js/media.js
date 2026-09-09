@@ -11,7 +11,7 @@
  */
 
 import * as db from './db.js';
-import { ICON_GROUPS, html, raw, esc, node, groupColor } from './ui.js';
+import { groupIcon, html, raw, esc, node, groupColor } from './ui.js';
 import { groupLabel } from './seed.js';
 import { t } from './i18n.js';
 
@@ -74,7 +74,7 @@ export function thumbHtml(ex, { className = '' } = {}) {
   // ex.muscleGroup: exercicio da biblioteca (schema do banco). ex.grupo:
   // item cru do catalogo (fora de escopo, nome de campo continua em pt).
   const group = ex.muscleGroup || ex.grupo || 'Outros';
-  const icon = ICON_GROUPS[group] || ICON_GROUPS['Outros'];
+  const icon = groupIcon(group);
   // Foto personalizada tem prioridade sobre a do catalogo. Se o cache ainda
   // nao foi carregado (customThumbCache null), cai no comportamento de
   // sempre — quem quer a foto personalizada aqui precisa ter chamado

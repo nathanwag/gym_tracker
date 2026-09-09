@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP,
+  CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP, GROUP_LABELS_EN,
 } from './groups.js';
 
 /* Os slugs dos 17 nao podem mudar: a rota #/progresso/<slug> ja os serve, e
@@ -153,4 +153,18 @@ test('themeVariant nao estoura nos extremos', () => {
 test('FALLBACK_GROUP aponta pra um grupo que existe na semente', () => {
   assert.ok(CANONICAL_GROUPS.some((g) => g.slug === FALLBACK_GROUP));
   assert.equal(groupSlugFor(null), FALLBACK_GROUP);
+});
+
+test('todo grupo canonico tem rotulo em ingles', () => {
+  for (const g of CANONICAL_GROUPS) {
+    assert.ok(GROUP_LABELS_EN[g.slug], `${g.slug} sem rotulo EN`);
+  }
+});
+
+/* O catalogo e imutavel e grava o nome em portugues ('Peito'); os exercicios
+ * gravam slug. As duas telas chamam a mesma funcao de rotulo e cor, entao a
+ * normalizacao tem que aceitar os dois. */
+test('groupSlugFor casa nome do catalogo e slug no mesmo grupo', () => {
+  assert.equal(groupSlugFor('Peito'), groupSlugFor('peito'));
+  assert.equal(groupSlugFor('Quadríceps'), groupSlugFor('quadriceps'));
 });

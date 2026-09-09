@@ -145,3 +145,27 @@ export function themeVariant(hex, target) {
   const [h, s, l] = rgbToHsl(...[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255));
   return toHex(hslToRgb(h, s, clamp01(target === 'dark' ? l + LIGHTNESS_SHIFT : l - LIGHTNESS_SHIFT)));
 }
+
+/* Rotulo em ingles dos 17, agora chaveado por slug em vez do nome em
+ * portugues — o nome virou editavel e nao serve mais de chave. Grupo criado
+ * pelo usuario nao entra aqui: aparece com o nome que ele digitou, nos dois
+ * idiomas, que e o unico texto que existe pra ele. */
+export const GROUP_LABELS_EN = {
+  peito: 'Chest',
+  costas: 'Back',
+  lombar: 'Lower back',
+  ombros: 'Shoulders',
+  trapezio: 'Traps',
+  pescoco: 'Neck',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  quadriceps: 'Quads',
+  posterior: 'Hamstrings',
+  gluteos: 'Glutes',
+  panturrilha: 'Calves',
+  abdomen: 'Abs',
+  antebraco: 'Forearms',
+  cardio: 'Cardio',
+  alongamento: 'Stretching',
+  outros: 'Other',
+};

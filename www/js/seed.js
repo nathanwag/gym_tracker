@@ -15,6 +15,10 @@
 
 import { normalizeName } from './text.js';
 import { language } from './i18n.js';
+// Ciclo db -> seed -> db, como i18n.js ja faz: so chamamos db dentro de
+// funcao, nunca na inicializacao do modulo, entao o binding ja esta pronto.
+import * as db from './db.js';
+import { groupSlugFor, GROUP_LABELS_EN } from './groups.js';
 
 export const MUSCLE_GROUPS = [
   'Peito',
@@ -37,35 +41,12 @@ export const MUSCLE_GROUPS = [
 ];
 
 // Cardio e alongamento nao usam peso/repeticoes: a serie e registrada como
-// duracao (ver session.js/models.js). Esses dois grupos sao um conjunto
-// fechado (mesmo tratamento especial que ja recebem no catalogo e no
-// ICON_GROUPS abaixo), entao um helper puro basta — sem campo novo em
-// `exercises`.
-export const DURATION_GROUPS = ['Cardio', 'Alongamento'];
-export const usesDuration = (muscleGroup) => DURATION_GROUPS.includes(muscleGroup);
+// duracao (ver session.js/models.js).
+/** true quando a serie do grupo e gravada como duracao, nao peso x reps.
+ *  Era um conjunto fechado no codigo; virou campo do grupo pra que um grupo
+ *  criado pelo usuario tambem possa se declarar assim. */
+export const usesDuration = (muscleGroup) => Boolean(findGroup(muscleGroup)?.usesDuration);
 
-// Nome de exibicao em ingles pros 17 grupos. So pra exibicao — o valor gravado
-// no IndexedDB, as chaves de ICON_GROUPS e o campo `grupo` do catalogo
-// continuam sempre em portugues (ver groupLabel() abaixo).
-const GROUP_LABELS_EN = {
-  'Peito': 'Chest',
-  'Costas': 'Back',
-  'Lombar': 'Lower back',
-  'Ombros': 'Shoulders',
-  'Trapézio': 'Traps',
-  'Pescoço': 'Neck',
-  'Bíceps': 'Biceps',
-  'Tríceps': 'Triceps',
-  'Quadríceps': 'Quads',
-  'Posterior': 'Hamstrings',
-  'Glúteos': 'Glutes',
-  'Panturrilha': 'Calves',
-  'Abdômen': 'Abs',
-  'Antebraço': 'Forearms',
-  'Cardio': 'Cardio',
-  'Alongamento': 'Stretching',
-  'Outros': 'Other',
-};
 
 /** Nome do grupo pra exibir na tela, no idioma ativo. `group` continua sendo
  *  a chave canonica (portugues) usada para gravar/comparar — so o texto
@@ -73,7 +54,18 @@ const GROUP_LABELS_EN = {
  *  texto; em `<select>`, o `value` do `<option>` continua o `group` original,
  *  so o texto visivel passa por aqui. */
 export function groupLabel(group) {
-  return language() === 'en' ? (GROUP_LABELS_EN[group] || group) : group;
+  const record = findGroup(group);
+  if (!record) return group;
+  return language() === 'en' ? (GROUP_LABELS_EN[record.slug] || record.name) : record.name;
+}
+
+/** Aceita slug ('peito') ou o nome em portugues que o catalogo grava
+ *  ('Peito'): as duas telas chamam as mesmas funcoes de cor e rotulo, e
+ *  `catalogo.json` e dado commitado que nao migra junto com o banco. */
+function findGroup(value) {
+  if (!value) return null;
+  const slug = groupSlugFor(value);
+  return db.groups().find((g) => g.slug === slug) || null;
 }
 
 export const SEED_EXERCISES = {

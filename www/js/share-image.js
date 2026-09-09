@@ -13,6 +13,8 @@
  */
 
 import { workoutSummary, workoutHighlights, workoutGroupBreakdown } from './models.js';
+import * as db from './db.js';
+import { groupSlugFor } from './groups.js';
 import { t, tn, locale } from './i18n.js';
 import {
   APP_NAME, html, raw, node, openSheet, onSheetClose, toast,
@@ -31,28 +33,16 @@ const COLOR_MUTED = '#878c94';
 const COLOR_BORDER = 'rgba(239, 240, 241, 0.14)';
 const COLOR_PR = '#e9b93a';
 
-// Cor por grupo, em hex literal: o canvas nao resolve var(--m-x), e o cartao
-// e sempre escuro (mesma excecao ja declarada no topo do arquivo), entao ler
-// o tema ativo daria as cores erradas pra quem usa o app no claro. Os valores
-// batem com o bloco :root[data-theme="dark"] de styles.css.
-const GROUP_COLORS = {
-  'Peito': '#ec6154',
-  'Ombros': '#c4483b',
-  'Tríceps': '#96322a',
-  'Costas': '#5a92e8',
-  'Lombar': '#4276c4',
-  'Trapézio': '#345f9f',
-  'Bíceps': '#27497c',
-  'Antebraço': '#1c3a63',
-  'Quadríceps': '#45c2c8',
-  'Posterior': '#2d9aa1',
-  'Glúteos': '#20787e',
-  'Panturrilha': '#175b61',
-  'Abdômen': '#9aa1ab',
-  'Cardio': '#828a95',
-  'Pescoço': '#6b737e',
-  'Outros': '#5a626c',
-  'Alongamento': '#4a515a',
+// Cor por grupo direto do banco: o canvas nao resolve var(--m-x), e o cartao
+// e SEMPRE escuro (mesma excecao ja declarada no topo do arquivo), entao le
+// `colorDark` mesmo com o app no tema claro — ler o tema ativo daria as cores
+// erradas pra quem usa o app no claro. Deixou de ser tabela literal quando a
+// cor virou dado editavel: uma copia aqui congelaria a cor que o usuario
+// escolheu no cartao compartilhado.
+const groupColorDark = (group) => {
+  const slug = groupSlugFor(group);
+  const found = db.groups().find((g) => g.slug === slug);
+  return found ? found.colorDark : '#5a626c';
 };
 
 const font = (weight, size) => `${weight} ${size}px Manrope, sans-serif`;
@@ -334,7 +324,7 @@ function drawSignature(ctx, breakdown, y) {
   let x = PAD;
   for (const g of breakdown) {
     const w = (g.sets / total) * usable;
-    ctx.fillStyle = GROUP_COLORS[g.group] || GROUP_COLORS['Outros'];
+    ctx.fillStyle = groupColorDark(g.group);
     roundedRect(ctx, x, y, w, 14, 3);
     ctx.fill();
     x += w + gap;
