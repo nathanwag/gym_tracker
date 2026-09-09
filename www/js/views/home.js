@@ -1,14 +1,20 @@
-/* Tela inicial: comecar ou retomar um treino, resumo da semana e ultimos treinos. */
+/* Aba Treino: comecar ou retomar um treino, os modelos, o resumo da semana e
+ * a lista de treinos.
+ *
+ * A lista de treinos mora aqui, e nao numa aba propria: ela e a resposta de
+ * "o que eu treinei", que e a mesma pergunta desta aba em outra escala. Ter
+ * as duas custava uma aba e duplicava a mesma lista. */
 
 import * as db from '../db.js';
 import {
-  weekMuscleGroupSummary, weeklyTrend, progressPct, mondayOf, allPrIds,
+  weekMuscleGroupSummary, weeklyTrend, progressPct, mondayOf,
 } from '../models.js';
 import { lineChart } from '../charts.js';
+import { workoutListNode } from './history.js';
 import { t, tn } from '../i18n.js';
 import { groupLabel } from '../seed.js';
 import {
-  setTop, html, raw, node, ICON, groupColor, workoutRow, wireSegmented, infoRow,
+  setTop, html, raw, node, ICON, groupColor, wireSegmented, infoRow,
   fmtNum, fmtDateRange, fmtMinutes,
 } from '../ui.js';
 
@@ -34,11 +40,6 @@ export async function render(view) {
   ]);
 
   const unit = db.settings().unit;
-  const setsByWorkout = new Map();
-  for (const s of sets) {
-    if (!setsByWorkout.has(s.workoutId)) setsByWorkout.set(s.workoutId, []);
-    setsByWorkout.get(s.workoutId).push(s);
-  }
   const workoutsById = new Map(workouts.map((w) => [w.id, w]));
   const exercisesById = new Map(exercises.map((e) => [e.id, e]));
 
@@ -49,20 +50,15 @@ export async function render(view) {
   const firstWeek = workouts.length
     ? mondayOf(workouts.reduce((min, w) => (w.startedAt < min ? w.startedAt : min), workouts[0].startedAt))
     : null;
-  container.append(weekBlock(sets, workoutsById, exercisesById, unit, firstWeek));
+  const weekAndTrend = node('<div></div>');
+  weekAndTrend.append(weekBlock(sets, workoutsById, exercisesById, unit, firstWeek));
+  if (workouts.length) weekAndTrend.append(trendCard(sets, workoutsById, unit));
 
-  if (workouts.length) container.append(trendCard(sets, workoutsById, unit));
-
-  const finished = workouts.filter((w) => w.finishedAt);
-  if (finished.length) {
-    container.append(node(`<h2 class="section-title">${t('home.recentWorkouts')}</h2>`));
-    container.append(recentList(finished.slice(0, 5), setsByWorkout, exercisesById, sets, unit));
-  }
-
-  // Modelos entram por aqui: montar uma rotina e gesto de ANTES do treino, e a
-  // folha do botao de treinar so sabe usar as que ja existem. Sem cabecalho de
-  // secao — uma linha so nao merece um, e o rotulo ja diz o que e.
-  const templatesRow = node('<div style="margin-top:22px"></div>');
+  // Modelos sobe pra ANTES do resumo: montar uma rotina e gesto de antes do
+  // treino, e a folha do botao de treinar so sabe usar as que ja existem.
+  // Ganhou cabecalho porque no rodape, sem titulo, ninguem achava.
+  container.append(node(`<h2 class="section-title">${t('templates.listTitle')}</h2>`));
+  const templatesRow = node('<div></div>');
   templatesRow.append(infoRow(
     t('templates.listTitle'),
     templates.length ? tn('common.template', templates.length) : t('home.noTemplates'),
@@ -70,6 +66,17 @@ export async function render(view) {
     { icon: ICON.steps, hint: t('home.templatesHint') },
   ));
   container.append(templatesRow);
+
+  container.append(weekAndTrend);
+
+  // A lista inteira, nao os 5 mais recentes: "treinos recentes" aqui e o
+  // Historico eram a mesma lista em dois lugares, e a aba Historico existia so
+  // pra mostrar o resto dela.
+  const list = await workoutListNode();
+  if (list) {
+    container.append(node(`<h2 class="section-title">${t('home.yourWorkouts')}</h2>`));
+    container.append(list);
+  }
 
   view.append(container);
 }
@@ -253,21 +260,3 @@ function trendCard(sets, workoutsById, unit) {
   return card;
 }
 
-/* ---------- Ultimos treinos ---------- */
-
-function recentList(workouts, setsByWorkout, exercisesById, allSets, unit) {
-  // Uma passada so pelo historico inteiro, por exercicio: cada linha depois
-  // so pergunta quantas das suas series estao no conjunto. Calcular PR por
-  // treino, dentro do laco, releria o historico a cada linha.
-  const prIds = allPrIds(allSets);
-
-  const list = node('<div></div>');
-  for (const w of workouts) {
-    const workoutSets = setsByWorkout.get(w.id) || [];
-    list.append(workoutRow(w, workoutSets, exercisesById, {
-      unit,
-      prCount: workoutSets.filter((s) => prIds.has(s.id)).length,
-    }));
-  }
-  return list;
-}

@@ -25,26 +25,21 @@ const monthKey = (iso) => {
 };
 
 /* ==========================================================================
-   Lista de treinos
+   Lista de treinos — mostrada pela aba Treino
    ========================================================================== */
 
-export async function render(view) {
-  setTop({ title: t('history.title') });
-
-  const [workouts, sets] = await Promise.all([db.listWorkouts(), db.listAllSets()]);
+/** A lista de treinos, do mais recente pro mais antigo, com o mes como
+ *  divisor. Devolve um no em vez de escrever numa view porque quem a mostra e
+ *  a aba Treino: "treinos recentes" ali e a lista inteira aqui eram a MESMA
+ *  lista em dois lugares, e uma das duas sempre ficava para tras.
+ *
+ *  `limit` existe pro dia em que a aba quiser cortar; sem ele, mostra tudo. */
+export async function workoutListNode({ limit = null } = {}) {
+  const [all, sets] = await Promise.all([db.listWorkouts(), db.listAllSets()]);
   const unit = db.settings().unit;
+  if (!all.length) return null;
 
-  if (!workouts.length) {
-    view.append(node(html`
-      <div class="card"><div class="empty">
-        ${raw(ICON.dumbbell)}
-        <p>${t('history.empty.message')}</p>
-        <a class="btn btn--primary" href="#/">${t('history.empty.start')}</a>
-      </div></div>
-    `));
-    return;
-  }
-
+  const workouts = limit ? all.slice(0, limit) : all;
   const exercises = await db.listExercises();
   const exercisesById = new Map(exercises.map((e) => [e.id, e]));
 
@@ -66,7 +61,9 @@ export async function render(view) {
     const key = monthKey(workout.startedAt);
     if (key !== currentMonth) {
       currentMonth = key;
-      root.append(monthHeader(workout.startedAt, workouts, byWorkout, unit, thisYear));
+      // O total do mes conta o historico INTEIRO, nao a fatia mostrada: com
+      // `limit`, somar so o que esta na tela daria um mes menor do que foi.
+      root.append(monthHeader(workout.startedAt, all, byWorkout, unit, thisYear));
     }
 
     const workoutSets = byWorkout.get(workout.id) || [];
@@ -77,7 +74,7 @@ export async function render(view) {
     }));
   }
 
-  view.append(root);
+  return root;
 }
 
 /** Cabecalho de mes com o total movido no periodo — o numero que responde
@@ -132,7 +129,7 @@ export async function renderWorkout(view, workoutId) {
   await reloadWorkout();
 
   if (!ctx.workout) {
-    setTop({ title: t('history.genericTitle'), back: '#/historico' });
+    setTop({ title: t('history.genericTitle'), back: '#/' });
     view.append(node(`<div class="card card__pad">${t('history.notFound')}</div>`));
     return;
   }
@@ -177,7 +174,7 @@ function workoutTopbar() {
 
   setTop({
     title: fmtDate(workout.startedAt),
-    back: '#/historico',
+    back: '#/',
     actions: editMode
       ? `<button class="btn btn--sm btn--primary" data-edit>${t('history.doneEditing')}</button>`
       : (workout.finishedAt ? `
@@ -219,7 +216,7 @@ function deleteWorkoutButton() {
     if (!ok) return;
     await db.deleteWorkout(ctx.workout.id);
     toast(t('history.toastDeleted'));
-    location.hash = '#/historico';
+    location.hash = '#/';
   };
   return button;
 }

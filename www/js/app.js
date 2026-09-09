@@ -27,7 +27,6 @@ import * as bodyWeight from './views/body-weight.js';
 const ROUTES = [
   [/^\/?$/, (view) => home.render(view)],
   [/^\/sessao$/, (view) => session.render(view)],
-  [/^\/historico$/, (view) => history.render(view)],
   [/^\/historico\/(\d+)$/, (view, id) => history.renderWorkout(view, Number(id))],
   [/^\/progresso$/, (view) => progress.render(view)],
   // Grupo muscular sem acento no hash, pelo mesmo motivo do slug do catalogo.
@@ -62,10 +61,14 @@ const TABS = [
   // Modelo nao tem aba propria: mora atras do Treino, que e onde ele vira
   // treino de verdade — a folha do botao de treinar ja o usa.
   [/^\/modelos/, 'workout'],
-  [/^\/historico/, 'history'],
+  // O detalhe de um treino continua sob /historico/<id>, mas a aba dele e a
+  // Treino: e de la que a lista de treinos sai.
+  [/^\/historico/, 'workout'],
   // Biblioteca e catalogo tambem nao tem: sao manutencao de umas poucas vezes
   // na vida, e vivem atras da lupa do Progresso.
-  [/^\/(progresso|exercicios|catalogo|grupos)/, 'progress'],
+  [/^\/progresso/, 'progress'],
+  // Biblioteca, catalogo e grupos sao uma aba so: o vocabulario do treino.
+  [/^\/(exercicios|catalogo|grupos)/, 'library'],
   // Perfil e tudo que mora atras dele: configuracoes, backup e peso corporal.
   [/^\/(perfil|ajustes|backup|peso)/, 'profile'],
 ];
@@ -217,7 +220,7 @@ function applyTheme(theme) {
  *  valor novo em db.js antes de disparar. */
 function applyStaticLanguage() {
   document.documentElement.lang = t('app.htmlLang');
-  for (const tab of ['workout', 'history', 'progress', 'profile']) {
+  for (const tab of ['workout', 'progress', 'library', 'profile']) {
     const span = document.querySelector(`.tabbar__item[data-tab="${tab}"] span`);
     if (span) span.textContent = t(`app.tab.${tab}`);
   }

@@ -47,7 +47,8 @@ const CATALOG_SHOWN = 40;
  * quem tem serie (sem serie nao ha o que comparar).
  */
 export async function renderList(view) {
-  setTop({ title: t('exercise.listTitle'), back: '#/progresso' });
+  // Sem `back`: esta tela virou a raiz da aba Exercicios.
+  setTop({ title: t('exercise.listTitle') });
 
   const [exercises, sets, workouts] = await Promise.all([
     db.listExercises(), db.listAllSets(), db.listWorkouts(),
@@ -62,12 +63,21 @@ export async function renderList(view) {
     (ex) => (usesDuration(ex.muscleGroup) ? 'totalDuration' : 'bestE1rm'),
   ).map((r) => [r.exercise.id, r]));
 
+  // Criar fica ANTES da lista: no rodape, depois de 873 linhas de catalogo,
+  // ele so existia pra quem ja sabia que existia.
   const root = node(html`
     <div class="stack">
       <input class="input" data-search type="search" placeholder="${t('exercise.searchPlaceholder')}"
              autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
-      <div data-list></div>
       <button class="btn btn--block" data-create></button>
+      <div data-list></div>
+      <a class="srow" href="#/grupos">
+        <span class="srow__mid">
+          <span class="srow__day">${t('groups.title')}</span>
+          <span class="srow__detail">${t('groups.rowHint')}</span>
+        </span>
+        <span class="srow__go">${raw(ICON.chevron)}</span>
+      </a>
     </div>
   `);
   const list = root.querySelector('[data-list]');

@@ -1,6 +1,10 @@
 /* Progresso: como cada grupo muscular anda, e como um grupo anda ao longo das
  * sessoes.
  *
+ * SO LEITURA. Criar exercicio e gerenciar grupo moram na aba Exercicios —
+ * aqui eles empilhavam um terceiro emprego numa tela de analise, que e
+ * exatamente o que dissolveu a aba Exercicios antiga.
+ *
  * Existe porque volume total mente na comparacao entre treinos: um dia de
  * perna soma mais quilos que uma semana de braco, entao "subiu ou desceu?" no
  * agregado responde na verdade "treinou perna essa semana?". Aqui nada e
@@ -17,7 +21,6 @@ import {
   groupSessionSummaries, groupIndex, groupMedians, progressPct, exerciseProgressRows,
 } from '../models.js';
 import { lineChart } from '../charts.js';
-import { exerciseForm } from './exercise.js';
 import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
 import { groupLabel, usesDuration } from '../seed.js';
@@ -130,13 +133,6 @@ export async function render(view) {
       </a>
     `));
   }
-  // A lista de grupos ja esta acima; manter e criar grupo e a acao dela.
-  list.append(node(html`
-    <a class="gidx__row gidx__row--manage" href="#/grupos">
-      <span class="gidx__name">${t('groups.manage')}</span>
-      <span class="gidx__go">${raw(ICON.chevron)}</span>
-    </a>
-  `));
   root.append(list);
   root.append(exerciseSection(sets, workoutsById, exercises, db.settings().unit));
   root.append(node(`<p class="muted small" style="margin:12px 0 0">${t('progress.indexHint')}</p>`));
@@ -198,17 +194,6 @@ function exerciseSection(sets, workoutsById, exercises, unit) {
         <span class="srow__go">${raw(ICON.chevron)}</span>
       </a>
     `));
-
-    // Rotulado, e nao so a lupa da topbar: um icone nao diz que da pra criar
-    // exercicio, e a lupa era a unica porta pra isso desde que a aba
-    // Exercicios virou Progresso. Abre a MESMA folha de #/exercicios.
-    const criar = node(html`
-      <button class="btn btn--block" type="button" style="margin-top:10px">
-        ${raw(ICON.plus)} ${t('exercise.create')}
-      </button>
-    `);
-    criar.onclick = () => exerciseForm();
-    list.append(criar);
   };
 
   draw();

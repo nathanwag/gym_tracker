@@ -1,9 +1,8 @@
 /* Grupos musculares: criar, renomear, pintar e apagar.
  *
  * Existe porque grupo deixou de ser lista no codigo (ver `groups.js` e a
- * migracao v7 em `db.js`). A tela mora atras da secao Grupos do Progresso, que
- * e onde a pessoa ja esta olhando pra lista deles — acao mora onde o objeto
- * mora.
+ * migracao v7 em `db.js`). Mora atras da aba Exercicios: grupo e vocabulario
+ * do treino, igual ao exercicio, e nao leitura de progresso.
  *
  * Manutencao rara de proposito: sem aba propria, sem numero, sem grafico. A
  * pergunta dela e "o que eu tenho pra classificar exercicio?", que nenhuma
@@ -40,7 +39,7 @@ function activeThemeKey() {
 }
 
 export async function renderList(view) {
-  setTop({ title: t('groups.title'), back: '#/progresso' });
+  setTop({ title: t('groups.title'), back: '#/exercicios' });
 
   const [groups, exercises] = await Promise.all([db.listGroups(), db.listExercises()]);
   const counts = new Map();

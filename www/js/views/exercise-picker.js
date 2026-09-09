@@ -41,7 +41,7 @@ export async function render(view, workoutId) {
   ]);
 
   if (!workout) {
-    setTop({ title: t('picker.sheetTitle'), back: '#/historico' });
+    setTop({ title: t('picker.sheetTitle'), back: '#/' });
     view.append(node(`<div class="card card__pad">${t('history.notFound')}</div>`));
     return;
   }

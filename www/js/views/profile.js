@@ -45,6 +45,7 @@ export async function render(view) {
   root.append(identityRow(cfg, workouts));
   root.append(statsBlock(workouts, sets));
   root.append(goalsSection(cfg, weights));
+  root.append(backupRow());
   root.append(aboutSection());
 
   view.append(root);
@@ -277,6 +278,19 @@ function goalsSection(cfg, weights) {
  * Privacidade e suporte nao sao enfeite: as lojas exigem os dois na ficha, e
  * quem procura procura no perfil. Avaliar e compartilhar vivem junto porque
  * sao a mesma pergunta ("gostou?"), feita de dois jeitos. */
+
+/* Backup sobe pro primeiro nivel do Perfil: estava a tres niveis de distancia
+ * (Perfil > Configuracoes > Backup) sendo a unica defesa contra perder tudo.
+ * Ajustes continua na engrenagem da topbar — sem linha aqui, porque duas
+ * portas pro mesmo lugar e o que faz a pessoa nao achar nenhuma.
+ *
+ * Sem cabecalho de secao: uma linha so nao merece um. */
+function backupRow() {
+  const row = node('<div style="margin-top:22px"></div>');
+  row.append(infoRow(t('backup.title'), '', () => { location.hash = '#/backup'; },
+    { hint: t('profile.backupHint') }));
+  return row;
+}
 
 function aboutSection() {
   const rate = infoRow(t('profile.about.rate'), '', () => openExternal(STORE_URL));
