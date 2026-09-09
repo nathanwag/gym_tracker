@@ -52,7 +52,8 @@ node --test --test-name-pattern="unilateral"    # por nome
 
 Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`). Só dá
 pra testar módulos **puros** sob `node --test`: `models.js`, `text.js`,
-`curve.js`, `weight-step.js` e `profile.js` não têm import nenhum.
+`curve.js`, `weight-step.js` e `profile.js` não têm import nenhum, e
+`groups.js` só importa `text.js`.
 `seed.js`/`db.js`/`ui.js` puxam `i18n.js`, que toca `location` no carregamento
 e quebra fora do browser. Para testar algo
 desses, extraia a lógica pura pra um módulo sem dependência de DOM/IndexedDB —
@@ -101,13 +102,17 @@ Progresso morava escondido dentro do Histórico. Os dois trocaram de lugar.
 O grupo vai no hash sem acento (`#/progresso/quadriceps`) pelo mesmo motivo do
 slug do catálogo. Atrás dela: **busca de exercício** (`views/exercise.js`,
 `/exercicios`) — os seus e os 873 do catálogo na mesma lista, com criar no fim —
-e a **ficha do catálogo** (`views/catalog.js`, `/catalogo/<slug>`). **Modelos**
+a **ficha do catálogo** (`views/catalog.js`, `/catalogo/<slug>`) e os **grupos
+musculares** (`views/groups.js`, `/grupos`) — criar, renomear, pintar e apagar,
+atrás da própria lista de grupos, porque é onde a pessoa já está olhando pra
+eles. **Modelos**
 (`views/templates.js`, `/modelos`) entra pela aba Treino, ao lado de onde o
 treino começa.
 
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,
-  `settings`, `exerciseImages`, `workoutTemplates`, `bodyWeights` (modelo de treino = nome +
+  `settings`, `exerciseImages`, `workoutTemplates`, `bodyWeights`,
+  `muscleGroups` (modelo de treino = nome +
   ordem de `exerciseIds`, a mesma forma do treino; `startWorkoutFromTemplate()`
   é o único caminho de "treinar a partir de um modelo"). `DB_VERSION` +
   `onupgradeneeded` com blocos `if (event.oldVersion < N)`. Migração tem que ser
@@ -122,12 +127,23 @@ treino começa.
 - `backup.js` — export/import do banco em JSON. No iOS usa `navigator.share`
   (um `<a download>` não funciona dentro de PWA instalado).
 
-**Valores gravados são sempre em português** (ex.: `muscleGroup: 'Peito'`) e vêm
-do catálogo. Só a exibição traduz: `groupLabel()` (seed.js), `displayName()`
-(catalog.js). `MUSCLE_GROUPS` em `seed.js` é a lista canônica — `grupo`/
-`primarios`/`secundarios` do catálogo e `ICON_GROUPS` em `ui.js` têm que casar
-com ela. `catalogo.json`/`instrucoes.json` são dados commitados editados à mão
-(os geradores não estão mais no repo).
+**Nome de exercício e valores do catálogo são sempre em português** e vêm de
+`catalogo.json`; só a exibição traduz (`displayName()`, catalog.js).
+`catalogo.json`/`instrucoes.json` são dados commitados editados à mão (os
+geradores não estão mais no repo).
+
+**Grupo muscular é a exceção: virou dado, não lista no código.** O store
+`muscleGroups` guarda `{slug, name, colorLight, colorDark, usesDuration,
+order}`, e `exercises.muscleGroup` aponta pro **slug** (`'peito'`), não pro
+nome. O `slug` é imutável pelo mesmo motivo do slug do exercício: `name` é
+editável pelo usuário, e renomear "Peito" orfanaria tudo que apontasse pra
+string. `CANONICAL_GROUPS` (`groups.js`) é só a **semente** da migração v7 —
+não é mais a verdade em runtime, que é `db.groups()` (leitura síncrona, como
+`db.settings()`).
+
+Como o catálogo continua gravando `grupo: 'Peito'` e nunca migra,
+`groupLabel()`, `groupColor()` e `groupIcon()` aceitam **slug ou nome em
+português** — todas normalizam por `groupSlugFor()`.
 
 **`slug`** liga um exercício às fotos em `www/img/ex/` e à entrada do catálogo.
 É estável (ao contrário do `id` autoincremento e do `name` com acento editável).
@@ -170,16 +186,24 @@ toque, e a tabela de *uma pergunta por nível* — consulte-a antes de acrescent
 um número a qualquer tela. **Leia antes de mexer em `styles.css` ou em qualquer
 tela.** O que quebra o app, e por isso fica aqui:
 
-- **`groupColor()` tem que ficar acima de `ICON_GROUPS`** em `ui.js`: os ícones
-  chamam ela na inicialização do módulo, e `const` usada antes da declaração
-  derruba o app no carregamento — não num teste. As chaves de cor e de ícone
-  têm que casar com `MUSCLE_GROUPS` (`seed.js`).
+- **A cor do grupo é dado, e o token só existe depois de `applyGroupTokens()`**
+  (`ui.js`): ela gera um `<style>` que repete a mesma cascata de três blocos do
+  `styles.css` (claro / escuro por preferência / escuro explícito), e é o que
+  faz `groupColor()` poder continuar devolvendo `var(--m-<slug>)`. Roda no
+  bootstrap **e depois de toda escrita em grupo** — sem o segundo, grupo
+  recém-criado nasce sem cor, sem erro nenhum. Os `--m-*` do `styles.css`
+  viraram só o valor inicial.
+- **Grupo criado pelo usuário não tem ícone.** Os 17 de `ICON_GROUPS` são uma
+  silhueta com a mancha posicionada à mão (coordenadas no próprio arquivo);
+  não há como gerar uma pra um grupo novo, então `groupIcon()` cai num disco na
+  cor do grupo.
 - **Os 3 `woff2` da Barlow Condensed** (`www/fonts/`, estáticos — a família não
   é variável) precisam estar no `ASSETS` do `sw.js`, senão a tipografia quebra
   offline.
-- **O cartão de compartilhar repete a paleta em hex** (`GROUP_COLORS` em
-  `share-image.js`): canvas não resolve `var()`, e o cartão é sempre escuro
-  mesmo com o app no tema claro.
+- **O cartão de compartilhar lê `colorDark` direto do banco** (`share-image.js`):
+  canvas não resolve `var()`, e o cartão é sempre escuro mesmo com o app no tema
+  claro. Era uma tabela de hex copiada; virou leitura porque uma cópia
+  congelaria a cor que o usuário escolheu.
 
 **`i18n.js`** — `t()`/`tn()`; `language()` lê síncrono de `db.settings()`.
 Dicionário em `i18n-strings.js` (PT/EN, chaves planas com namespace por ponto).

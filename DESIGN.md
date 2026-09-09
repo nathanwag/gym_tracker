@@ -264,22 +264,32 @@ a próxima métrica de ser jogada na home por falta de lugar:
 | Treino | Melhorei desde a última vez? | delta da sessão anterior |
 | Exercício | A carga subiu? | e1RM e peso máximo |
 | Perfil | Quanto eu já fiz, desde o começo? | totais de treinos, séries e recordes |
+| Grupos | O que eu tenho pra classificar exercício? | nome, cor e uso de cada grupo |
+
+A linha dos Grupos é a única que não responde com número: ela é manutenção do
+vocabulário, não leitura de progresso. Por isso mora **atrás** do Progresso e
+não vira aba — e por isso não pode ganhar gráfico nem índice, que já têm dono
+duas linhas acima.
 
 Antes de acrescentar um número a uma tela, ache a pergunta dele nesta tabela.
 Se ela já está respondida em outra linha, o número pertence àquela tela.
 
 ## Regras que quebram em silêncio
 
-- **`groupColor` tem que ficar acima de `ICON_GROUPS`** em `ui.js`: os ícones
-  chamam ela na inicialização do módulo, e `const` usada antes da declaração
-  derruba o app no carregamento — não num teste.
-- **As chaves de cor e de ícone têm que casar com `MUSCLE_GROUPS`** (`seed.js`).
+- **A cor do grupo vive no banco, e o token só existe depois de
+  `applyGroupTokens()`** (`ui.js`). Ela gera um `<style>` que repete a cascata
+  de três blocos do `styles.css`, e roda no bootstrap **e depois de toda
+  escrita em grupo** — sem o segundo, um grupo recém-criado aparece sem cor
+  nenhuma, sem erro. Os `--m-*` do `styles.css` são só o valor inicial.
+- **Grupo criado pelo usuário não ganha silhueta.** Os 17 ícones são a mesma
+  silhueta com a mancha posicionada à mão; `groupIcon()` cai num disco na cor
+  do grupo pro que não tem desenho.
 - **Os três `woff2` da Barlow precisam estar no `ASSETS` do `sw.js`**, senão a
   tipografia quebra offline.
-- **O cartão de compartilhar repete a paleta em hex** (`GROUP_COLORS` em
-  `share-image.js`): canvas não resolve `var()`, e o cartão é **sempre escuro**
-  mesmo com o app no tema claro — ler o tema ativo daria as cores erradas.
-  Fonte nova usada lá também precisa entrar no `loadFonts()`.
+- **O cartão de compartilhar lê `colorDark` do banco** (`share-image.js`):
+  canvas não resolve `var()`, e o cartão é **sempre escuro** mesmo com o app no
+  tema claro — ler o tema ativo daria as cores erradas. Fonte nova usada lá
+  também precisa entrar no `loadFonts()`.
 - **Rótulo em condensada e caixa alta ocupa mais que o texto normal sugere.**
   Vários textos precisaram encurtar por isso ("Treino em andamento" →
   "Em andamento", "recorde de carga (kg)" → "recorde kg"). Cheque no aparelho,
