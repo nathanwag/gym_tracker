@@ -193,7 +193,6 @@ export const DICT = {
 
     // ---------- views/home.js ----------
     'home.yourWorkouts': 'Seus treinos',
-    'home.recentWorkouts': 'Últimos treinos',
     'home.templatesHint': 'rotinas montadas pra reusar',
     'home.noTemplates': 'nenhum',
     'home.firstTime': 'Toque no + na barra de baixo pra começar. Cada série que você registrar vira um ponto no gráfico de evolução.',
@@ -337,8 +336,6 @@ export const DICT = {
     'picker.catalogHint': 'Digite o nome do exercício — a busca alcança os 873 do catálogo.',
 
     // ---------- views/history.js ----------
-    'history.title': 'Histórico',
-    'history.empty.message': 'Nenhum treino registrado ainda.',
     'history.empty.start': 'Começar o primeiro',
     'history.inProgress': 'em andamento',
     'history.genericTitle': 'Treino',
@@ -699,7 +696,6 @@ export const DICT = {
 
     // ---------- views/home.js ----------
     'home.yourWorkouts': 'Your workouts',
-    'home.recentWorkouts': 'Recent workouts',
     'home.templatesHint': 'routines you build once and reuse',
     'home.noTemplates': 'none',
     'home.firstTime': 'Tap the + in the bottom bar to get started. Every set you log becomes a point on the progress chart.',
@@ -842,8 +838,6 @@ export const DICT = {
     'picker.catalogHint': 'Type the exercise name — search reaches the 873 in the catalog.',
 
     // ---------- views/history.js ----------
-    'history.title': 'History',
-    'history.empty.message': "No workouts logged yet.",
     'history.empty.start': 'Start your first',
     'history.inProgress': 'in progress',
     'history.genericTitle': 'Workout',

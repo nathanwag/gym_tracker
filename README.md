@@ -4,6 +4,11 @@ App para registrar **peso e repetições** de cada série na academia e acompanh
 do tempo, com gráficos de progressão e recordes automáticos. Rotinas que se repetem viram
 **modelos**: monte a lista de exercícios uma vez e comece o treino já pronto.
 
+Quatro abas, uma pergunta cada: **Treino** (o que você treinou e o que vai treinar), **Progresso**
+(onde a carga sobe e onde travou), **Exercícios** (sua biblioteca, o catálogo de 873 e os grupos
+musculares) e **Perfil** (você, metas, peso corporal e backup). Os grupos musculares são seus:
+dá para criar, renomear e escolher a cor de cada um.
+
 Funciona offline, guarda tudo no próprio aparelho e não depende de nenhum servidor.
 
 ---
@@ -83,8 +88,8 @@ Safari coloca seu histórico em risco.
 
 ## Backup
 
-Os treinos vivem apenas no seu aparelho — não há nuvem, não há conta. Em **Ajustes → Exportar
-treinos** o app gera um `.json` com tudo.
+Os treinos vivem apenas no seu aparelho — não há nuvem, não há conta. Em **Perfil → Backup →
+Exportar treinos** o app gera um `.json` com tudo.
 
 No iPhone isso abre a folha de compartilhamento do sistema, e você salva em **Arquivos** ou no
 **iCloud Drive** (um `<a download>` comum não funciona dentro de um PWA no iOS — por isso o app usa
@@ -127,6 +132,7 @@ www/                     o app (e o webDir do Capacitor)
    ├─ catalog.js         única camada que lê www/data/
    ├─ media.js           figuras: URL, miniatura, animação de 2 frames
    ├─ models.js          1RM, volume, detecção de recordes
+   ├─ groups.js          grupos musculares: slug estável, cores, semente
    ├─ seed.js            biblioteca inicial de exercícios
    ├─ backup.js          exportar/importar JSON
    ├─ charts.js          gráfico de linha em SVG puro
