@@ -118,15 +118,24 @@ export async function renderList(view) {
         || stripAccents(e.muscleGroup).includes(term))
       : exercises;
 
+    // O cabecalho "Meus" so existia quando havia busca, porque sem ela o
+    // catalogo nao aparecia e a lista era obviamente a biblioteca. Agora que o
+    // catalogo esta sempre embaixo, sem cabecalho as duas listas colam.
+    const mineHeader = node(`<h2 class="section-title">${t('exercise.mine')}</h2>`);
     if (mine.length) {
-      if (q) list.append(node(`<h2 class="section-title">${t('exercise.mine')}</h2>`));
+      list.append(mineHeader);
       list.append(listInCard(mine.map(mineItem)));
     }
 
     let matches = [];
-    if (q && catalogItems) {
+    // Sem busca o catalogo tambem aparece: escondido ate a pessoa digitar, ele
+    // simplesmente nao existia — a tela abria mostrando so a biblioteca, e
+    // "adicionar do catalogo" virava conhecimento secreto. Os 873 nao cabem na
+    // tela de qualquer jeito, entao o corte por CATALOG_SHOWN ja resolvia isso
+    // antes e continua resolvendo agora.
+    if (catalogItems) {
       const needle = normalizeName(q);
-      matches = catalogItems.filter((i) => i.searchKey.includes(needle) && !mineSlugs.has(i.slug));
+      matches = catalogItems.filter((i) => (!q || i.searchKey.includes(needle)) && !mineSlugs.has(i.slug));
       const shown = matches.slice(0, CATALOG_SHOWN);
       if (shown.length) {
         list.append(node(`<h2 class="section-title">${t('exercise.catalogSection', { total: matches.length })}</h2>`));
@@ -935,8 +944,12 @@ function openFigurePicker({ name, currentSlug, onPick }) {
 }
 
 /** Sheet de criar exercicio (nome + grupo + unilateral). Editar um exercicio
- *  que ja existe e a tela cheia `renderEdit`. */
-function exerciseForm(name = '') {
+ *  que ja existe e a tela cheia `renderEdit`.
+ *
+ *  Exportado porque o Progresso abre esta mesma folha: criar exercicio e a
+ *  acao da biblioteca, e a biblioteca aparece la. Duas folhas diferentes pra
+ *  mesma coisa divergiriam no primeiro campo novo. */
+export function exerciseForm(name = '') {
   const body = node(html`
     <div class="stack">
       <label class="field">

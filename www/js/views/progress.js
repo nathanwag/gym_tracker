@@ -17,6 +17,7 @@ import {
   groupSessionSummaries, groupIndex, groupMedians, progressPct, exerciseProgressRows,
 } from '../models.js';
 import { lineChart } from '../charts.js';
+import { exerciseForm } from './exercise.js';
 import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
 import { groupLabel, usesDuration } from '../seed.js';
@@ -190,6 +191,17 @@ function exerciseSection(sets, workoutsById, exercises, unit) {
         <span class="srow__go">${raw(ICON.chevron)}</span>
       </a>
     `));
+
+    // Rotulado, e nao so a lupa da topbar: um icone nao diz que da pra criar
+    // exercicio, e a lupa era a unica porta pra isso desde que a aba
+    // Exercicios virou Progresso. Abre a MESMA folha de #/exercicios.
+    const criar = node(html`
+      <button class="btn btn--block" type="button" style="margin-top:10px">
+        ${raw(ICON.plus)} ${t('exercise.create')}
+      </button>
+    `);
+    criar.onclick = () => exerciseForm();
+    list.append(criar);
   };
 
   draw();
