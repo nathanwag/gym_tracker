@@ -169,3 +169,48 @@ export const GROUP_LABELS_EN = {
   alongamento: 'Stretching',
   outros: 'Other',
 };
+
+/** Os grupos que uma restauracao de backup deve gravar.
+ *
+ *  Backup exportado antes da v7 nao tem grupo nenhum — restaurar so o que ele
+ *  tras deixaria o banco sem grupos, e sem grupo o exercicio perde cor, rotulo
+ *  e a linha do Progresso. Entao a semente entra sempre, e o backup manda por
+ *  cima no que ele de fato traz.
+ *
+ *  Grupo que so aparece em `exercises` (backup antigo com grupo inventado)
+ *  ganha registro proprio, pelo mesmo motivo da migracao: fundir em Outros nao
+ *  tem volta. */
+export function groupsForRestore(groups, exercises = []) {
+  const byslug = new Map(CANONICAL_GROUPS.map((g) => [g.slug, { ...g }]));
+  const outros = byslug.get(FALLBACK_GROUP);
+
+  for (const raw of Array.isArray(groups) ? groups : []) {
+    if (!raw) continue;
+    const slug = raw.slug ? groupSlug(raw.slug) : groupSlug(raw.name);
+    const current = byslug.get(slug);
+    byslug.set(slug, {
+      slug,
+      name: String(raw.name ?? current?.name ?? slug),
+      colorLight: raw.colorLight ?? current?.colorLight ?? outros.colorLight,
+      colorDark: raw.colorDark ?? current?.colorDark ?? outros.colorDark,
+      usesDuration: Boolean(raw.usesDuration ?? current?.usesDuration),
+      order: 0,
+    });
+  }
+
+  for (const exercise of exercises) {
+    const value = exercise?.muscleGroup;
+    const slug = groupSlugFor(value);
+    if (byslug.has(slug)) continue;
+    byslug.set(slug, {
+      slug,
+      name: String(value),
+      colorLight: outros.colorLight,
+      colorDark: outros.colorDark,
+      usesDuration: false,
+      order: 0,
+    });
+  }
+
+  return [...byslug.values()].map((g, order) => ({ ...g, order }));
+}

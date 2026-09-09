@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP, GROUP_LABELS_EN,
+  CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP, GROUP_LABELS_EN, groupsForRestore,
 } from './groups.js';
 
 /* Os slugs dos 17 nao podem mudar: a rota #/progresso/<slug> ja os serve, e
@@ -167,4 +167,35 @@ test('todo grupo canonico tem rotulo em ingles', () => {
 test('groupSlugFor casa nome do catalogo e slug no mesmo grupo', () => {
   assert.equal(groupSlugFor('Peito'), groupSlugFor('peito'));
   assert.equal(groupSlugFor('Quadríceps'), groupSlugFor('quadriceps'));
+});
+
+/* Restaurar backup exportado antes da v7: ele nao tem grupos, e o banco nao
+ * pode ficar sem nenhum — sem grupo, todo exercicio perde cor, rotulo e a
+ * linha do Progresso. */
+test('groupsForRestore semeia os 17 quando o backup nao tras grupos', () => {
+  const out = groupsForRestore(undefined, [{ muscleGroup: 'Peito' }]);
+  assert.equal(out.length, CANONICAL_GROUPS.length);
+  assert.ok(out.some((g) => g.slug === 'peito'));
+});
+
+test('groupsForRestore cria grupo pro que so aparece nos exercicios', () => {
+  const out = groupsForRestore(undefined, [{ muscleGroup: 'Adutores' }, { muscleGroup: 'Adutores' }]);
+  const adutores = out.filter((g) => g.slug === 'adutores');
+  assert.equal(adutores.length, 1, 'nao pode duplicar');
+  assert.equal(adutores[0].name, 'Adutores');
+});
+
+test('groupsForRestore preserva os grupos que o backup tras', () => {
+  const out = groupsForRestore(
+    [{ slug: 'adutores', name: 'Adutores', colorLight: '#111111', colorDark: '#222222', usesDuration: true, order: 3 }],
+    [],
+  );
+  const found = out.find((g) => g.slug === 'adutores');
+  assert.equal(found.colorLight, '#111111');
+  assert.equal(found.usesDuration, true);
+});
+
+test('groupsForRestore devolve ordens contiguas a partir de zero', () => {
+  const out = groupsForRestore(undefined, [{ muscleGroup: 'Adutores' }]);
+  assert.deepEqual(out.map((g) => g.order), out.map((_, i) => i));
 });

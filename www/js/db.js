@@ -792,7 +792,8 @@ export function deleteBodyWeight(id) {
 }
 
 export async function dumpAll() {
-  const [exercises, workouts, sets, settingsRows, images, templates, bodyWeights] = await Promise.all([
+  const [exercises, workouts, sets, settingsRows, images, templates, bodyWeights,
+    muscleGroups] = await Promise.all([
     tx('exercises', 'readonly', (s) => req(s.getAll())),
     tx('workouts', 'readonly', (s) => req(s.getAll())),
     tx('sets', 'readonly', (s) => req(s.getAll())),
@@ -800,20 +801,23 @@ export async function dumpAll() {
     tx('exerciseImages', 'readonly', (s) => req(s.getAll())),
     tx('workoutTemplates', 'readonly', (s) => req(s.getAll())),
     tx('bodyWeights', 'readonly', (s) => req(s.getAll())),
+    tx('muscleGroups', 'readonly', (s) => req(s.getAll())),
   ]);
   return {
     exercises, workouts, sets, settings: settingsRows, images, templates, bodyWeights,
+    muscleGroups,
   };
 }
 
 /** Substitui todo o conteudo do banco (restauracao de backup). */
 export async function replaceAll({
   exercises = [], workouts = [], sets = [], settings: settingsRows = [], images = [], templates = [],
-  bodyWeights = [],
+  bodyWeights = [], muscleGroups = [],
 }) {
-  const STORES = ['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates', 'bodyWeights'];
-  await tx(STORES, 'readwrite', (ex, wo, se, st, im, tp, bw) => {
-    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear(); bw.clear();
+  const STORES = ['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates', 'bodyWeights', 'muscleGroups'];
+  await tx(STORES, 'readwrite', (ex, wo, se, st, im, tp, bw, mg) => {
+    ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear(); bw.clear(); mg.clear();
+    for (const row of muscleGroups) mg.put(row);
     for (const row of exercises) ex.put(row);
     for (const row of workouts) wo.put(row);
     for (const row of sets) se.put(row);
@@ -825,6 +829,7 @@ export async function replaceAll({
     for (const row of bodyWeights) bw.put(row);
   });
   exerciseCache = null;
+  groupCache = null;
 }
 
 /** Apaga tudo, incluindo a biblioteca de exercicios. */

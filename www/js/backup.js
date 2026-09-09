@@ -14,7 +14,7 @@
 
 import * as db from './db.js';
 import { slugByName } from './seed.js';
-import { groupSlugFor } from './groups.js';
+import { groupSlugFor, groupsForRestore } from './groups.js';
 import { normalizeName } from './text.js';
 import { t } from './i18n.js';
 
@@ -91,6 +91,7 @@ export async function prepareBackup() {
     images,
     templates: data.templates,
     bodyWeights: data.bodyWeights,
+    muscleGroups: data.muscleGroups,
   };
 
   const json = JSON.stringify(payload);
@@ -194,7 +195,7 @@ export async function validate(payload) {
     })),
   );
 
-  return {
+  const restored = {
     // A restauracao chama db.replaceAll(), que grava direto e NAO passa pela
     // migracao do banco. Sem o backfill abaixo (nome de campo, slug, chave de
     // ajuste), importar um backup antigo perderia figura de exercicio ou
@@ -261,6 +262,12 @@ export async function validate(payload) {
         createdAt: row.createdAt ?? new Date().toISOString(),
       })),
   };
+
+  // Depois dos exercicios, porque depende deles: backup anterior a v7 nao tem
+  // grupo nenhum, e restaurar sem grupos deixaria todo exercicio sem cor,
+  // rotulo e linha no Progresso.
+  restored.muscleGroups = groupsForRestore(payload.muscleGroups, restored.exercises);
+  return restored;
 }
 
 /** Substitui tudo que esta no aparelho pelo conteudo do backup. */
