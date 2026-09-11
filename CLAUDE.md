@@ -132,13 +132,14 @@ pelo mesmo motivo: biblioteca não é leitura de progresso; Strong e Hevy també
 abrem a biblioteca por músculo.
 
 **Perfil** (`views/profile.js`, `/perfil`) — *"quem eu sou, e como o app se
-comporta?"*. Quem você é, o que já fez, metas, **Peso corporal**
-(`views/body-weight.js`, `/peso`) e **Backup** (`views/backup.js`, `/backup`) —
-esse subiu pro primeiro nível porque estava a três de distância sendo a única
-defesa contra perder tudo. **Configurações** (`views/settings.js`) continua
-atrás da engrenagem da topbar, na rota `/ajustes`, que ficou com o nome antigo
-de propósito: ela não aparece como rótulo em lugar nenhum e o store do
-IndexedDB também se chama `settings`.
+comporta?"*. Quem você é, o que já fez, metas e **Peso corporal**
+(`views/body-weight.js`, `/peso`). **Backup** (`views/backup.js`, `/backup`)
+teve uma linha de primeiro nível aqui e saiu: **Configurações → Seus dados** já
+leva pra mesma tela e ainda diz há quantos dias foi o último export — duas
+portas pro mesmo lugar é o que faz a pessoa não achar nenhuma.
+**Configurações** (`views/settings.js`) continua atrás da engrenagem da topbar,
+na rota `/ajustes`, que ficou com o nome antigo de propósito: ela não aparece
+como rótulo em lugar nenhum e o store do IndexedDB também se chama `settings`.
 
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,
