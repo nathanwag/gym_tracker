@@ -35,6 +35,9 @@ const ROUTES = [
   // Grupo muscular sem acento no hash, pelo mesmo motivo do slug do catalogo.
   [/^\/progresso\/([a-z0-9-]+)$/, (view, slug) => progress.renderGroup(view, slug)],
   [/^\/exercicios$/, (view) => exercise.renderList(view)],
+  // /grupo/ no meio, e nao /exercicios/<slug> direto: um grupo que a pessoa
+  // chame de "123" viraria slug numerico e cairia na rota do id acima.
+  [/^\/exercicios\/grupo\/([a-z0-9-]+)$/, (view, slug) => exercise.renderGroup(view, slug)],
   [/^\/exercicios\/(\d+)$/, (view, id) => exercise.renderDetail(view, Number(id))],
   [/^\/exercicios\/(\d+)\/editar$/, (view, id) => exercise.renderEdit(view, Number(id))],
   // Escolher exercicio pra um treino — do treino em andamento ou da edicao

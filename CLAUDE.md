@@ -98,8 +98,10 @@ tabbar continua com quatro, e o `TABS` do `app.js` deixa `/historico` e
 lista disputando qual estava mais completa — como fatia + resto, é uma lista
 só, e `workoutListNode({ limit })` é a única que a desenha nos dois lugares (o
 total do mês no cabeçalho sempre soma o histórico inteiro, não a fatia).
-**Modelos** (`views/templates.js`, `/modelos`) entra por aqui, ao lado de onde
-o treino começa. Precedente: a Home da Hevy é o feed dos treinos.
+Precedente: a Home da Hevy é o feed dos treinos. **Modelos saiu daqui** pra aba
+Exercícios, que é onde a pergunta "o que eu tenho pra treinar" já estava — duas
+portas pro mesmo lugar é o que faz a pessoa não achar nenhuma. O caminho de
+"treinar a partir de um modelo" continua sendo a folha do botão vermelho.
 
 **Progresso** (`views/progress.js`, `/progresso`) — *"onde a carga sobe, e onde
 eu travei?"*. Índice por grupo em cima, por exercício embaixo, os dois contra a
@@ -110,11 +112,24 @@ acordeões fechados). O grupo vai no hash sem acento (`#/progresso/quadriceps`)
 pelo mesmo motivo do slug do catálogo.
 
 **Exercícios** (`views/exercise.js`, `/exercicios`) — *"o que eu tenho pra
-treinar?"*. Os seus e os 873 do catálogo na mesma busca, **criar no topo**, e a
-linha pros **grupos musculares** (`views/groups.js`, `/grupos` — criar,
-renomear, pintar, apagar). Atrás dela, a **ficha do catálogo**
+treinar?"*. **Índice por grupo, não lista**: a raiz da aba são as ~17 linhas de
+`db.groups()` na ordem anatômica (inclusive as vazias — reordenar sozinha a cada
+exercício criado tiraria a única coisa que faz achar sem ler), cada uma com
+"N seus · N no catálogo". A lista de exercício existe **só dentro de um grupo**
+(`renderGroup`, `/exercicios/grupo/<slug>` — o `/grupo/` no meio evita que um
+grupo chamado "123" caia na rota `/exercicios/<id>`), e o catálogo daquele grupo
+vem junto, embaixo dos seus. Criar mora lá também, e por isso o exercício nasce
+classificado (`exerciseForm(name, group)`).
+
+**Digitar na busca desliga o corte**: volta a lista achatada de sempre (seus +
+os 873), porque quem já sabe o nome não quer navegar. Índice = repouso, busca =
+atalho. **Modelos** (`views/templates.js`, `/modelos`) entra pela linha do topo:
+responde a pergunta desta aba, é a lista mais curta e a que menos muda. Também
+moram aqui os **grupos musculares** (`views/groups.js`, `/grupos` — criar,
+renomear, pintar, apagar, no rodapé) e a **ficha do catálogo**
 (`views/catalog.js`, `/catalogo/<slug>`). O Strong dá aba própria a Exercícios
-pelo mesmo motivo: biblioteca não é leitura de progresso.
+pelo mesmo motivo: biblioteca não é leitura de progresso; Strong e Hevy também
+abrem a biblioteca por músculo.
 
 **Perfil** (`views/profile.js`, `/perfil`) — *"quem eu sou, e como o app se
 comporta?"*. Quem você é, o que já fez, metas, **Peso corporal**

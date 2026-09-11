@@ -9,6 +9,7 @@ import {
 import {
   groupLabel, usesDuration,
 } from '../seed.js';
+import { groupSlugFor } from '../groups.js';
 import { lineChart } from '../charts.js';
 import * as catalog from '../catalog.js';
 import {
@@ -20,8 +21,8 @@ import { cleanSteps, sameSteps, normalizeName } from '../text.js';
 import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
-  fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented,
-  listInCard, groupColor, groupField, lastDoneLabel,
+  fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented, infoRow,
+  listInCard, groupColor, groupIcon, groupField, lastDoneLabel,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -36,41 +37,31 @@ let search = '';
 // celular, e quem precisa de mais de 40 precisa mesmo e refinar a busca.
 const CATALOG_SHOWN = 40;
 
-/* Achar exercicio: os seus e os 873 do catalogo na MESMA lista.
+/* Achar exercicio: 17 linhas de grupo, e a lista so dentro de uma delas.
  *
- * Eram duas telas, cada uma com sua busca e seu acordeao por grupo, e achar
- * "supino inclinado" exigia saber de antemao se ele ja era seu — o botao +
- * abria uma folha so pra perguntar por qual das duas comecar.
+ * A biblioteca inteira numa lista achatada, com os 873 do catalogo embaixo,
+ * funcionava com 12 exercicios e desmontava com 60: rolar era a unica forma de
+ * achar. O indice por grupo nao cresce — sao as mesmas 17 linhas com 12
+ * exercicios ou com 300, e cada uma diz quantos sao seus e quantos ainda tem
+ * no catalogo.
  *
- * Sem busca digitada mostra a biblioteca inteira, inclusive quem nunca foi
- * registrado: e a unica tela que os alcanca, ja que o Progresso so lista
- * quem tem serie (sem serie nao ha o que comparar).
+ * A busca continua achatada de proposito: digitar e o atalho de quem ja sabe o
+ * nome, e ai o corte por grupo so atrapalharia. O indice e o estado de repouso.
+ *
+ * Precedente: Strong e Hevy abrem a biblioteca por musculo.
  */
 export async function renderList(view) {
   // Sem `back`: esta tela virou a raiz da aba Exercicios.
   setTop({ title: t('exercise.listTitle') });
 
-  const [exercises, sets, workouts] = await Promise.all([
-    db.listExercises(), db.listAllSets(), db.listWorkouts(),
-  ]);
-  const unit = db.settings().unit;
+  const [lib, templates] = await Promise.all([libraryData(), db.listTemplates()]);
+  const { exercises, unit, progress } = lib;
 
-  // Mesma fonte que o Progresso usa pra dizer "ultima vez": a data do treino,
-  // nao o createdAt da linha de serie — os dois divergem em backup importado e
-  // as duas telas mostrariam dias diferentes pro mesmo exercicio.
-  const progress = new Map(exerciseProgressRows(
-    sets, new Map(workouts.map((w) => [w.id, w])), exercises,
-    (ex) => (usesDuration(ex.muscleGroup) ? 'totalDuration' : 'bestE1rm'),
-  ).map((r) => [r.exercise.id, r]));
-
-  // Criar fica ANTES da lista: no rodape, depois de 873 linhas de catalogo,
-  // ele so existia pra quem ja sabia que existia.
   const root = node(html`
     <div class="stack">
       <input class="input" data-search type="search" placeholder="${t('exercise.searchPlaceholder')}"
              autocomplete="off" autocapitalize="none" autocorrect="off" value="${search}">
-      <button class="btn btn--block" data-create></button>
-      <div data-list></div>
+      <div data-body></div>
       <a class="srow" href="#/grupos">
         <span class="srow__mid">
           <span class="srow__day">${t('groups.title')}</span>
@@ -80,32 +71,283 @@ export async function renderList(view) {
       </a>
     </div>
   `);
-  const list = root.querySelector('[data-list]');
-  const createButton = root.querySelector('[data-create]');
+  const body = root.querySelector('[data-body]');
 
   // Quem ja esta na biblioteca sai do resultado do catalogo: ele apareceu logo
   // acima, em "Meus", e la com o historico junto.
   const mineSlugs = new Set(exercises.map((e) => e.slug).filter(Boolean));
   let catalogItems = null;
+  let catalogByGroup = new Map();
 
-  const mineItem = (ex) => {
-    const row = progress.get(ex.id);
-    const detail = row ? lastDoneLabel(ex, row, unit) : t('exercise.notLogged');
-    return node(html`
-      <li class="list__item">
-        <a class="list__link" href="#/exercicios/${ex.id}">
-          ${raw(thumbHtml(ex))}
-          <div class="grow">
-            <div style="font-weight:600">${ex.name}</div>
-            <div class="muted small">${detail}</div>
-          </div>
-          <span class="list__chev">${raw(ICON.chevron)}</span>
-        </a>
-      </li>
-    `);
+  // Criar so aparece com busca digitada: no indice, criar acontece DENTRO de um
+  // grupo, e ali o exercicio ja nasce classificado.
+  const createButton = node('<button class="btn btn--block" data-create></button>');
+  createButton.onclick = () => exerciseForm(search.trim());
+
+  const drawIndex = () => {
+    body.append(templateRow(templates));
+
+    const mineByGroup = countBy(exercises, (ex) => groupSlugFor(ex.muscleGroup));
+    body.append(node(`<h2 class="section-title">${t('exercise.groups.section')}</h2>`));
+    // Ordem anatomica, inclusive os vazios: empurrar grupo sem exercicio pro
+    // fim faria a lista se reordenar sozinha a cada exercicio criado, e a
+    // posicao fixa de "Costas" e metade do que faz achar sem ler.
+    body.append(listInCard(db.groups().map((g) => groupItem(
+      g, mineByGroup.get(g.slug) || 0, catalogByGroup.get(g.slug) || 0,
+    ))));
   };
 
-  const catalogRow = (item) => node(html`
+  const drawSearch = (q) => {
+    const term = stripAccents(q);
+
+    const mine = exercises.filter((e) => stripAccents(e.name).includes(term)
+      || stripAccents(groupLabel(e.muscleGroup)).includes(term));
+    if (mine.length) {
+      body.append(node(`<h2 class="section-title">${t('exercise.mine')}</h2>`));
+      body.append(listInCard(mine.map((ex) => mineItem(ex, progress, unit))));
+    }
+
+    let matches = [];
+    if (catalogItems) {
+      const needle = normalizeName(q);
+      matches = catalogItems.filter((i) => i.searchKey.includes(needle) && !mineSlugs.has(i.slug));
+      const shown = matches.slice(0, CATALOG_SHOWN);
+      if (shown.length) {
+        body.append(node(`<h2 class="section-title">${t('exercise.catalogSection', { total: matches.length })}</h2>`));
+        body.append(listInCard(shown.map(catalogRow)));
+        if (matches.length > shown.length) {
+          body.append(node(html`
+            <p class="muted small" style="text-align:center;margin-top:10px">
+              ${t('catalog.showingOf', { shown: shown.length, total: matches.length })}
+            </p>
+          `));
+        }
+      }
+    }
+
+    if (!mine.length && !matches.length) {
+      body.append(node(html`
+        <div class="card"><div class="empty">
+          ${raw(ICON.dumbbell)}
+          <p>${t('exercise.noneFound')}</p>
+        </div></div>
+      `));
+    }
+
+    createButton.innerHTML = html`${raw(ICON.plus)} ${t('exercise.createNamed', { q })}`;
+    body.append(createButton);
+  };
+
+  const draw = () => {
+    const q = search.trim();
+    body.innerHTML = '';
+    if (q) drawSearch(q);
+    else drawIndex();
+  };
+
+  root.querySelector('[data-search]').addEventListener('input', (e) => {
+    search = e.target.value;
+    draw();
+  });
+
+  draw();
+  // O catalogo e um JSON de 873 itens: carregar antes da primeira pintura
+  // atrasaria a tela. Ate ele chegar, a linha do grupo mostra so o que e seu.
+  catalog.load().then((items) => {
+    catalogItems = items;
+    catalogByGroup = countBy(items, (i) => groupSlugFor(i.grupo));
+    if (body.isConnected) draw();
+  }).catch(() => {});
+  // Miniaturas personalizadas nao atrasam a primeira pintura: desenha de novo
+  // so quando (e se) o cache terminar de carregar.
+  preloadCustomThumbs().then(() => { if (body.isConnected) draw(); }).catch(() => {});
+  view.append(root);
+}
+
+/* ---------- Um grupo ----------
+ * A unica lista de exercicio do app. O catalogo daquele grupo vem junto, logo
+ * abaixo dos seus: adicionar "Supino declinado" acontece de dentro de Peito, e
+ * nao numa busca a parte que exige saber o nome antes.
+ *
+ * O texto buscado e lembrado por grupo, como `search` e na lista: sair num
+ * exercicio e voltar nao pode limpar o filtro. Guardar o slug junto zera o
+ * campo ao trocar de grupo, que e o que se espera de outra tela. */
+let groupSearch = { slug: null, q: '' };
+
+export async function renderGroup(view, slug) {
+  const group = db.groups().find((g) => g.slug === slug);
+  if (!group) {
+    setTop({ title: t('exercise.listTitle'), back: '#/exercicios' });
+    view.append(node(`<div class="card card__pad">${t('exercise.groups.notFound')}</div>`));
+    return;
+  }
+
+  const label = groupLabel(group.slug);
+  setTop({ title: label, back: '#/exercicios' });
+
+  if (groupSearch.slug !== slug) groupSearch = { slug, q: '' };
+
+  const { exercises, unit, progress } = await libraryData();
+  const mine = exercises.filter((e) => groupSlugFor(e.muscleGroup) === slug);
+  const mineSlugs = new Set(mine.map((e) => e.slug).filter(Boolean));
+
+  const root = node(html`
+    <div class="stack">
+      <input class="input" data-search type="search" placeholder="${t('exercise.groups.searchIn', { group: label })}"
+             autocomplete="off" autocapitalize="none" autocorrect="off" value="${groupSearch.q}">
+      <div data-body></div>
+    </div>
+  `);
+  const body = root.querySelector('[data-body]');
+  let catalogItems = null;
+
+  const createButton = node('<button class="btn btn--block" data-create></button>');
+  createButton.onclick = () => exerciseForm(groupSearch.q.trim(), slug);
+
+  const draw = () => {
+    const q = groupSearch.q.trim();
+    const term = stripAccents(q);
+    body.innerHTML = '';
+
+    const shown = term ? mine.filter((e) => stripAccents(e.name).includes(term)) : mine;
+    if (shown.length) {
+      body.append(node(`<h2 class="section-title">${t('exercise.groups.mineSection', { n: shown.length })}</h2>`));
+      body.append(listInCard(shown.map((ex) => mineItem(ex, progress, unit))));
+    }
+
+    createButton.innerHTML = q
+      ? html`${raw(ICON.plus)} ${t('exercise.createNamed', { q })}`
+      : html`${raw(ICON.plus)} ${t('exercise.createInGroup', { group: label })}`;
+    body.append(createButton);
+
+    let matches = [];
+    if (catalogItems) {
+      const needle = normalizeName(q);
+      matches = catalogItems.filter((i) => groupSlugFor(i.grupo) === slug
+        && !mineSlugs.has(i.slug)
+        && (!q || i.searchKey.includes(needle)));
+      const page = matches.slice(0, CATALOG_SHOWN);
+      if (page.length) {
+        body.append(node(`<h2 class="section-title">${t('exercise.catalogSection', { total: matches.length })}</h2>`));
+        body.append(listInCard(page.map(catalogRow)));
+        if (matches.length > page.length) {
+          body.append(node(html`
+            <p class="muted small" style="text-align:center;margin-top:10px">
+              ${t('catalog.showingOf', { shown: page.length, total: matches.length })}
+            </p>
+          `));
+        }
+      }
+    }
+
+    if (!shown.length && !matches.length) {
+      body.append(node(html`
+        <div class="card"><div class="empty">
+          ${raw(ICON.dumbbell)}
+          <p>${q ? t('exercise.noneFound') : t('exercise.groups.emptyGroup', { group: label })}</p>
+        </div></div>
+      `));
+    }
+  };
+
+  root.querySelector('[data-search]').addEventListener('input', (e) => {
+    groupSearch.q = e.target.value;
+    draw();
+  });
+
+  draw();
+  catalog.load().then((items) => {
+    catalogItems = items;
+    if (body.isConnected) draw();
+  }).catch(() => {});
+  preloadCustomThumbs().then(() => { if (body.isConnected) draw(); }).catch(() => {});
+  view.append(root);
+}
+
+/* ---------- Pecas compartilhadas pelas duas telas ---------- */
+
+/** O que as duas listas precisam do banco. A mesma fonte que o Progresso usa
+ *  pra dizer "ultima vez": a data do TREINO, nao o createdAt da linha de serie
+ *  — os dois divergem em backup importado, e as telas mostrariam dias
+ *  diferentes pro mesmo exercicio. */
+async function libraryData() {
+  const [exercises, sets, workouts] = await Promise.all([
+    db.listExercises(), db.listAllSets(), db.listWorkouts(),
+  ]);
+  const progress = new Map(exerciseProgressRows(
+    sets, new Map(workouts.map((w) => [w.id, w])), exercises,
+    (ex) => (usesDuration(ex.muscleGroup) ? 'totalDuration' : 'bestE1rm'),
+  ).map((r) => [r.exercise.id, r]));
+
+  return { exercises, unit: db.settings().unit, progress };
+}
+
+function countBy(items, keyOf) {
+  const counts = new Map();
+  for (const item of items) {
+    const key = keyOf(item);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return counts;
+}
+
+/** Modelos entra pela aba Exercicios porque responde a pergunta dela — "o que
+ *  eu tenho pra treinar?" — e porque e a lista mais curta e a que menos muda,
+ *  entao pode ficar acima do indice sem empurrar nada util pra baixo. Os nomes
+ *  na segunda linha sao o que faz a linha valer mais que um rotulo. */
+function templateRow(templates) {
+  return infoRow(
+    t('templates.listTitle'),
+    templates.length ? tn('common.template', templates.length) : t('templates.rowNone'),
+    () => { location.hash = '#/modelos'; },
+    {
+      icon: ICON.steps,
+      hint: templates.length
+        ? templates.map((tpl) => tpl.name).join(' · ')
+        : t('templates.rowHint'),
+    },
+  );
+}
+
+/** Linha do indice. Sem o numero do catalogo enquanto o JSON nao chegou: um
+ *  "0 no catálogo" que vira "79" meio segundo depois e pior que nada. */
+function groupItem(group, mine, inCatalog) {
+  const parts = [mine ? tn('exercise.groups.mine', mine) : t('exercise.groups.none')];
+  if (inCatalog) parts.push(t('exercise.groups.catalog', { n: inCatalog }));
+
+  return node(html`
+    <li class="list__item">
+      <a class="list__link" href="#/exercicios/grupo/${group.slug}">
+        <span class="thumb" aria-hidden="true">${raw(groupIcon(group.slug))}</span>
+        <div class="grow">
+          <div style="font-weight:600">${groupLabel(group.slug)}</div>
+          <div class="muted small">${parts.join(' · ')}</div>
+        </div>
+        <span class="list__chev">${raw(ICON.chevron)}</span>
+      </a>
+    </li>
+  `);
+}
+
+function mineItem(ex, progress, unit) {
+  const row = progress.get(ex.id);
+  const detail = row ? lastDoneLabel(ex, row, unit) : t('exercise.notLogged');
+  return node(html`
+    <li class="list__item">
+      <a class="list__link" href="#/exercicios/${ex.id}">
+        ${raw(thumbHtml(ex))}
+        <div class="grow">
+          <div style="font-weight:600">${ex.name}</div>
+          <div class="muted small">${detail}</div>
+        </div>
+        <span class="list__chev">${raw(ICON.chevron)}</span>
+      </a>
+    </li>
+  `);
+}
+
+function catalogRow(item) {
+  return node(html`
     <li class="list__item">
       <a class="list__link" href="#/catalogo/${item.slug}">
         ${raw(thumbHtml(item))}
@@ -117,78 +359,6 @@ export async function renderList(view) {
       </a>
     </li>
   `);
-
-  const draw = () => {
-    const q = search.trim();
-    const term = stripAccents(q);
-    list.innerHTML = '';
-
-    const mine = term
-      ? exercises.filter((e) => stripAccents(e.name).includes(term)
-        || stripAccents(e.muscleGroup).includes(term))
-      : exercises;
-
-    // O cabecalho "Meus" so existia quando havia busca, porque sem ela o
-    // catalogo nao aparecia e a lista era obviamente a biblioteca. Agora que o
-    // catalogo esta sempre embaixo, sem cabecalho as duas listas colam.
-    const mineHeader = node(`<h2 class="section-title">${t('exercise.mine')}</h2>`);
-    if (mine.length) {
-      list.append(mineHeader);
-      list.append(listInCard(mine.map(mineItem)));
-    }
-
-    let matches = [];
-    // Sem busca o catalogo tambem aparece: escondido ate a pessoa digitar, ele
-    // simplesmente nao existia — a tela abria mostrando so a biblioteca, e
-    // "adicionar do catalogo" virava conhecimento secreto. Os 873 nao cabem na
-    // tela de qualquer jeito, entao o corte por CATALOG_SHOWN ja resolvia isso
-    // antes e continua resolvendo agora.
-    if (catalogItems) {
-      const needle = normalizeName(q);
-      matches = catalogItems.filter((i) => (!q || i.searchKey.includes(needle)) && !mineSlugs.has(i.slug));
-      const shown = matches.slice(0, CATALOG_SHOWN);
-      if (shown.length) {
-        list.append(node(`<h2 class="section-title">${t('exercise.catalogSection', { total: matches.length })}</h2>`));
-        list.append(listInCard(shown.map(catalogRow)));
-        if (matches.length > shown.length) {
-          list.append(node(html`
-            <p class="muted small" style="text-align:center;margin-top:10px">
-              ${t('catalog.showingOf', { shown: shown.length, total: matches.length })}
-            </p>
-          `));
-        }
-      }
-    }
-
-    if (!mine.length && !matches.length) {
-      list.append(node(html`
-        <div class="card"><div class="empty">
-          ${raw(ICON.dumbbell)}
-          <p>${q ? t('exercise.noneFound') : t('exercise.emptyLibrary')}</p>
-        </div></div>
-      `));
-    }
-
-    createButton.innerHTML = html`${raw(ICON.plus)} ${q ? t('exercise.createNamed', { q }) : t('exercise.create')}`;
-  };
-
-  createButton.onclick = () => exerciseForm(search.trim());
-  root.querySelector('[data-search]').addEventListener('input', (e) => {
-    search = e.target.value;
-    draw();
-  });
-
-  draw();
-  // O catalogo e um JSON de 873 itens: carregar antes da primeira pintura
-  // atrasaria a tela por uma lista que so serve depois de digitar algo.
-  catalog.load().then((items) => {
-    catalogItems = items;
-    if (list.isConnected) draw();
-  }).catch(() => {});
-  // Miniaturas personalizadas nao atrasam a primeira pintura: desenha de novo
-  // so quando (e se) o cache terminar de carregar.
-  preloadCustomThumbs().then(() => { if (list.isConnected) draw(); }).catch(() => {});
-  view.append(root);
 }
 
 /* ==========================================================================
@@ -959,14 +1129,16 @@ function openFigurePicker({ name, currentSlug, onPick }) {
  *  Exportado porque o Progresso abre esta mesma folha: criar exercicio e a
  *  acao da biblioteca, e a biblioteca aparece la. Duas folhas diferentes pra
  *  mesma coisa divergiriam no primeiro campo novo. */
-export function exerciseForm(name = '') {
+/* `group` vem preenchido quando o botao esta DENTRO de um grupo: criado de
+ * la, o exercicio ja nasce classificado, e nao no fallback 'outros'. */
+export function exerciseForm(name = '', group = null) {
   const body = node(html`
     <div class="stack">
       <label class="field">
         <span class="field__label">${t('exercise.form.name')}</span>
         <input class="input" data-name value="${name}" autocapitalize="sentences">
       </label>
-      ${raw(groupField())}
+      ${raw(groupField(group))}
       <label class="field field--check">
         <input type="checkbox" data-unilateral>
         <span>${t('exercise.form.unilateral')}</span>

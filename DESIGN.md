@@ -260,7 +260,8 @@ a próxima métrica de ser jogada na home por falta de lugar:
 |---|---|---|
 | Treino | O que eu treinei, e o que vou treinar agora? | séries por grupo vs. meta, e a lista de treinos |
 | Progresso | Onde a carga está subindo, e onde eu travei? | índice por grupo e por exercício, 100 = mediana |
-| Exercícios | O que eu tenho pra treinar? | biblioteca, catálogo e grupos |
+| Exercícios | O que eu tenho pra treinar? | modelos e o índice dos grupos, com o que é seu em cada |
+| Exercícios · grupo | O que eu tenho de peito? | os seus do grupo, e o catálogo dele embaixo |
 | Progresso · grupo | Esse grupo está subindo? | séries e volume por sessão |
 | Treino | Melhorei desde a última vez? | delta da sessão anterior |
 | Exercício | A carga subiu? | e1RM e peso máximo |

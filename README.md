@@ -5,7 +5,7 @@ do tempo, com gráficos de progressão e recordes automáticos. Rotinas que se r
 **modelos**: monte a lista de exercícios uma vez e comece o treino já pronto.
 
 Quatro abas, uma pergunta cada: **Treino** (o que você treinou e o que vai treinar), **Progresso**
-(onde a carga sobe e onde travou), **Exercícios** (sua biblioteca, o catálogo de 873 e os grupos
+(onde a carga sobe e onde travou), **Exercícios** (seus modelos, a biblioteca por grupo muscular, o catálogo de 873 e os grupos
 musculares) e **Perfil** (você, metas, peso corporal e backup). Os grupos musculares são seus:
 dá para criar, renomear e escolher a cor de cada um.
 

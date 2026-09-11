@@ -1,5 +1,11 @@
-/* Aba Treino: comecar ou retomar um treino, os modelos, o resumo da semana e
- * os treinos recentes.
+/* Aba Treino: comecar ou retomar um treino, o resumo da semana e os treinos
+ * recentes.
+ *
+ * Modelos NAO mora mais aqui: virou linha da aba Exercicios, que e onde a
+ * pergunta "o que eu tenho pra treinar" ja estava. Duas portas pro mesmo lugar
+ * e o que faz a pessoa nao achar nenhuma — o mesmo motivo que dissolveu a aba
+ * Historico. O caminho de "treinar a partir de um modelo" continua sendo a
+ * folha do botao vermelho, que e onde o modelo vira treino de verdade.
  *
  * A lista de treinos mora aqui, e nao numa aba propria: ela e a resposta de
  * "o que eu treinei", que e a mesma pergunta desta aba em outra escala. Ter
@@ -18,7 +24,7 @@ import { workoutListNode } from './history.js';
 import { t, tn } from '../i18n.js';
 import { groupLabel } from '../seed.js';
 import {
-  setTop, html, raw, node, ICON, groupColor, wireSegmented, infoRow,
+  setTop, html, raw, node, ICON, groupColor, wireSegmented,
   fmtNum, fmtDateRange, fmtMinutes,
 } from '../ui.js';
 
@@ -40,12 +46,11 @@ const RECENT_LIMIT = 5;
 export async function render(view) {
   setTop({ title: t('app.tab.workout') });
 
-  const [active, workouts, sets, exercises, templates] = await Promise.all([
+  const [active, workouts, sets, exercises] = await Promise.all([
     db.getActiveWorkout(),
     db.listWorkouts(),
     db.listAllSets(),
     db.listExercises(),
-    db.listTemplates(),
   ]);
 
   const unit = db.settings().unit;
@@ -62,19 +67,6 @@ export async function render(view) {
   const weekAndTrend = node('<div></div>');
   weekAndTrend.append(weekBlock(sets, workoutsById, exercisesById, unit, firstWeek));
   if (workouts.length) weekAndTrend.append(trendCard(sets, workoutsById, unit));
-
-  // Modelos sobe pra ANTES do resumo: montar uma rotina e gesto de antes do
-  // treino, e a folha do botao de treinar so sabe usar as que ja existem.
-  // Ganhou cabecalho porque no rodape, sem titulo, ninguem achava.
-  container.append(node(`<h2 class="section-title">${t('templates.listTitle')}</h2>`));
-  const templatesRow = node('<div></div>');
-  templatesRow.append(infoRow(
-    t('templates.listTitle'),
-    templates.length ? tn('common.template', templates.length) : t('home.noTemplates'),
-    () => { location.hash = '#/modelos'; },
-    { icon: ICON.steps, hint: t('home.templatesHint') },
-  ));
-  container.append(templatesRow);
 
   container.append(weekAndTrend);
 
