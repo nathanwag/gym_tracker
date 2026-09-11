@@ -53,6 +53,7 @@ const ASSETS = [
   './js/seed.js',
   './js/groups.js',
   './js/group-icon.js',
+  './js/equipment.js',
   './js/backup.js',
   './js/share-image.js',
   './js/charts.js',

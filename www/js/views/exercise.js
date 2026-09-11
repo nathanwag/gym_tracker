@@ -12,6 +12,7 @@ import {
 import { groupSlugFor } from '../groups.js';
 import { lineChart } from '../charts.js';
 import * as catalog from '../catalog.js';
+import { byEquipment, sectionsByEquipment } from '../equipment.js';
 import {
   thumbHtml, createAnimation, prefetchPhotos, fullUrl,
   preloadCustomThumbs, invalidateCustomThumbs, compressImage,
@@ -226,10 +227,20 @@ export async function renderGroup(view, slug) {
       matches = catalogItems.filter((i) => groupSlugFor(i.grupo) === slug
         && !mineSlugs.has(i.slug)
         && (!q || i.searchKey.includes(needle)));
+      // Ordem por equipamento, nao alfabetica (ver equipment.js). Tem que vir
+      // ANTES do slice: senao os 40 exibidos continuam sendo os 40 primeiros do
+      // alfabeto, que e exatamente o problema — em Peito isso dava "Arrasto de
+      // trenó" e cinco arremessos de bola medicinal antes de qualquer supino.
+      if (!q) matches = [...matches].sort(byEquipment);
       const page = matches.slice(0, CATALOG_SHOWN);
       if (page.length) {
         body.append(node(`<h2 class="section-title">${t('exercise.catalogSection', { total: matches.length })}</h2>`));
-        body.append(listInCard(page.map(catalogRow)));
+        // Busca achata: quem digitou o nome nao quer navegar por secao. Mesmo
+        // principio que faz a busca desligar o corte por grupo na raiz da aba.
+        const sections = q ? [] : sectionsByEquipment(page);
+        body.append(listInCard(sections.length > 1
+          ? sections.flatMap((sec) => [equipmentDivider(sec), ...sec.items.map(catalogRow)])
+          : page.map(catalogRow)));
         if (matches.length > page.length) {
           body.append(node(html`
             <p class="muted small" style="text-align:center;margin-top:10px">
@@ -311,6 +322,14 @@ function templateRow(templates) {
 
 /** Linha do indice. Sem o numero do catalogo enquanto o JSON nao chegou: um
  *  "0 no catálogo" que vira "79" meio segundo depois e pior que nada. */
+/* Divisor de equipamento DENTRO da lista, e nao um segundo `.section-title`:
+ * dois niveis de rotulo em condensada e caixa alta empilhados sao a "lista de
+ * listas" que o DESIGN.md manda evitar. O valor vem cru do catalogo, em
+ * portugues, como a linha do exercicio ja faz. */
+const equipmentDivider = (sec) => node(html`
+  <li class="list__sec">${sec.equipment}<span class="list__sec__n">${sec.items.length}</span></li>
+`);
+
 function groupItem(group, mine, inCatalog) {
   const parts = [mine ? tn('exercise.groups.mine', mine) : t('exercise.groups.none')];
   if (inCatalog) parts.push(t('exercise.groups.catalog', { n: inCatalog }));
