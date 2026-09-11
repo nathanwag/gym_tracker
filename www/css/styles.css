@@ -765,8 +765,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 /* ---------- Perfil ----------
    Identidade e numeros formam UM bloco no topo: eram duas faixas finas de
-   texto do mesmo peso do resto, e a tela inteira lia como lista de listas. */
-.phead { align-items: center; }
+   texto do mesmo peso do resto, e a tela inteira lia como lista de listas.
+   Sem o filete do .set-row: o topo do .pstats ja separa os dois, e os dois
+   juntos viravam duas barras a 10px uma da outra. */
+.phead { align-items: center; border-bottom: 0; }
 .phead__id { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .phead__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
 .phead__name { font-size: 1.0625rem; font-weight: 650; }
