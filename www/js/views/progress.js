@@ -19,6 +19,7 @@
 import * as db from '../db.js';
 import {
   groupSessionSummaries, groupIndex, groupMedians, progressPct, exerciseProgressRows,
+  SESSIONS_FOR_FIRM_INDEX,
 } from '../models.js';
 import { lineChart } from '../charts.js';
 import { thumbHtml, preloadCustomThumbs } from '../media.js';
@@ -38,10 +39,13 @@ const groupFromSlug = (slug) => db.groups().find((g) => g.slug === slug)?.slug |
 
 // Referencia do indice. Nao e meta: e o proprio historico da pessoa.
 const INDEX_REF = 100;
-// Abaixo disto o indice nao aparece — ver groupIndex(). Duas ou tres sessoes
-// dariam um numero que balanca sozinho, e um painel que oscila a esmo ensina
-// a ser ignorado.
-const MIN_SESSIONS_FOR_INDEX = 6;
+/* O indice aparece da 2a sessao em diante, com a janela que couber (ver
+ * windows() em models.js). Abaixo de SESSIONS_FOR_FIRM_INDEX ele sai de amostra
+ * curta e balanca mais, entao vem MARCADO: barra listrada e a contagem sob o
+ * nome. O risco que o corte em 6 evitava — um painel que oscila a esmo ensina a
+ * ser ignorado — continua real; o que muda e que agora a tela avisa qual numero
+ * ainda balanca, em vez de esconder todos ate a 6a. */
+const isProvisional = (sessions) => sessions < SESSIONS_FOR_FIRM_INDEX;
 // Com uma sessao so nao ha linha pra desenhar, so um ponto.
 const MIN_SESSIONS_FOR_CHART = 2;
 // Sessoes listadas antes do "ver todas". Seis cobre as duas janelas que o
@@ -66,7 +70,8 @@ async function loadGroups() {
     rows.push({
       group,
       summaries,
-      index: summaries.length >= MIN_SESSIONS_FOR_INDEX ? groupIndex(summaries, { field }) : null,
+      // Sem guarda aqui: groupIndex devolve null sozinho quando nao da.
+      index: groupIndex(summaries, { field }),
     });
   }
   return {
@@ -121,14 +126,29 @@ export async function render(view) {
   const list = node('<div class="gidx"></div>');
   for (const row of rows) {
     const below = row.index != null && row.index < INDEX_REF;
+    const sessions = row.summaries.length;
+    const prov = row.index != null && isProvisional(sessions);
+    // Listra em vez de cor chapada: o mesmo comprimento de barra, com a textura
+    // dizendo que o numero ainda esta se firmando. Sem `background` inline no
+    // caso listrado — a classe monta o gradiente a partir de --fill.
+    const fill = row.index == null ? '' : `<span class="gidx__fill${prov ? ' gidx__fill--prov' : ''}"`
+      + ` style="width:${Math.min(100, (row.index / scale) * 100)}%;`
+      + `${prov ? '--fill' : 'background'}:${groupColor(row.group)}"></span>`;
+
     list.append(node(html`
       <a class="gidx__row${below ? ' gidx__row--under' : ''}" href="#/progresso/${groupSlug(row.group)}">
-        <span class="gidx__name">${groupLabel(row.group)}</span>
+        <span class="gidx__name">
+          <span class="gidx__label">${groupLabel(row.group)}</span>
+          ${row.index == null
+    ? raw(`<span class="gidx__sub">${t('progress.firstSession')}</span>`)
+    : ''}
+          ${prov ? raw(`<span class="gidx__sub">${t('progress.ofSessions', { n: sessions, of: SESSIONS_FOR_FIRM_INDEX })}</span>`) : ''}
+        </span>
         <span class="gidx__track">
-          ${row.index == null ? '' : raw(`<span class="gidx__fill" style="width:${Math.min(100, (row.index / scale) * 100)}%;background:${groupColor(row.group)}"></span>`)}
+          ${raw(fill)}
           <span class="gidx__ref" style="left:${(INDEX_REF / scale) * 100}%"></span>
         </span>
-        <span class="gidx__v">${row.index == null ? '—' : fmtNum(row.index, 0)}</span>
+        <span class="gidx__v${prov ? ' idx--prov' : ''}">${row.index == null ? '—' : fmtNum(row.index, 0)}</span>
         <span class="gidx__go">${raw(ICON.chevron)}</span>
       </a>
     `));
@@ -136,6 +156,11 @@ export async function render(view) {
   root.append(list);
   root.append(exerciseSection(sets, workoutsById, exercises, db.settings().unit));
   root.append(node(`<p class="muted small" style="margin:12px 0 0">${t('progress.indexHint')}</p>`));
+  // So aparece se houver alguma barra listrada na tela: explicar uma textura
+  // que nao esta ali e ensinar vocabulario que a pessoa nao vai usar.
+  if (rows.some((r) => r.index != null && isProvisional(r.summaries.length))) {
+    root.append(node(`<p class="muted small" style="margin:6px 0 0">${t('progress.provisionalHint')}</p>`));
+  }
 
   view.append(root);
 }
@@ -182,7 +207,7 @@ function exerciseSection(sets, workoutsById, exercises, unit) {
             <span class="srow__detail">${lastDoneLabel(row.exercise, row, unit)}</span>
           </span>
           <span class="srow__end">
-            <span class="srow__v">${row.index == null ? '—' : fmtNum(row.index, 0)}</span>
+            <span class="srow__v${row.index != null && isProvisional(row.sessions) ? ' idx--prov' : ''}">${row.index == null ? '—' : fmtNum(row.index, 0)}</span>
           </span>
           <span class="srow__go">${raw(ICON.chevron)}</span>
         </a>
@@ -328,8 +353,18 @@ export async function renderGroup(view, slug) {
   `);
   root.append(header);
 
-  const reason = current.index == null ? t('progress.reason.tooFew') : indexReason(summaries, timeBased);
-  if (reason) root.append(node(html`<p class="muted small" style="margin:0">${reason}</p>`));
+  // A frase de amostra curta vem ANTES do porque: "de 4 sessoes" muda como se
+  // le "87", e ler o motivo sem isso daria ao numero um peso que ele nao tem.
+  const parts = [];
+  if (current.index == null) parts.push(t('progress.reason.tooFew'));
+  else if (isProvisional(current.summaries.length)) {
+    parts.push(t('progress.reason.provisional', {
+      n: current.summaries.length, of: SESSIONS_FOR_FIRM_INDEX,
+    }));
+  }
+  const why = current.index == null ? '' : indexReason(summaries, timeBased);
+  if (why) parts.push(why);
+  if (parts.length) root.append(node(html`<p class="muted small" style="margin:0">${parts.join(' ')}</p>`));
 
   /* --- 2. a prova: a serie temporal do grupo --- */
   const metrics = chartMetrics(timeBased, unit);

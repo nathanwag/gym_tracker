@@ -362,6 +362,13 @@ test('groupSessionSummaries ignora serie de exercicio apagado da biblioteca', ()
 
 const vols = (...values) => values.map((volume) => ({ volume }));
 
+// O indice e uma divisao: 2300/2000*100 da 114.99999999999999 em binario. A
+// tela arredonda, entao o que o contrato promete e o valor, nao os bits.
+const approx = (actual, expected) => assert.ok(
+  Math.abs(actual - expected) < 1e-9,
+  `esperava ~${expected}, veio ${actual}`,
+);
+
 test('groupIndex compara a mediana das sessoes recentes com a das anteriores', () => {
   // anteriores 1000/2000/3000 -> mediana 2000; recentes 2200/2400/2600 -> 2400
   // 2400 / 2000 = 1,2
@@ -373,8 +380,26 @@ test('groupIndex nao se move por causa de uma sessao ruim isolada', () => {
   assert.equal(groupIndex(vols(1000, 2000, 3000, 2000, 2000, 200)), 100);
 });
 
-test('groupIndex devolve null quando nao ha sessoes suficientes', () => {
-  assert.equal(groupIndex(vols(1000, 2000, 3000, 2200, 2400)), null);
+test('groupIndex compara a 2a sessao com a 1a, raso mas ja util', () => {
+  // Uma sessao de cada lado: 1200 / 1000 = 1,2. E a leitura mais rasa que
+  // existe, e a unica possivel com duas sessoes.
+  assert.equal(groupIndex(vols(1000, 1200)), 120);
+});
+
+test('groupIndex nao inventa indice com uma sessao so', () => {
+  assert.equal(groupIndex(vols(1000)), null);
+});
+
+test('groupIndex alarga as janelas conforme o historico cresce', () => {
+  // Cinco sessoes: recentes 2200/2400 -> 2300; base 1000/2000/3000 -> 2000.
+  approx(groupIndex(vols(1000, 2000, 3000, 2200, 2400)), 115);
+});
+
+test('groupIndex para de alargar na sexta sessao — dali pra frente e 3 contra ate 8', () => {
+  // Mesmas seis sessoes do primeiro teste: recentes 2200/2400/2600 -> 2400,
+  // base 1000/2000/3000 -> 2000. A janela adaptativa tem que cair exatamente
+  // no 3 contra 3 que a regra antiga usava aqui.
+  assert.equal(groupIndex(vols(1000, 2000, 3000, 2200, 2400, 2600)), 120);
 });
 
 test('groupIndex usa so as ultimas sessoes como base, nao a historia inteira', () => {
@@ -385,6 +410,17 @@ test('groupIndex usa so as ultimas sessoes como base, nao a historia inteira', (
 });
 
 /* ---------- groupMedians ---------- */
+
+test('groupMedians acompanha a janela do indice: com duas sessoes ja explica', () => {
+  // Sem isto o numero apareceria na 2a sessao e a frase que diz de onde ele
+  // saiu ("perdeu serie? perdeu carga?") so na 6a.
+  const summaries = [{ setCount: 3, maxWeight: 80 }, { setCount: 4, maxWeight: 90 }];
+  assert.deepEqual(groupMedians(summaries, ['setCount', 'maxWeight']), {
+    recent: { setCount: 4, maxWeight: 90 },
+    base: { setCount: 3, maxWeight: 80 },
+  });
+});
+
 
 test('groupMedians separa a janela recente da base e devolve a mediana de cada campo', () => {
   // base: 3 series / 90 kg de mediana; recentes: 2 series / 95 kg
@@ -404,8 +440,8 @@ test('groupMedians separa a janela recente da base e devolve a mediana de cada c
   assert.deepEqual(out.base, { setCount: 3, maxWeight: 90 });
 });
 
-test('groupMedians devolve null quando nao ha as duas janelas cheias', () => {
-  assert.equal(groupMedians([{ setCount: 3 }, { setCount: 3 }], ['setCount']), null);
+test('groupMedians devolve null com uma sessao so, que nao da duas janelas', () => {
+  assert.equal(groupMedians([{ setCount: 3 }], ['setCount']), null);
 });
 
 /* ---------- exerciseProgressRows ---------- */
@@ -461,10 +497,17 @@ test('exerciseProgressRows mede o indice pelo e1RM, com o criterio do groupIndex
   assert.equal(row.index, 120);
 });
 
-test('exerciseProgressRows nao arrisca um indice com menos de seis sessoes', () => {
+test('exerciseProgressRows tambem ganha indice cedo, com a janela que couber', () => {
+  // Cinco sessoes: recentes 110/120 -> 115; base 100/100/100 -> 100.
   const sets = [100, 100, 100, 110, 120].map((w, i) => st(10, i + 1, w));
   const workouts = new Map([1, 2, 3, 4, 5].map((n) => wk(n, n)));
   const [row] = exerciseProgressRows(sets, workouts, [{ id: 10, name: 'Agachamento' }]);
+  approx(row.index, 115);
+});
+
+test('exerciseProgressRows nao inventa indice com uma sessao so', () => {
+  const sets = [st(10, 1, 100)];
+  const [row] = exerciseProgressRows(sets, new Map([wk(1, 1)]), [{ id: 10, name: 'Agachamento' }]);
   assert.equal(row.index, null);
 });
 

@@ -831,9 +831,30 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .gidx__row:last-child { border-bottom: 0; }
 .gidx__row:active { background: var(--surface-2); }
-.gidx__name { font-size: .84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gidx__name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.gidx__label { font-size: .84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Quantas sessoes o indice ainda vai levar pra firmar. So existe enquanto a
+   amostra e curta, entao nao ocupa altura no estado normal da linha. */
+.gidx__sub { font-size: .66rem; font-weight: 500; color: var(--muted); white-space: nowrap; }
 .gidx__track { position: relative; height: 9px; border-radius: 2px; background: var(--surface-2); }
 .gidx__fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 2px; }
+/* Indice de amostra curta: mesmo comprimento, textura diferente. A listra
+   nasce de --fill (a cor do grupo) e deixa o trilho aparecer entre as faixas,
+   entao serve nos dois temas sem uma segunda cor. */
+.gidx__fill--prov { background: repeating-linear-gradient(115deg, var(--fill) 0 5px, transparent 5px 10px); }
+/* O mesmo aviso no numero, no indice por grupo e no por exercicio: eles ficam
+   um embaixo do outro e nao podem marcar a amostra curta de jeitos diferentes. */
+.idx--prov::after {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .5;
+  vertical-align: .3em;
+}
 /* O traco de 100 e o que da sentido ao numero: sem ele, 108 nao diz de onde
    saiu. Mesmo papel do .muscle-group__goal na semana. */
 .gidx__ref { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); opacity: .5; }
@@ -847,7 +868,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .gidx__go { color: var(--muted); display: flex; }
 .gidx__go svg { width: 16px; height: 16px; }
-.gidx__row--under .gidx__name,
+.gidx__row--under .gidx__label,
 .gidx__row--under .gidx__v { color: var(--muted); }
 
 /* Chip navegavel do Progresso. O .chip base (catalogo) e um rotulo passivo;

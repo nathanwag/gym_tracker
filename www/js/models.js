@@ -212,6 +212,33 @@ export function groupSessionSummaries(sets, workoutsById, exercisesById, group) 
   return sessionSummaries(ofGroup, workoutsById);
 }
 
+/* As duas janelas que o indice compara, dado o historico que EXISTE.
+ *
+ * Elas crescem junto com o historico em vez de serem fixas: com 2 sessoes e
+ * uma contra uma, com 5 sao duas contra tres, e da 6a em diante estabiliza no
+ * 3 contra ate 8 de sempre — daquele ponto pra frente a conta e identica a que
+ * era. Sem isso o indice so nascia na 6a sessao, o que e tres semanas pra quem
+ * treina o grupo 2x e seis pra quem treina 1x: a tela ficava muda justamente
+ * no mes em que a pessoa mais olha pro app.
+ *
+ * `floor(n / 2)` mantem a propriedade que importa: as duas janelas nunca se
+ * tocam e a base nunca e menor que a recente, entao nenhuma sessao e comparada
+ * consigo mesma. Com uma sessao so devolve null — nao ha contra o que comparar,
+ * e nao existe leitura rasa o suficiente pra inventar uma.
+ *
+ * Quao raso esta o numero e responsabilidade de quem desenha: a conta e a
+ * mesma, e a tela marca as janelas curtas (ver SESSIONS_FOR_FIRM_INDEX). */
+function windows(count, maxRecent, baseline) {
+  const recent = Math.min(maxRecent, Math.floor(count / 2));
+  if (!recent) return null;
+  return { recent, baseline: Math.min(baseline, count - recent) };
+}
+
+/** A partir de quantas sessoes as janelas param de crescer e o indice vira o
+ *  de sempre. Abaixo disto ele existe, mas sai de amostra menor — a tela usa
+ *  isto pra dizer isso em vez de deixar os dois numeros com a mesma cara. */
+export const SESSIONS_FOR_FIRM_INDEX = 6;
+
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
@@ -236,11 +263,12 @@ const median = (values) => {
  * @returns {number|null} null quando falta historico pra comparacao valer
  */
 export function groupIndex(summaries, { recent = 3, baseline = 8, field = 'volume' } = {}) {
-  if (summaries.length < recent * 2) return null;
+  const w = windows(summaries.length, recent, baseline);
+  if (!w) return null;
 
   const values = summaries.map((s) => Number(s[field]) || 0);
-  const head = values.slice(-recent);
-  const base = values.slice(Math.max(0, values.length - recent - baseline), values.length - recent);
+  const head = values.slice(-w.recent);
+  const base = values.slice(values.length - w.recent - w.baseline, values.length - w.recent);
 
   const reference = median(base);
   if (!reference) return null;
@@ -259,10 +287,13 @@ export function groupIndex(summaries, { recent = 3, baseline = 8, field = 'volum
  * @returns {{recent: object, base: object}|null} null quando falta historico
  */
 export function groupMedians(summaries, fields, { recent = 3, baseline = 8 } = {}) {
-  if (summaries.length < recent * 2) return null;
+  // As MESMAS janelas do groupIndex: se o numero apareceu, a frase que explica
+  // de onde ele saiu tem que aparecer junto.
+  const w = windows(summaries.length, recent, baseline);
+  if (!w) return null;
 
-  const head = summaries.slice(-recent);
-  const base = summaries.slice(Math.max(0, summaries.length - recent - baseline), summaries.length - recent);
+  const head = summaries.slice(-w.recent);
+  const base = summaries.slice(summaries.length - w.recent - w.baseline, summaries.length - w.recent);
 
   const medians = (rows) => Object.fromEntries(
     fields.map((f) => [f, median(rows.map((r) => Number(r[f]) || 0))]),

@@ -196,11 +196,21 @@ em `models.js`, todas puras e testadas:
   `muscleGroup` só (`db.js`). Efeito colateral a conhecer: remada não empresta
   nada ao bíceps — é contagem de série direta, e é o que o dado suporta
   (`primarios`/`secundarios` ficam no catálogo, não são copiados).
-- `groupIndex()` — mediana das 3 sessões recentes ÷ mediana das ~8 anteriores.
-  **Sessões, não dias**: grupos têm cadências diferentes, e numa janela de dias
-  um teria o dobro de amostra do outro. **Mediana, não média**: um deload
-  isolado não pode virar alarme. Abaixo de 6 sessões devolve `null`, e a tela
-  mostra `—` em vez de inventar.
+- `groupIndex()` — mediana das sessões recentes ÷ mediana das anteriores, em
+  duas janelas que **não se tocam**. **Sessões, não dias**: grupos têm cadências
+  diferentes, e numa janela de dias um teria o dobro de amostra do outro.
+  **Mediana, não média**: um deload isolado não pode virar alarme.
+  **As janelas crescem com o histórico** (`windows()`): `recent =
+  min(3, floor(n/2))`, base é o resto com teto de 8 — 1×1 com duas sessões,
+  2×3 com cinco, e da 6ª em diante estabiliza no 3 × até 8, idêntico ao que
+  sempre foi. Com **uma** sessão devolve `null`: não há contra o que comparar.
+  Antes o mínimo era 6 fixo, o que deixava a tela muda por 3 semanas (grupo 2×/
+  semana) ou 6 (1×/semana) — justamente o mês em que a pessoa mais olha pro app.
+  O risco que o corte evitava continua real, e agora quem lida com ele é a
+  **tela**: abaixo de `SESSIONS_FOR_FIRM_INDEX` (6) a barra vem listrada, o
+  número leva um ponto e o nome do grupo ganha "2 de 6". `groupMedians()` usa as
+  **mesmas** janelas de propósito — se o número aparece, a frase que explica de
+  onde ele saiu aparece junto.
 - `exerciseProgressRows()` — a mesma leitura do `groupIndex()`, por exercício,
   para a lista do Progresso. **Reusa `groupIndex()` em vez de ter conta
   própria**: grupo e exercício aparecem um embaixo do outro na mesma tela, e
