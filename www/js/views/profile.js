@@ -45,7 +45,7 @@ export async function render(view) {
   root.append(identityRow(cfg, workouts));
   root.append(statsBlock(workouts, sets));
   root.append(goalsSection(cfg, weights));
-  root.append(backupRow());
+  root.append(backupSection());
   root.append(aboutSection());
 
   view.append(root);
@@ -284,12 +284,13 @@ function goalsSection(cfg, weights) {
  * Ajustes continua na engrenagem da topbar — sem linha aqui, porque duas
  * portas pro mesmo lugar e o que faz a pessoa nao achar nenhuma.
  *
- * Sem cabecalho de secao: uma linha so nao merece um. */
-function backupRow() {
-  const row = node('<div style="margin-top:22px"></div>');
-  row.append(infoRow(t('backup.title'), '', () => { location.hash = '#/backup'; },
-    { hint: t('profile.backupHint') }));
-  return row;
+ * Leva cabecalho mesmo com uma linha so: sem ele, era a unica da tela solta
+ * entre duas secoes tituladas, e lia como sobra da de cima. O titulo e "Seus
+ * dados", e nao "Backup", pra nao repetir o rotulo da propria linha. */
+function backupSection() {
+  return section(t('profile.section.data'),
+    infoRow(t('backup.title'), '', () => { location.hash = '#/backup'; },
+      { hint: t('profile.backupHint') }));
 }
 
 function aboutSection() {
