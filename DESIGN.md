@@ -272,9 +272,11 @@ vocabulário, não leitura de progresso. Por isso mora **atrás** dos Exercício
 não do Progresso — e por isso não pode ganhar gráfico nem índice, que já têm
 dono duas linhas acima.
 
-**Não existe linha de Histórico.** A lista de treinos responde a mesma pergunta
-do Treino em outra escala, e ter as duas era a mesma lista em dois lugares
-disputando qual estava mais completa.
+**Histórico não é aba, é o resto de uma lista só.** O Treino mostra os 5 mais
+recentes e um botão; `/historico` mostra todos, sob a mesma aba. Duas *abas*
+era que dava duas listas disputando qual estava mais completa — a fatia e o
+resto saem da mesma função (`workoutListNode({ limit })`), e por isso não
+podem divergir.
 
 Antes de acrescentar um número a uma tela, ache a pergunta dele nesta tabela.
 Se ela já está respondida em outra linha, o número pertence àquela tela.

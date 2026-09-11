@@ -90,13 +90,16 @@ direto — passam pelas camadas abaixo.
 lugares (ver a lista de regras que quebram em silêncio, no fim).
 
 **Treino** (`views/home.js`, rota `/`) — *"o que eu treinei, e o que vou
-treinar agora?"*. Modelos com cabeçalho no topo, resumo da semana, e **a lista
-inteira de treinos**. Não existe aba Histórico: ela mostrava o resto da mesma
-lista que o Treino já mostrava pela metade, e a duplicata custava uma aba. O
-detalhe de um treino continua em `/historico/<id>` (`views/history.js`), que
-também exporta `workoutListNode()` — quem desenha a lista é ele, quem a mostra
-é o Treino. **Modelos** (`views/templates.js`, `/modelos`) entra por aqui, ao
-lado de onde o treino começa. Precedente: a Home da Hevy é o feed dos treinos.
+treinar agora?"*. Modelos com cabeçalho no topo, resumo da semana, e os **5
+treinos mais recentes** (`RECENT_LIMIT`), com um botão pro resto. **Histórico
+não é aba, é tela atrás do Treino** (`/historico`, `history.renderList`): a
+tabbar continua com quatro, e o `TABS` do `app.js` deixa `/historico` e
+`/historico/<id>` sob a do Treino. Ter as duas como *abas* é que era a mesma
+lista disputando qual estava mais completa — como fatia + resto, é uma lista
+só, e `workoutListNode({ limit })` é a única que a desenha nos dois lugares (o
+total do mês no cabeçalho sempre soma o histórico inteiro, não a fatia).
+**Modelos** (`views/templates.js`, `/modelos`) entra por aqui, ao lado de onde
+o treino começa. Precedente: a Home da Hevy é o feed dos treinos.
 
 **Progresso** (`views/progress.js`, `/progresso`) — *"onde a carga sobe, e onde
 eu travei?"*. Índice por grupo em cima, por exercício embaixo, os dois contra a

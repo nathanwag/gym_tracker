@@ -25,15 +25,36 @@ const monthKey = (iso) => {
 };
 
 /* ==========================================================================
-   Lista de treinos — mostrada pela aba Treino
+   Lista de treinos — os 5 mais recentes na aba Treino, todos aqui
    ========================================================================== */
+
+/** Tela do historico inteiro, atras do botao da aba Treino. Nao e aba: a
+ *  tabbar continua com quatro, e o Treino segue sendo dono da pergunta "o que
+ *  eu treinei" — aqui e a mesma lista sem o corte dos 5, pra quem quer rolar
+ *  meses pra tras sem carregar todos eles em toda abertura do app. */
+export async function renderList(view) {
+  setTop({ title: t('history.title'), back: '#/' });
+
+  const list = await workoutListNode();
+  if (!list) {
+    view.append(node(html`
+      <div class="card"><div class="empty">
+        ${raw(ICON.dumbbell)}
+        <p>${t('history.empty.message')}</p>
+        <a class="btn btn--primary" href="#/">${t('history.empty.start')}</a>
+      </div></div>
+    `));
+    return;
+  }
+  view.append(list);
+}
 
 /** A lista de treinos, do mais recente pro mais antigo, com o mes como
  *  divisor. Devolve um no em vez de escrever numa view porque quem a mostra e
  *  a aba Treino: "treinos recentes" ali e a lista inteira aqui eram a MESMA
  *  lista em dois lugares, e uma das duas sempre ficava para tras.
  *
- *  `limit` existe pro dia em que a aba quiser cortar; sem ele, mostra tudo. */
+ *  `limit` corta a lista pra aba Treino; sem ele, mostra tudo (renderList). */
 export async function workoutListNode({ limit = null } = {}) {
   const [all, sets] = await Promise.all([db.listWorkouts(), db.listAllSets()]);
   const unit = db.settings().unit;

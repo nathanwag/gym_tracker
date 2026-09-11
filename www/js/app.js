@@ -27,6 +27,9 @@ import * as bodyWeight from './views/body-weight.js';
 const ROUTES = [
   [/^\/?$/, (view) => home.render(view)],
   [/^\/sessao$/, (view) => session.render(view)],
+  // A aba Treino corta a lista nos 5 mais recentes; /historico e o resto
+  // dela. Nao ganha aba: o TABS abaixo mantem os dois sob a do Treino.
+  [/^\/historico$/, (view) => history.renderList(view)],
   [/^\/historico\/(\d+)$/, (view, id) => history.renderWorkout(view, Number(id))],
   [/^\/progresso$/, (view) => progress.render(view)],
   // Grupo muscular sem acento no hash, pelo mesmo motivo do slug do catalogo.

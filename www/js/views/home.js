@@ -1,9 +1,13 @@
 /* Aba Treino: comecar ou retomar um treino, os modelos, o resumo da semana e
- * a lista de treinos.
+ * os treinos recentes.
  *
  * A lista de treinos mora aqui, e nao numa aba propria: ela e a resposta de
  * "o que eu treinei", que e a mesma pergunta desta aba em outra escala. Ter
- * as duas custava uma aba e duplicava a mesma lista. */
+ * as duas custava uma aba e duplicava a mesma lista.
+ *
+ * Mas so os 5 mais recentes: a lista inteira empurrava a semana e os modelos
+ * pra fora da primeira tela em quem ja tem meses de treino. O resto dela fica
+ * atras do botao, em /historico — mesma lista, mesma aba, sem corte. */
 
 import * as db from '../db.js';
 import {
@@ -27,6 +31,11 @@ import {
  * edita-la, porque a meta de quem treina 2x por semana nao e a de quem treina
  * 6x. */
 const weeklySetGoal = () => Number(db.settings().goalSetsPerGroup) || 10;
+
+// Cinco, e nao dez: e o que cabe abaixo da semana sem empurrar o resumo pra
+// fora da primeira rolagem, e ainda cobre a semana inteira de quem treina
+// todo dia. O resto mora em /historico.
+const RECENT_LIMIT = 5;
 
 export async function render(view) {
   setTop({ title: t('app.tab.workout') });
@@ -69,13 +78,19 @@ export async function render(view) {
 
   container.append(weekAndTrend);
 
-  // A lista inteira, nao os 5 mais recentes: "treinos recentes" aqui e o
-  // Historico eram a mesma lista em dois lugares, e a aba Historico existia so
-  // pra mostrar o resto dela.
-  const list = await workoutListNode();
+  const list = await workoutListNode({ limit: RECENT_LIMIT });
   if (list) {
-    container.append(node(`<h2 class="section-title">${t('home.yourWorkouts')}</h2>`));
+    container.append(node(`<h2 class="section-title">${t('home.recentWorkouts')}</h2>`));
     container.append(list);
+    // O botao so aparece quando ha o que ele nao esta mostrando: com 3 treinos
+    // no banco, "ver todo o historico" leva pra mesma lista que ja esta na tela.
+    if (workouts.length > RECENT_LIMIT) {
+      container.append(node(html`
+        <a class="btn btn--block btn--ghost" href="#/historico" style="margin-top:12px">
+          ${t('home.seeAllWorkouts', { n: workouts.length })}
+        </a>
+      `));
+    }
   }
 
   view.append(container);
