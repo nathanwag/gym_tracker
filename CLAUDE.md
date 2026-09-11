@@ -52,16 +52,17 @@ node --test --test-name-pattern="unilateral"    # por nome
 
 Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`). Só dá
 pra testar módulos **puros** sob `node --test`: `models.js`, `text.js`,
-`curve.js`, `weight-step.js` e `profile.js` não têm import nenhum, e
-`groups.js` só importa `text.js`.
+`curve.js`, `weight-step.js`, `profile.js` e `group-icon.js` não têm import
+nenhum, e `groups.js` só importa `text.js`.
 `seed.js`/`db.js`/`ui.js` puxam `i18n.js`, que toca `location` no carregamento
 e quebra fora do browser. Para testar algo
 desses, extraia a lógica pura pra um módulo sem dependência de DOM/IndexedDB —
 é o que `text.js` (separado de `ui.js` porque `db.js` precisa dele numa
 migração), `curve.js` (separado de `charts.js`, que importa `ui.js`) e
 `weight-step.js` (validação do passo digitado, saneamento do passo gravado nas
-telas que registram série) e `profile.js` (iniciais, dias desde uma data, série
-de peso corporal) fazem.
+telas que registram série), `profile.js` (iniciais, dias desde uma data, série
+de peso corporal) e `group-icon.js` (os 17 pictogramas e a montagem da anilha,
+separado de `ui.js`, que sabe cor e rótulo) fazem.
 
 ## Deploy e service worker
 
@@ -234,11 +235,27 @@ tela.** O que quebra o app, e por isso fica aqui:
   faz `groupColor()` poder continuar devolvendo `var(--m-<slug>)`. Roda no
   bootstrap **e depois de toda escrita em grupo** — sem o segundo, grupo
   recém-criado nasce sem cor, sem erro nenhum. Os `--m-*` do `styles.css`
-  viraram só o valor inicial.
-- **Grupo criado pelo usuário não tem ícone.** Os 17 de `ICON_GROUPS` são uma
-  silhueta com a mancha posicionada à mão (coordenadas no próprio arquivo);
-  não há como gerar uma pra um grupo novo, então `groupIcon()` cai num disco na
-  cor do grupo.
+  viraram só o valor inicial. **São dois tokens por grupo**, não um:
+  `--m-<slug>` é a cor da anilha e `--ink-<slug>` é a tinta do pictograma
+  vazado nela. A tinta muda com o tema pelo mesmo motivo que a cor — a paleta
+  escura vai de `#1c3a63` a `#9aa1ab`, e o que é legível sobre uma não é sobre
+  a outra.
+- **O ícone de grupo é uma anilha com o pictograma do gesto** (`group-icon.js`,
+  puro e testado; `groupIcon()` em `ui.js` é só a ligação com cor e rótulo).
+  Cada pose tem **silhueta inteira própria** — é o que faz ícone funcionar
+  pequeno. O conjunto anterior era uma silhueta só com uma mancha mudando de
+  lugar, e a 22 px a mancha andava menos de dois pixels entre vizinhos:
+  Ombros/Trapézio, Bíceps/Tríceps e Quadríceps/Posterior liam idênticos.
+  **A cor segue sendo legenda de família e o pictograma passou a identificar o
+  grupo** — por isso a paleta não mudou.
+- **`.thumb svg` é 40 px, não 22.** A regra global `svg { width: 22px }` nunca
+  foi decisão sobre esse quadrado de 44 px, e com ela o ícone ocupava um quarto
+  da área. Nenhum pictograma de figura humana sobrevive a 22 px.
+- **Grupo criado pelo usuário ganha a anilha com a sigla**, derivada do rótulo
+  exibido (`groupInitials()`, `groups.js`) e desempatada contra os outros
+  grupos sem pictograma. Ele não fica mais sem desenho. O desempate varre
+  `db.groups()` **na ordem, acumulando**: comparar cada um contra todos faria
+  dois grupos que colidem chegarem no mesmo sufixo.
 - **Os 3 `woff2` da Barlow Condensed** (`www/fonts/`, estáticos — a família não
   é variável) precisam estar no `ASSETS` do `sw.js`, senão a tipografia quebra
   offline.

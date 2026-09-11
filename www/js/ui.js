@@ -8,7 +8,8 @@ import {
 } from './models.js';
 import { groupLabel, usesDuration } from './seed.js';
 import * as db from './db.js';
-import { groupSlugFor } from './groups.js';
+import { groupSlugFor, inkOn, groupInitials } from './groups.js';
+import { POSES, plateIcon } from './group-icon.js';
 
 /** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
 export const APP_NAME = 'Anilha';
@@ -489,7 +490,7 @@ export const ICON = {
 /* ---------- Cor por grupo muscular ----------
  * A chave e o valor gravado no banco (sempre em portugues); o sufixo e o nome
  * da variavel CSS, sem acento. Tem que casar com MUSCLE_GROUPS em seed.js e
- * com os tokens --m-* em styles.css, do mesmo jeito que ICON_GROUPS acima.
+ * com os tokens --m-* em styles.css.
  *
  * Devolve `var(--m-x)` em vez do hex: assim a mesma chamada serve nos dois
  * temas, sem a view saber qual esta ativo. */
@@ -504,7 +505,14 @@ export const groupColor = (group) => `var(--m-${groupSlugFor(group)})`;
  * ordem, com a mesma especificidade. */
 export function applyGroupTokens() {
   const groups = db.groups();
-  const vars = (key) => groups.map((g) => `--m-${g.slug}:${g[key]}`).join(';');
+  /* Dois tokens por grupo, nao um: a cor da anilha e a TINTA do pictograma
+     vazado nela. A tinta tem que trocar junto com o tema pelo mesmo motivo
+     que a cor — a paleta escura vai de #1c3a63 a #9aa1ab, e a tinta legivel
+     sobre uma nao e legivel sobre a outra. Calculando as duas aqui, o SVG
+     continua so citando var() e trocar de tema segue sendo cascata. */
+  const vars = (key) => groups
+    .map((g) => `--m-${g.slug}:${g[key]};--ink-${g.slug}:${inkOn(g[key])}`)
+    .join(';');
   const light = vars('colorLight');
   const dark = vars('colorDark');
 
@@ -530,74 +538,52 @@ export function signatureHtml(breakdown) {
   return `<span class="sig" aria-hidden="true">${segs}</span>`;
 }
 
-/* Icone por grupo muscular: aparece no cabecalho das secoes e no lugar da foto
- * quando o exercicio nao tem figura.
+/* Icone por grupo muscular: uma anilha na cor do grupo, com o pictograma do
+ * gesto vazado nela. Aparece no indice de grupos, na tela de grupos, na grade
+ * do seletor e como camada atras da foto do exercicio.
  *
- * Sao pictogramas de regiao do corpo, nao desenhos anatomicos: a 22px um
- * desenho de dorsal vira borrao. Todos partem da mesma silhueta (cabeca, tronco,
- * membros) — a silhueta fica esmaecida e uma mancha cheia na cor de destaque
- * marca a regiao. Um traco fino (versao anterior) sumia entre grupos vizinhos
- * como Ombros/Trapezio; a mancha preenchida da o contraste que faltava sem
- * abandonar o mono-acento do resto do app.
+ * O conjunto anterior era UMA silhueta com uma mancha mudando de lugar, e a
+ * 22 px a mancha andava menos de dois pixels entre vizinhos: Ombros/Trapezio,
+ * Biceps/Triceps e Quadriceps/Posterior liam identicos. Gesto conserta porque
+ * cada pose tem silhueta inteira propria. O desenho mora em `group-icon.js`,
+ * que e puro e testado; aqui fica so a ligacao com quem sabe cor e rotulo.
  *
- * Sem fill/stroke inline no traco da silhueta: a regra global de styles.css
- * cuida disso. A mancha e o unico elemento com fill/color explicitos aqui,
- * de proposito — e o que precisa saltar aos olhos.
+ * A cor continua sendo legenda de FAMILIA e o pictograma passa a identificar o
+ * grupo — por isso a paleta nao precisou mudar, e as barras e a assinatura do
+ * treino seguem lendo como sempre.
  */
-const BODY_PATH = 'M12 2.6a1.6 1.6 0 100 3.2 1.6 1.6 0 000-3.2M12 6.4v7M8.4 8.2L12 7l3.6 1.2M8.4 8.2L7 12.4M15.6 8.2L17 12.4M12 13.4l-1.9 8M12 13.4l1.9 8';
-const dot = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="currentColor"/>`;
-// Na cor do proprio grupo, nao em cinza: e a mesma legenda das barras da
-// semana, da assinatura no historico e da pastilha no cartao de exercicio, e
-// era o ultimo lugar do app que ainda nao a usava. A familia se mantem porque
-// silhueta e mancha continuam no mesmo tom — o que separa as duas e a
-// opacidade: a silhueta e o andaime, a mancha e a informacao.
-const body = (group, ...dots) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor(group)}">`
-  + `<path d="${BODY_PATH}" opacity=".62" stroke-width="2.3"/>`
-  + `${dots.map((p) => dot(...p)).join('')}</svg>`;
 
-const ICON_GROUPS = {
-  peito: body('peito', [12, 9.1, 1.95]),
-  costas: body('costas', [12, 10.6, 1.95]),
-  // Abaixo de Costas na silhueta, perto do quadril: hiperextensao/terra e
-  // cadeia posterior, nao puxada -- por isso saiu de Costas.
-  lombar: body('lombar', [12, 12.9, 1.49]),
-  ombros: body('ombros', [8.4, 8.2, 1.49], [15.6, 8.2, 1.49]),
-  // Logo abaixo do pescoço, mais estreito que a mancha de Ombros: e onde
-  // o trapezio fica na silhueta (base do pescoço ate o topo do ombro).
-  trapezio: body('trapezio', [12, 7.5, 1.32]),
-  pescoco: body('pescoco', [12, 5.3, 1.15]),
-  biceps: body('biceps', [6.8, 10.9, 1.38]),
-  triceps: body('triceps', [17.2, 10.9, 1.38]),
-  // Coxa e uma so regiao na silhueta (sem frente/costas pra distinguir
-  // quadriceps de posterior); a marca muda de altura — mais alta vs mais
-  // baixa na coxa — pra diferenciar os dois icones.
-  quadriceps: body('quadriceps', [11.2, 16, 1.49], [12.8, 16, 1.49]),
-  posterior: body('posterior', [10.6, 19, 1.21], [13.4, 19, 1.21]),
-  gluteos: body('gluteos', [12, 13.9, 1.72]),
-  panturrilha: body('panturrilha', [10.2, 20.8, 1.03], [13.8, 20.8, 1.03]),
-  abdomen: body('abdomen', [12, 11.2, 1.15], [12, 12.8, 1.15]),
-  antebraco: body('antebraco', [6.7, 13.7, 1.26], [17.3, 13.7, 1.26]),
-  // Cardio e alongamento nao sao regiao do corpo, entao fogem da familia
-  // "silhueta com mancha" e usam glifo proprio -- mas na cor do grupo, igual
-  // aos outros, pra familia toda seguir a mesma legenda.
-  cardio: `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('cardio')}"><path d="M3 13h3.5l1.8-5 3.4 10 2.2-9 1.6 4h4.5"/></svg>`,
-  alongamento: `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('alongamento')}"><circle cx="14.5" cy="4.2" r="1.6" fill="currentColor" stroke="none"/><path d="M14.5 5.8l-3 2.4.8 4M11.5 8.2l-4.5 1M12.3 12.2l-2.8 1.5-1 4M12.3 12.2l2 2 .8 4.3"/></svg>`,
-  outros: `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor('outros')}"><path d="M6.5 8v8M17.5 8v8M3.5 10v4M20.5 10v4M6.5 12h11"/></svg>`,
-};
+/* A sigla do grupo que nao tem pictograma, resolvida contra as siglas dos
+ * outros que tambem nao tem.
+ *
+ * Percorre `db.groups()` na ordem e desempata acumulando, em vez de comparar
+ * cada um contra todos: se A desempatasse contra B e B contra A, os dois
+ * chegariam no mesmo sufixo e voltariam a colidir. Leitura sincrona do cache,
+ * como `db.settings()`. */
+function groupSigla(slug) {
+  const taken = [];
+  for (const g of db.groups()) {
+    if (POSES[g.slug]) continue;
+    const sigla = groupInitials(groupLabel(g.slug), taken);
+    taken.push(sigla);
+    if (g.slug === slug) return sigla;
+  }
+  return groupInitials(groupLabel(slug), taken);
+}
 
 /** Icone do grupo. Aceita slug ou o nome em portugues do catalogo, como
  *  groupColor e groupLabel.
  *
- *  Grupo criado pelo usuario nao tem desenho: os 17 sao silhuetas com a mancha
- *  posicionada a mao, e nao ha como gerar uma pra "Adutores". Ate haver, ele
- *  aparece como um disco na propria cor — a cor ja e a legenda do grupo em
- *  todo o resto do app. */
+ *  Grupo criado pelo usuario nao tem gesto, entao cai na anilha com a sigla —
+ *  a excecao "grupo novo nasce sem desenho" deixou de existir. */
 export function groupIcon(group) {
   const slug = groupSlugFor(group);
-  return ICON_GROUPS[slug]
-    || `<svg viewBox="0 0 24 24" aria-hidden="true" style="color:${groupColor(slug)}">`
-      + `<circle cx="12" cy="12" r="6.5" fill="currentColor" stroke="none"/></svg>`;
+  return plateIcon({
+    slug,
+    color: groupColor(slug),
+    ink: `var(--ink-${slug})`,
+    initials: POSES[slug] ? null : groupSigla(slug),
+  });
 }
 
 /** Dia do mes e abreviacao do dia da semana (ou do mes), pro bloco de data da

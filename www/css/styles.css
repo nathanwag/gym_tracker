@@ -1302,7 +1302,12 @@ a.chip:active { background: var(--border); }
 /* ---------- Figuras dos exercicios ---------- */
 
 /* O icone do grupo fica atras da foto: serve de placeholder enquanto ela
-   carrega e continua visivel se ela falhar (offline, foto ainda nao baixada). */
+   carrega e continua visivel se ela falhar (offline, foto ainda nao baixada).
+
+   SEM fundo proprio: o icone virou uma anilha, e um fundo quadrado atras de um
+   disco desenha uma caixa em volta dele. O placeholder agora e a propria
+   anilha, que ja e colorida e ocupa 40 dos 44 px. O raio e o `overflow` ficam
+   porque e o que recorta a FOTO, que continua quadrada. */
 .thumb {
   position: relative;
   flex: 0 0 auto;
@@ -1312,10 +1317,20 @@ a.chip:active { background: var(--border); }
   height: 44px;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--surface-2);
   color: var(--muted);
 }
-.thumb svg { width: 22px; height: 22px; }
+/* 40 de 44, nao 22: a regra global `svg { width: 22px }` nunca foi decisao
+   sobre ESTE quadrado, e com ela o icone ocupava um quarto da area, cercado de
+   11 px de nada. A 22 px nenhum pictograma de figura humana sobrevive; a 40,
+   sobra margem so pra anilha nao encostar na borda. */
+.thumb svg { width: 40px; height: 40px; }
+.thumb--lg svg { width: 50px; height: 50px; }
+
+/* A anilha e o pictograma vazado nela. `fill` e `stroke` vem inline do
+   `plateIcon()` (cor do grupo e tinta); aqui fica so o que e forma: a cabeca
+   de cada pose, unica parte cheia, e a tipografia da sigla de fallback. */
+.gicon__pose .fill { fill: currentColor; stroke: none; }
+.gicon__sig { font-family: var(--display); font-weight: 700; font-size: 10.6px; }
 .thumb__img {
   position: absolute;
   inset: 0;

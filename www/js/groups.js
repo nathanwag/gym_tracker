@@ -214,3 +214,53 @@ export function groupsForRestore(groups, exercises = []) {
 
   return [...byslug.values()].map((g, order) => ({ ...g, order }));
 }
+
+/* ---------- Tinta do pictograma vazado na anilha ----------
+ *
+ * Nao da pra fixar uma tinta so: a paleta escura vai de #1c3a63 a #9aa1ab, e
+ * nem branco nem preto e legivel nas duas pontas. Escolher pelo maior
+ * contraste WCAG resolve tambem a cor que o usuario inventar no picker, que e
+ * a razao de isto ser conta e nao tabela. */
+const INK_DARK = '#16171a';
+const INK_LIGHT = '#ffffff';
+
+function relLuminance(hex) {
+  const ch = [1, 3, 5].map((i) => {
+    const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+
+/** A tinta que da mais contraste sobre `hex`. */
+export function inkOn(hex) {
+  const l = relLuminance(hex);
+  const ratio = (ink) => {
+    const [hi, lo] = [l, relLuminance(ink)].sort((a, b) => b - a);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  return ratio(INK_DARK) >= ratio(INK_LIGHT) ? INK_DARK : INK_LIGHT;
+}
+
+/** Sigla de 3 letras pra anilha de um grupo sem pictograma.
+ *
+ *  Sai do ROTULO, nao do slug: o rotulo e o que a pessoa le, e muda de idioma
+ *  junto com o app. Dai precisar desempatar aqui, no mesmo espirito de
+ *  `uniqueGroupSlug` — "Peitoral superior" e "Peitoral inferior" dao a mesma
+ *  base, e a inicial da segunda palavra e o que os separa antes de recorrer a
+ *  digito. */
+export function groupInitials(label, taken = []) {
+  const used = new Set(taken);
+  const words = stripAccents(label ?? '').replace(/[^a-z0-9]+/g, ' ').trim().split(' ')
+    .filter(Boolean);
+  const base = (words.join('').slice(0, 3) || 'grp').toUpperCase();
+  if (!used.has(base)) return base;
+
+  for (const word of words.slice(1)) {
+    const candidate = (words[0].slice(0, 2) + word[0]).toUpperCase();
+    if (!used.has(candidate)) return candidate;
+  }
+  for (let n = 2; ; n += 1) {
+    if (!used.has(`${base}${n}`)) return `${base}${n}`;
+  }
+}

@@ -61,9 +61,11 @@ Duas regras ao mexer nisso:
 - **Grupos que treinam juntos ficam em degraus distantes.** Costas e bíceps são
   o par mais comum, então estão a três passos um do outro; sem isso a barra do
   dia vira um bloco chapado e some a proporção.
-- **O degrau mais escuro precisa funcionar como traço fino, não só como barra.**
-  A barra tem massa e aguenta escuro; o ícone de grupo é um traço de 2 px, e foi
-  por isso que a opacidade da silhueta subiu pra 62%.
+- **O degrau mais escuro precisa aguentar tinta por cima.** A barra tem massa e
+  aguenta escuro, mas o ícone virou uma anilha *preenchida* com a cor e o
+  pictograma vazado nela — quem garante a leitura é `inkOn()` (`groups.js`),
+  que escolhe a tinta de maior contraste. O piso é 3:1, da WCAG 1.4.11
+  (elemento não-textual); `#1e8b92` já fica em 4,41 e é o pior dos 34.
 
 **Não é enfeite, é legenda.** Aparece em cinco lugares e tem que significar o
 mesmo nos cinco: barras da semana, assinatura do treino no histórico, régua do
@@ -110,6 +112,7 @@ três, e é o que separa "planilha" de "painel". Escala em `--fs-xs` … `--fs-h
 | `.lab` | rótulo de seção com valor à direita, usado como cabeçalho de gráfico (métrica · período à esquerda, variação % à direita) | início, exercício |
 | `.muscle-group` | barras por grupo, com `__goal` de meta | início |
 | `.sig` | assinatura: faixas por grupo, largura ∝ séries | histórico, cartão de compartilhar |
+| `.gicon` | anilha na cor do grupo com o pictograma do gesto vazado | índice de grupos, grupos, seletor, atrás da foto |
 | `.hrow` / `.mo` | linha de treino / cabeçalho de mês | lista do histórico e sessões de um exercício |
 | `.exc__banner` | foto em faixa com nome por cima | sessão (118 px), histórico (`--sm`, 90 px) |
 | `.led` | livro-razão: peso e reps em colunas | sessão e detalhe do treino |
@@ -289,9 +292,9 @@ Se ela já está respondida em outra linha, o número pertence àquela tela.
   de três blocos do `styles.css`, e roda no bootstrap **e depois de toda
   escrita em grupo** — sem o segundo, um grupo recém-criado aparece sem cor
   nenhuma, sem erro. Os `--m-*` do `styles.css` são só o valor inicial.
-- **Grupo criado pelo usuário não ganha silhueta.** Os 17 ícones são a mesma
-  silhueta com a mancha posicionada à mão; `groupIcon()` cai num disco na cor
-  do grupo pro que não tem desenho.
+- **Grupo criado pelo usuário ganha a anilha com a sigla.** Os 17 têm
+  pictograma; quem não tem cai em `groupInitials()`, derivada do rótulo
+  exibido. Ninguém fica sem desenho.
 - **Os três `woff2` da Barlow precisam estar no `ASSETS` do `sw.js`**, senão a
   tipografia quebra offline.
 - **O cartão de compartilhar lê `colorDark` do banco** (`share-image.js`):

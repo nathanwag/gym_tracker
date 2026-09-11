@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP, GROUP_LABELS_EN, groupsForRestore,
+  inkOn, groupInitials,
 } from './groups.js';
 
 /* Os slugs dos 17 nao podem mudar: a rota #/progresso/<slug> ja os serve, e
@@ -198,4 +199,95 @@ test('groupsForRestore preserva os grupos que o backup tras', () => {
 test('groupsForRestore devolve ordens contiguas a partir de zero', () => {
   const out = groupsForRestore(undefined, [{ muscleGroup: 'Adutores' }]);
   assert.deepEqual(out.map((g) => g.order), out.map((_, i) => i));
+});
+
+/* ---------- inkOn: a tinta do pictograma sobre a anilha ----------
+ *
+ * Contraste WCAG calculado aqui de proposito, a partir da formula da norma:
+ * o teste precisa de uma fonte de verdade independente do que o modulo faz,
+ * senao ele so repete a conta da implementacao e nunca discorda dela. */
+function relLuminance(hex) {
+  const ch = [1, 3, 5].map((i) => {
+    const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+function contrast(a, b) {
+  const [hi, lo] = [relLuminance(a), relLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+test('inkOn devolve tinta clara sobre cor escura e escura sobre cor clara', () => {
+  assert.equal(inkOn('#000000'), '#ffffff');
+  assert.equal(inkOn('#ffffff'), '#16171a');
+});
+
+/* Exemplos trabalhados a mao a partir da norma, nao recalculados pelo modulo:
+ * em #ec6154 a tinta escura da 5.47 contra 3.28 da clara, entao a escura
+ * ganha mesmo a cor parecendo "forte"; em #1c3a63 e o inverso, 11.5 a 1.62. */
+test('inkOn escolhe pela conta, nao pela aparencia da cor', () => {
+  assert.equal(inkOn('#ec6154'), '#16171a');
+  assert.equal(inkOn('#1c3a63'), '#ffffff');
+  assert.equal(inkOn('#9aa1ab'), '#16171a');
+});
+
+/* 3:1 e o piso da WCAG 1.4.11 (contraste de elemento nao-textual), que e a
+ * regra que rege um pictograma. Nao e 4.5: esse e o piso de TEXTO, e com ele
+ * #1e8b92 (quadriceps claro) reprovaria por 4.41 sem que exista tinta capaz
+ * de salva-lo — a cor vive no meio da faixa de luminancia. Quem escolhe a
+ * paleta e o DESIGN.md, nao este teste. */
+test('a tinta escolhida passa em 1.4.11 nos 17 grupos, nos dois temas', () => {
+  for (const g of CANONICAL_GROUPS) {
+    for (const key of ['colorLight', 'colorDark']) {
+      const ratio = contrast(inkOn(g[key]), g[key]);
+      assert.ok(ratio >= 3, `${g.slug}.${key}: ${ratio.toFixed(2)} abaixo de 3`);
+    }
+  }
+});
+
+test('inkOn aceita a cor que o usuario escolher no picker', () => {
+  for (const hex of ['#7f7f7f', '#00ff00', '#123456', '#fedcba']) {
+    assert.match(inkOn(hex), /^#[0-9a-f]{6}$/);
+  }
+});
+
+/* ---------- groupInitials: a sigla da anilha sem pose ----------
+ *
+ * So o grupo criado pelo usuario chega aqui — os 17 tem pictograma. Mas ela
+ * sai do ROTULO EXIBIDO, entao muda de idioma junto com o app, e por isso
+ * precisa desempatar sozinha. */
+
+test('groupInitials pega as tres primeiras letras, sem acento', () => {
+  assert.equal(groupInitials('Peito'), 'PEI');
+  assert.equal(groupInitials('Glúteos'), 'GLU');
+  assert.equal(groupInitials('Trapézio'), 'TRA');
+  assert.equal(groupInitials('Tríceps'), 'TRI');
+});
+
+test('groupInitials desempata pela inicial da palavra seguinte', () => {
+  assert.equal(groupInitials('Peitoral superior', ['PEI']), 'PES');
+  assert.equal(groupInitials('Peitoral inferior', ['PEI', 'PES']), 'PEI2');
+});
+
+test('groupInitials cai em digito quando nao ha segunda palavra', () => {
+  assert.equal(groupInitials('Peito', ['PEI']), 'PEI2');
+  assert.equal(groupInitials('Peito', ['PEI', 'PEI2']), 'PEI3');
+});
+
+test('groupInitials aguenta rotulo curto ou so com simbolo', () => {
+  assert.equal(groupInitials('Ab'), 'AB');
+  assert.ok(groupInitials('!!!').length > 0);
+  assert.ok(groupInitials('').length > 0);
+});
+
+test('os 17 rotulos dao 17 siglas distintas, em portugues e em ingles', () => {
+  for (const labels of [
+    CANONICAL_GROUPS.map((g) => g.name),
+    CANONICAL_GROUPS.map((g) => GROUP_LABELS_EN[g.slug]),
+  ]) {
+    const taken = [];
+    for (const label of labels) taken.push(groupInitials(label, taken));
+    assert.equal(new Set(taken).size, 17, `colidiu: ${taken.join(' ')}`);
+  }
 });
