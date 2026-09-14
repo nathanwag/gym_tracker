@@ -50,13 +50,22 @@ node --test www/js/models.test.js               # um arquivo
 node --test --test-name-pattern="unilateral"    # por nome
 ```
 
-Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`). Só dá
-pra testar módulos **puros** sob `node --test`: `models.js`, `text.js`,
-`curve.js`, `weight-step.js`, `profile.js` e `group-icon.js` não têm import
-nenhum, e `groups.js` só importa `text.js`.
-`seed.js`/`db.js`/`ui.js` puxam `i18n.js`, que toca `location` no carregamento
-e quebra fora do browser. Para testar algo
-desses, extraia a lógica pura pra um módulo sem dependência de DOM/IndexedDB —
+Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`).
+
+**Todo módulo de `www/js/` carrega sob `node --test`**, inclusive `db.js`,
+`ui.js` e as views. Já não foi assim: `i18n.js` lia `location` no escopo do
+módulo, numa checagem de paridade de chaves só de desenvolvimento, e como 22
+dos 32 módulos o importam, quase nada carregava fora do browser. Hoje a linha
+tem `typeof location !== 'undefined'` — **não tire o guard**, ele é o que
+sustenta o resto desta seção.
+
+Carregar não é chamar: função que toca `document`, `indexedDB` ou `fetch`
+ainda precisa do browser. Mas isso é escolha de onde pôr o seam, e não mais
+uma parede. `db.settings()` e `db.groups()` respondem sem banco — devolvem o
+padrão de fábrica e os 17 grupos canônicos —, então dá pra testar contra o
+dado real sem mock (é o que `muscle-group.test.js` faz).
+
+Módulo puro segue valendo quando o domínio pede, não por obrigação:
 é o que `text.js` (separado de `ui.js` porque `db.js` precisa dele numa
 migração), `curve.js` (separado de `charts.js`, que importa `ui.js`) e
 `weight-step.js` (validação do passo digitado, saneamento do passo gravado nas
@@ -174,9 +183,18 @@ string. `CANONICAL_GROUPS` (`groups.js`) é só a **semente** da migração v7 �
 não é mais a verdade em runtime, que é `db.groups()` (leitura síncrona, como
 `db.settings()`).
 
-Como o catálogo continua gravando `grupo: 'Peito'` e nunca migra,
-`groupLabel()`, `groupColor()` e `groupIcon()` aceitam **slug ou nome em
-português** — todas normalizam por `groupSlugFor()`.
+**`muscle-group.js` é a única porta para grupo muscular.** Rótulo, cor, tinta,
+ícone, ordem, métrica e o repaint saem de lá; as telas não falam com
+`db.groups()` direto. Ele fica *acima* de `groups.js` de propósito: `db.js`
+importa `groups.js` para semear a migração v7, então `groups.js` não pode ler
+o banco sem virar ciclo — fica puro e testado, com os algoritmos (slug,
+`inkOn`, `groupInitials`, `themeVariant`, `groupBy`).
+
+Como o catálogo continua gravando `grupo: 'Peito'` e nunca migra, tudo em
+`muscle-group.js` aceita **slug ou nome em português**: `findGroup()`
+normaliza por `groupSlugFor()` uma vez, na entrada, e quem chama não precisa
+saber que existem duas chaves. Antes essa resolução existia em cinco grafias
+espalhadas, e duas já tinham divergido em silêncio.
 
 **`slug`** liga um exercício às fotos em `www/img/ex/` e à entrada do catálogo.
 É estável (ao contrário do `id` autoincremento e do `name` com acento editável).
@@ -217,8 +235,10 @@ em `models.js`, todas puras e testadas:
   para a lista do Progresso. **Reusa `groupIndex()` em vez de ter conta
   própria**: grupo e exercício aparecem um embaixo do outro na mesma tela, e
   duas noções de "andou pra frente" se contradiriam ali. O campo medido entra
-  por parâmetro (e1RM, ou tempo pro que não tem carga) porque quem sabe disso é
-  `usesDuration` em `seed.js`, e `models.js` não importa nada.
+  por parâmetro (e1RM, ou tempo pro que não tem carga) porque `models.js` não
+  importa nada; quem responde é `exerciseMetric()`/`groupMetric()`
+  (`muscle-group.js`). As views **não** montam esse ternário — ele já morou
+  copiado em três delas.
 - `workoutDeltas()` — cada exercício contra a última vez que **ele** foi feito,
   não contra o treino anterior: dois treinos seguidos podem não ter exercício
   nenhum em comum.
@@ -229,12 +249,15 @@ toque, e a tabela de *uma pergunta por nível* — consulte-a antes de acrescent
 um número a qualquer tela. **Leia antes de mexer em `styles.css` ou em qualquer
 tela.** O que quebra o app, e por isso fica aqui:
 
-- **A cor do grupo é dado, e o token só existe depois de `applyGroupTokens()`**
-  (`ui.js`): ela gera um `<style>` que repete a mesma cascata de três blocos do
-  `styles.css` (claro / escuro por preferência / escuro explícito), e é o que
-  faz `groupColor()` poder continuar devolvendo `var(--m-<slug>)`. Roda no
-  bootstrap **e depois de toda escrita em grupo** — sem o segundo, grupo
-  recém-criado nasce sem cor, sem erro nenhum. Os `--m-*` do `styles.css`
+- **A cor do grupo é dado, e o token só existe depois de `repaintGroups()`**
+  (`muscle-group.js`): ele recarrega o cache e escreve um `<style>` com a mesma
+  cascata de três blocos do `styles.css` (claro / escuro por preferência /
+  escuro explícito), que é o que faz `groupColor()` poder continuar devolvendo
+  `var(--m-<slug>)`. Roda no bootstrap **e depois de toda escrita em grupo** —
+  inclusive no `restore()` do backup, que é onde faltava: sem ele o grupo
+  recém-criado nasce sem cor e o backup restaurado perde os grupos do usuário,
+  os dois sem erro nenhum. A cascata é `groupTokensCss()`, pura e testada. Os
+  `--m-*` do `styles.css`
   viraram só o valor inicial. **São dois tokens por grupo**, não um:
   `--m-<slug>` é a cor da anilha e `--ink-<slug>` é a tinta do pictograma
   vazado nela. A tinta muda com o tema pelo mesmo motivo que a cor — a paleta
