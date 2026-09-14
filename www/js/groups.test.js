@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP, GROUP_LABELS_EN, groupsForRestore,
-  inkOn, groupInitials, groupBy,
+  inkOn, groupInitials, uniqueInitials, groupBy,
 } from './groups.js';
 
 /* Os slugs dos 17 nao podem mudar: a rota #/progresso/<slug> ja os serve, e
@@ -286,9 +286,8 @@ test('os 17 rotulos dao 17 siglas distintas, em portugues e em ingles', () => {
     CANONICAL_GROUPS.map((g) => g.name),
     CANONICAL_GROUPS.map((g) => GROUP_LABELS_EN[g.slug]),
   ]) {
-    const taken = [];
-    for (const label of labels) taken.push(groupInitials(label, taken));
-    assert.equal(new Set(taken).size, 17, `colidiu: ${taken.join(' ')}`);
+    const siglas = uniqueInitials(labels);
+    assert.equal(new Set(siglas).size, 17, `colidiu: ${siglas.join(' ')}`);
   }
 });
 
@@ -330,4 +329,26 @@ test('groupBy nao devolve grupo sem item', () => {
 test('groupBy mantem a ordem original dos itens dentro do grupo', () => {
   const items = [{ group: 'peito', n: 1 }, { group: 'peito', n: 2 }];
   assert.deepEqual(groupBy(items, (i) => i.group, ORDER)[0].items.map((i) => i.n), [1, 2]);
+});
+
+/* O desempate acumulando, que ate agora so existia duas vezes: no groupSigla
+ * da producao e, copiado, no laco do teste acima. Varre NA ORDEM somando as
+ * siglas ja tomadas — comparar cada rotulo contra todos faria dois que colidem
+ * chegarem no mesmo sufixo e voltarem a colidir. */
+
+test('uniqueInitials desempata acumulando, na ordem', () => {
+  assert.deepEqual(
+    uniqueInitials(['Peito', 'Peitoral superior', 'Peitoral inferior']),
+    ['PEI', 'PES', 'PEI2'],
+  );
+});
+
+test('uniqueInitials nunca repete, nem com rotulos identicos', () => {
+  const out = uniqueInitials(['Peito', 'Peito', 'Peito']);
+  assert.equal(new Set(out).size, 3, `colidiu: ${out.join(' ')}`);
+});
+
+test('uniqueInitials devolve uma sigla por rotulo, na mesma ordem', () => {
+  assert.deepEqual(uniqueInitials(['Costas', 'Peito']), ['COS', 'PEI']);
+  assert.deepEqual(uniqueInitials([]), []);
 });

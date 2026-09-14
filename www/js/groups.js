@@ -288,3 +288,15 @@ export function groupBy(items, groupOf, order = []) {
     .map((group) => ({ group, items: byGroup.get(group) }))
     .filter((g) => g.items?.length);
 }
+
+/** Uma sigla por rotulo, todas distintas, na ordem em que vieram.
+ *
+ *  Acumula: cada rotulo desempata contra as siglas que os ANTERIORES ja
+ *  tomaram. Comparar cada um contra todos faria dois que colidem chegarem no
+ *  mesmo sufixo e voltarem a colidir — e por isso a ordem importa, e por isso
+ *  esta conta e uma funcao e nao um laco solto em quem desenha o icone. */
+export function uniqueInitials(labels) {
+  const taken = [];
+  for (const label of labels) taken.push(groupInitials(label, taken));
+  return taken;
+}

@@ -20,7 +20,9 @@
  */
 
 import * as db from './db.js';
-import { groupSlugFor, inkOn, groupInitials, GROUP_LABELS_EN } from './groups.js';
+import {
+  groupSlugFor, inkOn, groupInitials, uniqueInitials, GROUP_LABELS_EN,
+} from './groups.js';
 import { POSES, plateIcon } from './group-icon.js';
 import { language } from './i18n.js';
 
@@ -69,18 +71,17 @@ export const groupOrder = () => db.groups().map((g) => g.slug);
  *  e `groupTokensCss` — antes dele o token nao existe. */
 export const groupColor = (ref) => `var(--m-${groupSlugFor(ref)})`;
 
-/** Sigla da anilha de um grupo sem pictograma. Varre `db.groups()` NA ORDEM,
- *  acumulando as siglas ja tomadas: comparar cada grupo contra todos faria
- *  dois que colidem chegarem no mesmo sufixo. */
+/** Sigla da anilha de um grupo sem pictograma, desempatada contra a dos
+ *  outros que tambem nao tem. O desempate acumulando mora em
+ *  `uniqueInitials` (groups.js), onde tem teste — aqui fica so quem sao os
+ *  grupos sem pose e em que ordem. */
 function groupSigla(slug) {
-  const taken = [];
-  for (const g of db.groups()) {
-    if (POSES[g.slug]) continue;
-    const sigla = groupInitials(groupLabel(g.slug), taken);
-    if (g.slug === slug) return sigla;
-    taken.push(sigla);
-  }
-  return groupInitials(groupLabel(slug), taken);
+  const semPose = db.groups().filter((g) => !POSES[g.slug]);
+  const siglas = uniqueInitials(semPose.map((g) => groupLabel(g.slug)));
+  const i = semPose.findIndex((g) => g.slug === slug);
+  // Slug que nao esta no banco (dado antigo, backup de outro aparelho)
+  // ainda precisa de sigla, e ela nao pode bater com as que ja existem.
+  return i >= 0 ? siglas[i] : groupInitials(groupLabel(slug), siglas);
 }
 
 /** Icone do grupo: a anilha com o pictograma do gesto. Grupo criado pelo
