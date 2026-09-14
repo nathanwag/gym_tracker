@@ -17,6 +17,7 @@
  */
 
 import { smoothPath } from './curve.js';
+import { yScale } from './chart-scale.js';
 import { fmtNum, fmtDateShort } from './ui.js';
 import { t } from './i18n.js';
 
@@ -26,17 +27,6 @@ const PAD = { top: 18, right: 12, bottom: 24, left: 38 };
 
 const escXml = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-/** Maior passo "humano" (1, 2, 2.5, 5, 10, 25, 50...) que cobre o intervalo
- *  em cerca de `divisions` faixas. E o que faz o eixo cair em numeros redondos. */
-function roundStep(range, divisions) {
-  if (!(range > 0)) return 1;
-  const raw = range / divisions;
-  const magnitude = 10 ** Math.floor(Math.log10(raw));
-  const n = raw / magnitude;
-  const scale = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
-  return scale * magnitude;
-}
 
 /**
  * @param {{
@@ -64,16 +54,9 @@ export function lineChart({
   const values = points.map((p) => p.value);
   const times = points.map((p) => new Date(p.when).getTime());
 
-  // Dominio Y: folga de 12% para a linha nao encostar nas bordas, depois
-  // arredondado para fora em multiplos de um passo "redondo" — sem isso os
-  // rotulos do eixo saem tortos (80, 81, 83) e o grafico parece quebrado.
-  let min = Math.min(...values);
-  let max = Math.max(...values);
-  if (min === max) { min = Math.max(0, min * 0.9); max = max * 1.1 || 1; }
-  const margin = (max - min) * 0.12;
-  const step = roundStep((max + margin) - Math.max(0, min - margin), 3);
-  min = Math.max(0, Math.floor((min - margin) / step) * step);
-  max = Math.ceil((max + margin) / step) * step;
+  // Dominio Y e os ticks: folga, passo redondo e piso em zero moram em
+  // chart-scale.js, que e puro e testado.
+  const { min, max, ticks } = yScale(values);
 
   const tMin = Math.min(...times);
   const tMax = Math.max(...times);
@@ -87,8 +70,6 @@ export function lineChart({
   const coords = points.map((p, i) => [sx(i), sy(p.value)]);
 
   /* --- grade e rotulos do eixo Y, em valores redondos e recessivos --- */
-  const ticks = [];
-  for (let v = min; v <= max + 1e-9; v += step) ticks.push(v);
   const gridLines = ticks.map((value) => {
     const y = sy(value);
     return `<line class="chart__grid" x1="${plot.x0}" y1="${y.toFixed(1)}" x2="${plot.x1}" y2="${y.toFixed(1)}"/>
