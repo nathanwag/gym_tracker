@@ -15,6 +15,7 @@
 import * as db from './db.js';
 import { slugByName } from './seed.js';
 import { groupSlugFor, groupsForRestore } from './groups.js';
+import { repaintGroups } from './muscle-group.js';
 import { normalizeName } from './text.js';
 import { t } from './i18n.js';
 
@@ -270,8 +271,14 @@ export async function validate(payload) {
   return restored;
 }
 
-/** Substitui tudo que esta no aparelho pelo conteudo do backup. */
+/** Substitui tudo que esta no aparelho pelo conteudo do backup.
+ *
+ *  O `repaintGroups()` no fim nao e enfeite: `replaceAll` zera o cache de
+ *  grupos, e quem volta da restauracao e o router, nao o boot. Sem ele
+ *  `db.groups()` cai na semente — grupo criado pelo usuario some do
+ *  Progresso e os --m-* ficavam com a cor de antes, ate recarregar o app. */
 export async function restore(data) {
   await db.replaceAll(data);
   await db.getSettings();
+  await repaintGroups();
 }
