@@ -365,10 +365,6 @@ export function groups() {
   return groupCache || CANONICAL_GROUPS;
 }
 
-export async function getGroup(slug) {
-  return (await listGroups()).find((g) => g.slug === slug) || null;
-}
-
 /** Cria um grupo. O slug sai do nome e nunca mais muda; renomear depois mexe
  *  so no `name`, e por isso nenhum exercicio se perde. */
 export async function addGroup({
@@ -494,13 +490,6 @@ export async function updateExercise(id, patch) {
       store.put({ ...current, ...patch, id: current.id });
     }));
   exerciseCache = null;
-}
-
-/** Liga (ou tira) a figura de um exercicio ja existente — caminho de edicao
- *  (renomeado, ou criado a mao) para o que addExerciseFromCatalog faz na
- *  criacao. Mesma regra: quem chama aquece o cache das fotos, se quiser. */
-export async function setExerciseImage(id, slug) {
-  await updateExercise(id, { slug: slug || null });
 }
 
 /** Remove um exercicio. Falha se houver series registradas nele. */

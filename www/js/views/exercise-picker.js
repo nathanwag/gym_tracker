@@ -17,9 +17,10 @@ import { groupBy } from '../groups.js';
 import { groupLabel, groupIcon, groupOrder } from '../muscle-group.js';
 import { thumbHtml, prefetchPhotos, preloadCustomThumbs } from '../media.js';
 import { t } from '../i18n.js';
+import { stripAccents } from '../text.js';
 import {
   html, raw, node, ICON, toast, setTop, openSheet, closeSheet, goBack,
-  stripAccents, listInCard, groupField,
+  listInCard, groupField,
 } from '../ui.js';
 
 // Etapa atual: null = grade de grupos; nome do grupo = lista dele.

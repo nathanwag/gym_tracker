@@ -29,7 +29,7 @@ import {
 } from '../muscle-group.js';
 import {
   setTop, html, raw, node, ICON, wireSegmented,
-  fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet, lastDoneLabel,
+  fmtNum, fmtDate, fmtTempoSerie, fmtSet, lastDoneLabel,
 } from '../ui.js';
 
 /* O grupo ja E o slug desde que grupo virou dado (`db.groups()`): o hash

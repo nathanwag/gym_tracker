@@ -16,7 +16,6 @@ import { stepperValue } from './stepper-value.js';
 export const APP_NAME = 'Anilha';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
-export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 /** Pede ao app.js para renderizar a rota atual de novo. Um evento evita que as
  *  telas importem app.js (que importa as telas) e criem um ciclo de modulos. */
@@ -194,7 +193,7 @@ export function confirmSheet({
  * @param {{title: string, options: {value: string, label: string}[], value: string}} opts
  * @returns {Promise<string|null>} null quando a folha e fechada sem escolher
  */
-export function pickSheet({ title, options, value }) {
+function pickSheet({ title, options, value }) {
   return new Promise((resolve) => {
     let answered = false;
     const finish = (picked) => {
@@ -403,7 +402,7 @@ export function fmtRelativeDay(iso) {
 }
 
 /** Diferenca em dias de calendario, ignorando horas. */
-export function daysBetween(a, b) {
+function daysBetween(a, b) {
   const da = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
   const db = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
   return Math.round((db - da) / 86400000);
@@ -711,9 +710,7 @@ export function buzz(ms = 12) {
   try { navigator.vibrate?.(ms); } catch { /* sem suporte */ }
 }
 
-// Mora em text.js (sem DOM) porque db.js tambem precisa dela na migracao;
-// reexportada aqui para nao mexer em quem ja importava de ui.js.
-export { stripAccents, normalizeName } from './text.js';
+
 
 /* ---------- Plataforma ---------- */
 

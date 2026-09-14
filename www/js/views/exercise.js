@@ -18,11 +18,13 @@ import {
   preloadCustomThumbs, invalidateCustomThumbs, compressImage,
 } from '../media.js';
 import { t, tn, language } from '../i18n.js';
-import { cleanSteps, sameSteps, normalizeName } from '../text.js';
+import {
+  cleanSteps, sameSteps, normalizeName, stripAccents,
+} from '../text.js';
 import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
-  fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
-  fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented, infoRow,
+  fmtNum, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
+  fmtSet, fmtSetWithUnit, refresh, wireSegmented, infoRow,
   listInCard, groupField, lastDoneLabel,
 } from '../ui.js';
 
