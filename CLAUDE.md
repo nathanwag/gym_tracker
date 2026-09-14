@@ -125,7 +125,7 @@ pelo mesmo motivo do slug do catálogo.
 
 **Exercícios** (`views/exercise.js`, `/exercicios`) — *"o que eu tenho pra
 treinar?"*. **Índice por grupo, não lista**: a raiz da aba são as ~17 linhas de
-`db.groups()` na ordem anatômica (inclusive as vazias — reordenar sozinha a cada
+`db.groups()` na ordem de uso (inclusive as vazias — reordenar sozinha a cada
 exercício criado tiraria a única coisa que faz achar sem ler), cada uma com
 "N seus · N no catálogo". A lista de exercício existe **só dentro de um grupo**
 (`renderGroup`, `/exercicios/grupo/<slug>` — o `/grupo/` no meio evita que um
@@ -184,6 +184,14 @@ editável pelo usuário, e renomear "Peito" orfanaria tudo que apontasse pra
 string. `CANONICAL_GROUPS` (`groups.js`) é só a **semente** da migração v7 —
 não é mais a verdade em runtime, que é `db.groups()` (leitura síncrona, como
 `db.settings()`).
+
+**A ordem dos 17 é por frequência de treino, não anatômica.** A lista existe
+pra achar sem ler, e anatômica punha Lombar em 3º e Pescoço em 6º, antes de
+Bíceps. Como a ordem é *dado*, mudar a semente só arruma instalação nova —
+quem já usa o app tem o `order` gravado, e quem o atualiza é a migração v8.
+Ela toca **só** em `order` e **só** nos 17 da semente: nome e cor podem ter
+sido editados, e grupo criado pelo usuário (`order >= 17`) não pode subir
+acima dos canônicos.
 
 **`muscle-group.js` é a única porta para grupo muscular.** Rótulo, cor, tinta,
 ícone, ordem, métrica e o repaint saem de lá; as telas não falam com

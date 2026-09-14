@@ -93,7 +93,7 @@ export async function renderList(view) {
 
     const mineByGroup = countBy(exercises, (ex) => groupSlugFor(ex.muscleGroup));
     body.append(node(`<h2 class="section-title">${t('exercise.groups.section')}</h2>`));
-    // Ordem anatomica, inclusive os vazios: empurrar grupo sem exercicio pro
+    // Ordem do banco, inclusive os vazios: empurrar grupo sem exercicio pro
     // fim faria a lista se reordenar sozinha a cada exercicio criado, e a
     // posicao fixa de "Costas" e metade do que faz achar sem ler.
     body.append(listInCard(allGroups().map((g) => groupItem(

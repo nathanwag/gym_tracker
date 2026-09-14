@@ -63,12 +63,22 @@ test('exerciseMetric mede o exercicio por e1RM, ou por tempo quando nao ha carga
   assert.equal(exerciseMetric({ muscleGroup: 'cardio' }), 'totalDuration');
 });
 
-test('groupOrder devolve os slugs na ordem anatomica, pra alimentar groupBy', () => {
+test('groupOrder devolve os slugs na ordem de uso, pra alimentar groupBy', () => {
   const order = groupOrder();
   assert.equal(order[0], 'peito');
   assert.equal(order[1], 'costas');
   assert.equal(order.at(-1), 'outros');
   assert.equal(order.length, 17);
+});
+
+/* O que motivou a reordenacao: eram o 5o e o 6o da lista, antes de Biceps. */
+test('o que se treina de vez em quando fica no fim, nao no comeco', () => {
+  const order = groupOrder();
+  for (const slug of ['trapezio', 'pescoco', 'lombar', 'antebraco']) {
+    assert.ok(order.indexOf(slug) > order.indexOf('abdomen'), `${slug} cedo demais`);
+  }
+  // ...mas ainda antes dos que nem tem carga.
+  assert.ok(order.indexOf('pescoco') < order.indexOf('cardio'));
 });
 
 test('groupColor devolve o token, nao o hex, pelas duas chaves', () => {

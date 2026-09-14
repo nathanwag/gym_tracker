@@ -29,7 +29,7 @@ const DB_NAME = 'treino';
 // v6: store `bodyWeights`, a serie de peso corporal do Perfil.
 // v7: store `muscleGroups` — grupo vira dado editavel, e `exercises`
 //     .muscleGroup passa a guardar o slug estavel em vez do nome.
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 export const DEFAULT_SETTINGS = {
   unit: 'kg',
@@ -270,6 +270,29 @@ export function open() {
             known.add(slug);
           }
           if (record.muscleGroup !== slug) cursor.update({ ...record, muscleGroup: slug });
+          cursor.continue();
+        };
+      }
+
+      if (event.oldVersion < 8) {
+        // A ordem dos 17 passou a ser por frequencia de treino (ver o
+        // cabecalho do SEED em groups.js): a anatomica punha Lombar em 3o e
+        // Pescoco em 6o, antes de Biceps. Como a ordem virou DADO na v7,
+        // trocar a semente so arruma instalacao nova — quem ja usa o app tem
+        // o `order` antigo gravado, e e isto que o atualiza.
+        //
+        // So toca em `order`, e so nos 17 da semente: nome e cor podem ter
+        // sido editados, e grupo criado pelo usuario (order >= 17) nao pode
+        // ser empurrado pra cima dos canonicos.
+        const canonicalOrder = new Map(CANONICAL_GROUPS.map((g) => [g.slug, g.order]));
+        const orderCursor = request.transaction.objectStore('muscleGroups').openCursor();
+        orderCursor.onsuccess = () => {
+          const cursor = orderCursor.result;
+          if (!cursor) return;
+          const order = canonicalOrder.get(cursor.value.slug);
+          if (order !== undefined && cursor.value.order !== order) {
+            cursor.update({ ...cursor.value, order });
+          }
           cursor.continue();
         };
       }

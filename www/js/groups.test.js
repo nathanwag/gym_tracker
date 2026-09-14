@@ -7,15 +7,22 @@ import {
 } from './groups.js';
 
 /* Os slugs dos 17 nao podem mudar: a rota #/progresso/<slug> ja os serve, e
- * exercicios gravados vao passar a apontar pra eles. Lista literal de
- * proposito — e a especificacao, nao um recalculo do que o modulo faz. */
+ * exercicios gravados apontam pra eles. Lista literal de proposito — e a
+ * especificacao, nao um recalculo do que o modulo faz.
+ *
+ * A ORDEM e por frequencia de treino, nao por anatomia. Anatomica punha
+ * Lombar em 3o e Pescoco em 6o — a lista existe pra achar sem ler, e
+ * comecar por grupo que quase ninguem abre desfaz isso. Empurrar e puxar
+ * alternam no topo, pernas vem em bloco, e o que se treina de vez em
+ * quando desce pro fim, antes de Cardio/Alongamento/Outros. */
 const SLUGS = [
-  'peito', 'costas', 'lombar', 'ombros', 'trapezio', 'pescoco',
-  'biceps', 'triceps', 'quadriceps', 'posterior', 'gluteos',
-  'panturrilha', 'abdomen', 'antebraco', 'cardio', 'alongamento', 'outros',
+  'peito', 'costas', 'ombros', 'biceps', 'triceps',
+  'quadriceps', 'posterior', 'gluteos', 'panturrilha', 'abdomen',
+  'lombar', 'trapezio', 'antebraco', 'pescoco',
+  'cardio', 'alongamento', 'outros',
 ];
 
-test('CANONICAL_GROUPS traz os 17 grupos na ordem anatomica', () => {
+test('CANONICAL_GROUPS traz os 17 grupos na ordem de uso', () => {
   assert.deepEqual(CANONICAL_GROUPS.map((g) => g.slug), SLUGS);
 });
 
@@ -294,7 +301,7 @@ test('os 17 rotulos dao 17 siglas distintas, em portugues e em ingles', () => {
 /* groupBy recebe a ordem por parametro, no molde de sectionsByEquipment em
  * equipment.js. Antes ela era a lista fixa MUSCLE_GROUPS, com os nomes em
  * portugues — e como o exercicio passou a gravar slug na v7, a comparacao
- * nunca casava e a ordem anatomica tinha virado ordem de insercao. */
+ * nunca casava e a ordem dos grupos tinha virado ordem de insercao. */
 const ORDER = SLUGS;
 
 test('groupBy ordena pela ordem dada, nao pela de insercao', () => {

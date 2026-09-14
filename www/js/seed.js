@@ -6,7 +6,7 @@
  *
  * Grupo muscular saiu daqui: rotulo, duracao e ordem vivem em
  * muscle-group.js, e o agrupamento em groups.js. Enquanto moravam neste
- * arquivo eram incarregaveis sob `node --test`, e a ordem anatomica de
+ * arquivo eram incarregaveis sob `node --test`, e a ordem dos grupos em
  * groupBy quebrou em silencio por causa disso.
  *
  * O `slug` liga o exercicio a suas figuras em www/img/ex/ e a entrada do

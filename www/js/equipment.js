@@ -15,7 +15,7 @@
 
 /* Ordem FIXA, nao por tamanho: ordenar por quantidade daria a cada grupo
  * muscular uma ordem diferente, e some o unico jeito de saber onde olhar sem
- * ler tudo — o mesmo motivo que mantem os 17 grupos na ordem anatomica.
+ * ler tudo — o mesmo motivo que mantem os 17 grupos numa ordem fixa.
  * 'barra W' vem colada em 'barra' porque e a mesma familia de movimento. */
 export const EQUIPMENT_ORDER = [
   'barra',

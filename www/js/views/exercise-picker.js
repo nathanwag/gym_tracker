@@ -208,7 +208,7 @@ async function renderPicker({
       return;
     }
 
-    // Etapa 1: os grupos, na ordem anatomica — que e a de db.groups(), nao
+    // Etapa 1: os grupos, na ordem do banco — que e a de db.groups(), nao
     // uma lista no codigo: o usuario pode criar e reordenar grupo.
     const grid = node('<div class="tiles"></div>');
     for (const { group, items } of groupBy(exercises, (e) => e.muscleGroup, groupOrder())) {

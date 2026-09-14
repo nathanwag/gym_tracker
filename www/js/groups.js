@@ -12,8 +12,12 @@
 
 import { stripAccents } from './text.js';
 
-/* Os 17 que o app ja tinha, agora como semente do store. A ordem e anatomica
- * (de cima pra baixo no corpo) e vira o `order` inicial.
+/* Os 17 que o app ja tinha, agora como semente do store. A ordem e por
+ * FREQUENCIA DE TREINO, nao anatomica: a lista existe pra achar sem ler, e
+ * anatomica punha Lombar em 3o e Pescoco em 6o, antes de Biceps. Empurrar e
+ * puxar alternam no topo, pernas vem em bloco, o que se treina de vez em
+ * quando desce, e Cardio/Alongamento/Outros fecham. Esta ordem vira o
+ * `order` inicial de cada grupo no banco.
  *
  * As duas cores nao sao a mesma cor em brilhos diferentes: a paleta foi
  * desenhada a mao em tres familias (empurrar vermelho, puxar azul, pernas
@@ -22,18 +26,21 @@ import { stripAccents } from './text.js';
 const SEED = [
   ['peito', 'Peito', '#c94435', '#ec6154'],
   ['costas', 'Costas', '#2f66b8', '#5a92e8'],
-  ['lombar', 'Lombar', '#255296', '#4276c4'],
   ['ombros', 'Ombros', '#a5342a', '#c4483b'],
-  ['trapezio', 'Trapézio', '#1c4076', '#345f9f'],
-  ['pescoco', 'Pescoço', '#464d56', '#6b737e'],
   ['biceps', 'Bíceps', '#173458', '#27497c'],
   ['triceps', 'Tríceps', '#7a251e', '#96322a'],
+
   ['quadriceps', 'Quadríceps', '#1e8b92', '#45c2c8'],
   ['posterior', 'Posterior', '#176e75', '#2d9aa1'],
   ['gluteos', 'Glúteos', '#12565c', '#20787e'],
   ['panturrilha', 'Panturrilha', '#0d4146', '#175b61'],
   ['abdomen', 'Abdômen', '#69717c', '#9aa1ab'],
+
+  ['lombar', 'Lombar', '#255296', '#4276c4'],
+  ['trapezio', 'Trapézio', '#1c4076', '#345f9f'],
   ['antebraco', 'Antebraço', '#122a45', '#1c3a63'],
+  ['pescoco', 'Pescoço', '#464d56', '#6b737e'],
+
   ['cardio', 'Cardio', '#575f69', '#828a95'],
   ['alongamento', 'Alongamento', '#2e343b', '#4a515a'],
   ['outros', 'Outros', '#3a4149', '#5a626c'],
@@ -271,7 +278,7 @@ export function groupInitials(label, taken = []) {
  *  verdade dela e `db.groups()` — que muda quando o usuario cria ou reordena
  *  grupo. Mesmo motivo de `sectionsByEquipment` receber `min`: quem sabe o
  *  contexto e quem chama. Enquanto a lista era fixa e em portugues, ela nunca
- *  casava com o slug que o exercicio grava desde a v7, e a ordem anatomica
+ *  casava com o slug que o exercicio grava desde a v7, e a ordem dos grupos
  *  tinha silenciosamente virado ordem de insercao.
  *
  *  Chave fora de `order` (grupo apagado, dado antigo) sai no fim em vez de

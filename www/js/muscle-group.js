@@ -60,7 +60,7 @@ export const groupMetric = (ref) => (usesDuration(ref) ? 'totalDuration' : 'volu
  *  contradiriam. */
 export const exerciseMetric = (exercise) => (usesDuration(exercise?.muscleGroup) ? 'totalDuration' : 'bestE1rm');
 
-/** Slugs na ordem anatomica, pra alimentar `groupBy`. A ordem e dado desde a
+/** Slugs na ordem do banco, pra alimentar `groupBy`. A ordem e dado desde a
  *  v7 — reordenar um grupo muda isto, e e por isso que `groupBy` recebe a
  *  lista em vez de guardar uma propria. */
 export const groupOrder = () => db.groups().map((g) => g.slug);

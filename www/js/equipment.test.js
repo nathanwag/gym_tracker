@@ -7,8 +7,8 @@ const ex = (equipamento, nome) => ({ equipamento, nome });
 
 /* A ordem e FIXA, nao por tamanho da secao. Ordenar por quantidade faria cada
  * grupo muscular ter uma ordem diferente, e a pessoa perderia o unico jeito de
- * saber onde olhar sem ler — o mesmo motivo que mantem os 17 grupos na ordem
- * anatomica em vez de por uso. */
+ * saber onde olhar sem ler — o mesmo motivo que mantem os 17 grupos numa
+ * ordem fixa. */
 test('a ordem de equipamento e fixa e comeca na barra', () => {
   assert.equal(EQUIPMENT_ORDER[0], 'barra');
   assert.ok(EQUIPMENT_ORDER.indexOf('halteres') < EQUIPMENT_ORDER.indexOf('polia'));
