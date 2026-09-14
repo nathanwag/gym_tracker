@@ -10,6 +10,7 @@ import {
   groupLabel, usesDuration, groupColor, groupIcon, allGroups,
 } from './muscle-group.js';
 import { groupSlugFor } from './groups.js';
+import { stepperValue } from './stepper-value.js';
 
 /** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
 export const APP_NAME = 'Anilha';
@@ -755,17 +756,15 @@ export function createStepper({
   `);
 
   const input = wrap.querySelector('input');
-  const clamp = (n) => Math.min(max, Math.max(min, n));
-  const round = (n) => Number(n.toFixed(decimals + 2));
+  // O intervalo, a virgula e o arredondamento moram em stepper-value.js, onde
+  // tem teste; aqui fica so a ligacao com o <input>.
+  const rules = stepperValue({ min, max, decimals });
 
-  const get = () => {
-    const n = parseFloat(String(input.value).replace(',', '.'));
-    return Number.isFinite(n) ? clamp(n) : 0;
-  };
-  const set = (v) => { input.value = String(round(clamp(Number(v) || 0))); };
+  const get = () => rules.read(input.value);
+  const set = (v) => { input.value = rules.format(v); };
 
   const bump = (dir) => {
-    set(round(get() + dir * step));
+    input.value = rules.next(input.value, dir * step);
     input.dispatchEvent(new Event('change', { bubbles: true }));
     buzz(8);
   };
