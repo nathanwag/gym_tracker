@@ -8,12 +8,11 @@
  */
 
 import * as db from '../db.js';
-import { weightStep } from '../weight-step.js';
 import { evaluatePR, prSetIds, workoutSummary } from '../models.js';
 import { exerciseBanner } from '../media.js';
 import { takeLastAdded } from './exercise-picker.js';
 import { openShareSheet } from '../share-image.js';
-import { createSetComposer, emptyReason } from '../set-composer.js';
+import { createSetComposer, composerConfig, emptyReason } from '../set-composer.js';
 import { t, tn } from '../i18n.js';
 import { groupColor } from '../muscle-group.js';
 import {
@@ -34,12 +33,9 @@ export async function render(view) {
     db.listWorkouts(),
   ]);
 
-  const cfg = db.settings();
   ctx = {
     workout,
-    unit: cfg.unit,
-    weightStep: weightStep(cfg.weightIncrement),
-    repsStep: Number(cfg.repsIncrement) || 1,
+    ...composerConfig(),
     exercises: new Map(exercises.map((e) => [e.id, e])),
     list: exercises,
     workouts: new Map(workouts.map((w) => [w.id, w])),

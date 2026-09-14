@@ -1,7 +1,6 @@
 /* Historico: lista de treinos e o detalhe de um treino. */
 
 import * as db from '../db.js';
-import { weightStep } from '../weight-step.js';
 import {
   workoutSummary, workoutGroupBreakdown, prSetIds, allPrIds, orderedWorkoutExercises, moveInOrder,
   workoutDeltas, bests,
@@ -9,7 +8,7 @@ import {
 import { exerciseBanner } from '../media.js';
 import { openShareSheet } from '../share-image.js';
 import { takeLastAdded } from './exercise-picker.js';
-import { createSetComposer, emptyReason } from '../set-composer.js';
+import { createSetComposer, composerConfig, emptyReason } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet, workoutRow, setLedger, signatureHtml,
@@ -138,12 +137,9 @@ export async function renderWorkout(view, workoutId) {
     lastWorkoutId = workoutId;
   }
 
-  const cfg = db.settings();
   ctx = {
     workoutId,
-    unit: cfg.unit,
-    weightStep: weightStep(cfg.weightIncrement),
-    repsStep: Number(cfg.repsIncrement) || 1,
+    ...composerConfig(),
     root: node('<div class="stack"></div>'),
   };
 

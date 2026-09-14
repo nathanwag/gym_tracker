@@ -21,3 +21,14 @@ export function parseWeightStep(value) {
 /** O passo a usar de fato numa tela de registro: o que esta gravado, ou o
  *  padrao quando ele nao serve (backup antigo, valor zerado a mao). */
 export const weightStep = (stored) => parseWeightStep(stored) ?? DEFAULT_STEP;
+
+export const DEFAULT_REPS_STEP = 1;
+
+/** O passo dos botoes +/- de reps. Mesma historia do weightStep, e mesmo
+ *  motivo pra existir: as duas telas que registram serie faziam
+ *  `Number(gravado) || 1` a mao, e um backup pode trazer qualquer coisa.
+ *  Reps e contagem — fracao trunca, nao arredonda. */
+export function repsStep(stored) {
+  const n = Math.floor(Number(stored));
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_REPS_STEP;
+}

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseWeightStep, weightStep, MIN_STEP, MAX_STEP } from './weight-step.js';
+import {
+  parseWeightStep, weightStep, repsStep, MIN_STEP, MAX_STEP,
+} from './weight-step.js';
 
 test('aceita vírgula decimal, como o teclado do celular oferece', () => {
   assert.equal(parseWeightStep('1,5'), 1.5);
@@ -38,4 +40,31 @@ test('weightStep cai no padrão quando o que está gravado não serve', () => {
   assert.equal(weightStep(undefined), 2.5);
   assert.equal(weightStep(0), 2.5);
   assert.equal(weightStep('1,5'), 1.5);
+});
+
+/* O passo de reps era `Number(cfg.repsIncrement) || 1` escrito a mao nas duas
+ * telas que registram serie — o gemeo nao-testado do weightStep, com o mesmo
+ * trabalho de sanear o que veio de um backup. */
+
+test('repsStep aceita a contagem gravada', () => {
+  assert.equal(repsStep(1), 1);
+  assert.equal(repsStep(2), 2);
+  assert.equal(repsStep(5), 5);
+});
+
+test('repsStep aceita string, que e o que um backup pode trazer', () => {
+  assert.equal(repsStep('2'), 2);
+});
+
+test('repsStep cai no padrao quando o gravado nao serve', () => {
+  assert.equal(repsStep(undefined), 1);
+  assert.equal(repsStep(null), 1);
+  assert.equal(repsStep(0), 1);
+  assert.equal(repsStep(-3), 1);
+  assert.equal(repsStep('abc'), 1);
+});
+
+/* Reps e contagem: meia repeticao nao existe no stepper. */
+test('repsStep trunca fracao', () => {
+  assert.equal(repsStep(2.7), 2);
 });

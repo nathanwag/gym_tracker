@@ -7,10 +7,26 @@
  */
 
 import { usesDuration } from './muscle-group.js';
+import * as db from './db.js';
+import { weightStep, repsStep } from './weight-step.js';
 import { t } from './i18n.js';
 import {
   html, raw, node, ICON, ariaBool, createStepper, createDurationStepper,
 } from './ui.js';
+
+/** O que o composer precisa dos ajustes, ja saneado.
+ *
+ *  Mora aqui porque e este modulo que consome os tres, e as duas telas que
+ *  registram serie derivavam os mesmos tres da mesma forma — uma terceira
+ *  repetiria de novo. Espalhe com `...composerConfig()` no ctx da tela. */
+export function composerConfig() {
+  const cfg = db.settings();
+  return {
+    unit: cfg.unit,
+    weightStep: weightStep(cfg.weightIncrement),
+    repsStep: repsStep(cfg.repsIncrement),
+  };
+}
 
 function defaultBase(timeBased, unilateral) {
   if (timeBased) return { durationSec: 60, warmup: false };
