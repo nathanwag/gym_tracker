@@ -74,3 +74,14 @@ export function parseGoal(text, min, max) {
   if (!Number.isFinite(n) || n < min || n > max) return null;
   return n;
 }
+
+/** Variacao do peso desde a PRIMEIRA pesagem ate a mais recente, sobre o log
+ *  que `weightLog` devolve (mais recente primeiro). `null` com menos de duas
+ *  medicoes — sem par nao ha variacao, e zero leria como "nao mudou".
+ *
+ *  Usa o mesmo round2 dos deltas por o mesmo motivo: a subtracao em ponto
+ *  flutuante inventa casas que o peso nao tem. */
+export function totalChange(log) {
+  if (!log || log.length < 2) return null;
+  return round2(log[0].weight - log[log.length - 1].weight);
+}

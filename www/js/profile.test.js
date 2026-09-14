@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  initials, daysSince, weightLog, parseBodyWeight, todayISO, parseGoal,
+  initials, daysSince, weightLog, totalChange, parseBodyWeight, todayISO, parseGoal,
 } from './profile.js';
 
 test('iniciais: primeiro e último nome', () => {
@@ -62,4 +62,32 @@ test('meta digitada: inteiro dentro do intervalo, ou null', () => {
   assert.equal(parseGoal('31', 1, 30), null);
   assert.equal(parseGoal('', 1, 30), null);
   assert.equal(parseGoal('abc', 1, 30), null);
+});
+
+/* A variacao desde a primeira pesagem. Estava escrita a mao em
+ * views/body-weight.js, com o mesmo Math.round(x * 100) / 100 que o round2
+ * daqui ja fazia por dentro do weightLog — mesmo trap de ponto flutuante,
+ * copiado pro arquivo que nao tem teste. */
+
+test('totalChange mede da primeira pesagem ate a mais recente', () => {
+  const log = weightLog([
+    { date: '2026-01-01', weight: 80 },
+    { date: '2026-02-01', weight: 78.5 },
+  ]);
+  assert.equal(totalChange(log), -1.5);
+});
+
+test('totalChange arredonda o lixo que a subtracao inventa', () => {
+  const log = weightLog([
+    { date: '2026-01-01', weight: 79.2 },
+    { date: '2026-02-01', weight: 78.4 },
+  ]);
+  assert.equal(totalChange(log), -0.8);
+});
+
+/* Uma pesagem so nao tem com o que comparar: a tela mostra o espaco vazio em
+ * vez de zero, que leria como "nao mudou". */
+test('totalChange e null com menos de duas pesagens', () => {
+  assert.equal(totalChange(weightLog([{ date: '2026-01-01', weight: 80 }])), null);
+  assert.equal(totalChange([]), null);
 });

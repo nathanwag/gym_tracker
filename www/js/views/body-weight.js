@@ -9,7 +9,7 @@
 
 import * as db from '../db.js';
 import {
-  weightLog, daysSince, parseBodyWeight, todayISO,
+  weightLog, daysSince, totalChange, parseBodyWeight, todayISO,
 } from '../profile.js';
 import { lineChart } from '../charts.js';
 import { t, tn } from '../i18n.js';
@@ -31,8 +31,7 @@ export async function render(view) {
   } else {
     const [latest] = log;
     const days = daysSince(latest.date);
-    const oldest = log[log.length - 1];
-    const change = Math.round((latest.weight - oldest.weight) * 100) / 100;
+    const change = totalChange(log);
 
     root.append(node(html`
       <div>
@@ -42,7 +41,7 @@ export async function render(view) {
         </div>
         <div class="week__sub">
           <span>${days === 0 ? t('weight.measuredToday') : t('weight.measuredAgo', { when: tn('common.daysAgo', days) })}</span>
-          ${log.length > 1 ? raw(html`
+          ${change != null ? raw(html`
             <span class="${change < 0 ? 'weight-down' : change > 0 ? 'weight-up' : ''}">
               <span class="data">${change > 0 ? '+' : ''}${fmtNum(change, 1)}</span> ${t('weight.sinceFirst', { unit })}
             </span>`) : ''}
