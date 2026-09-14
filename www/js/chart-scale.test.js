@@ -46,11 +46,15 @@ test('valores todos iguais abrem um intervalo em volta', () => {
   assert.deepEqual(ticks, [70, 80, 90]);
 });
 
-test('os ticks vao de min a max, de passo em passo', () => {
-  const { min, max, step, ticks } = yScale([100, 130]);
-  assert.equal(ticks[0], min);
-  assert.equal(ticks.at(-1), max);
-  for (let i = 1; i < ticks.length; i += 1) {
-    assert.equal(Math.round((ticks[i] - ticks[i - 1]) * 1e9) / 1e9, step);
-  }
+/* O ultimo tick, quando o passo e fracionario.
+ *
+ * Somar 0.01 cinco vezes chega em 0.060000000000000005, um fio ACIMA do
+ * teto 0.06 — sem a folga de 1e-9 na condicao do laco, a linha de topo do
+ * grafico fica sem grade e sem rotulo. Este caso falha se a folga sair. */
+test('o tick do teto sobrevive a soma de um passo fracionario', () => {
+  const { ticks } = yScale([0.03, 0.05]);
+  assert.deepEqual(
+    ticks.map((t) => Math.round(t * 1000) / 1000),
+    [0.02, 0.03, 0.04, 0.05, 0.06],
+  );
 });
