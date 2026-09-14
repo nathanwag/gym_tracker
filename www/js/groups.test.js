@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   CANONICAL_GROUPS, groupSlug, uniqueGroupSlug, groupSlugFor, themeVariant, FALLBACK_GROUP, GROUP_LABELS_EN, groupsForRestore,
-  inkOn, groupInitials,
+  inkOn, groupInitials, groupBy,
 } from './groups.js';
 
 /* Os slugs dos 17 nao podem mudar: a rota #/progresso/<slug> ja os serve, e
@@ -290,4 +290,44 @@ test('os 17 rotulos dao 17 siglas distintas, em portugues e em ingles', () => {
     for (const label of labels) taken.push(groupInitials(label, taken));
     assert.equal(new Set(taken).size, 17, `colidiu: ${taken.join(' ')}`);
   }
+});
+
+/* groupBy recebe a ordem por parametro, no molde de sectionsByEquipment em
+ * equipment.js. Antes ela era a lista fixa MUSCLE_GROUPS, com os nomes em
+ * portugues — e como o exercicio passou a gravar slug na v7, a comparacao
+ * nunca casava e a ordem anatomica tinha virado ordem de insercao. */
+const ORDER = SLUGS;
+
+test('groupBy ordena pela ordem dada, nao pela de insercao', () => {
+  const items = [
+    { name: 'Rosca direta', group: 'biceps' },
+    { name: 'Supino reto', group: 'peito' },
+    { name: 'Agachamento', group: 'quadriceps' },
+    { name: 'Barra fixa', group: 'costas' },
+  ];
+  assert.deepEqual(
+    groupBy(items, (i) => i.group, ORDER).map((g) => g.group),
+    ['peito', 'costas', 'biceps', 'quadriceps'],
+  );
+});
+
+test('groupBy poe no fim o grupo que nao esta na ordem, em vez de some-lo', () => {
+  const items = [
+    { group: 'cadeia-posterior' },
+    { group: 'peito' },
+  ];
+  assert.deepEqual(
+    groupBy(items, (i) => i.group, ORDER).map((g) => g.group),
+    ['peito', 'cadeia-posterior'],
+  );
+});
+
+test('groupBy nao devolve grupo sem item', () => {
+  const groups = groupBy([{ group: 'peito' }], (i) => i.group, ORDER);
+  assert.deepEqual(groups, [{ group: 'peito', items: [{ group: 'peito' }] }]);
+});
+
+test('groupBy mantem a ordem original dos itens dentro do grupo', () => {
+  const items = [{ group: 'peito', n: 1 }, { group: 'peito', n: 2 }];
+  assert.deepEqual(groupBy(items, (i) => i.group, ORDER)[0].items.map((i) => i.n), [1, 2]);
 });

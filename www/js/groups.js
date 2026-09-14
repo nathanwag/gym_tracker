@@ -264,3 +264,27 @@ export function groupInitials(label, taken = []) {
     if (!used.has(`${base}${n}`)) return `${base}${n}`;
   }
 }
+
+/** Agrupa `items` pela chave que `groupOf` devolve, na ordem de `order`.
+ *
+ *  A ordem entra por parametro, e nao sai de uma lista aqui dentro, porque a
+ *  verdade dela e `db.groups()` — que muda quando o usuario cria ou reordena
+ *  grupo. Mesmo motivo de `sectionsByEquipment` receber `min`: quem sabe o
+ *  contexto e quem chama. Enquanto a lista era fixa e em portugues, ela nunca
+ *  casava com o slug que o exercicio grava desde a v7, e a ordem anatomica
+ *  tinha silenciosamente virado ordem de insercao.
+ *
+ *  Chave fora de `order` (grupo apagado, dado antigo) sai no fim em vez de
+ *  sumir. Grupo sem item nao aparece. */
+export function groupBy(items, groupOf, order = []) {
+  const byGroup = new Map();
+  for (const item of items) {
+    const group = groupOf(item);
+    if (!byGroup.has(group)) byGroup.set(group, []);
+    byGroup.get(group).push(item);
+  }
+  const rest = [...byGroup.keys()].filter((g) => !order.includes(g));
+  return [...order, ...rest]
+    .map((group) => ({ group, items: byGroup.get(group) }))
+    .filter((g) => g.items?.length);
+}
