@@ -52,7 +52,10 @@ export function tn(key, n, vars) {
 
 // Checagem de desenvolvimento: os dois idiomas devem ter o mesmo conjunto de
 // chaves. Roda so uma vez, no carregamento do modulo.
-if (location.hostname === 'localhost') {
+// O `typeof` nao e defensivo a toa: sem ele, `location` no escopo do modulo da
+// ReferenceError sob `node --test`, e como i18n.js e importado por 22 dos 32
+// modulos, isso sozinho tornava quase tudo incarregavel fora do browser.
+if (typeof location !== 'undefined' && location.hostname === 'localhost') {
   const ptKeys = new Set(Object.keys(DICT.pt || {}));
   const enKeys = new Set(Object.keys(DICT.en || {}));
   const missingInEn = [...ptKeys].filter((k) => !enKeys.has(k));
