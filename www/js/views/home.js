@@ -22,9 +22,9 @@ import {
 import { lineChart } from '../charts.js';
 import { workoutListNode } from './history.js';
 import { t, tn } from '../i18n.js';
-import { groupLabel } from '../seed.js';
+import { groupLabel, groupColor } from '../muscle-group.js';
 import {
-  setTop, html, raw, node, ICON, groupColor, wireSegmented,
+  setTop, html, raw, node, ICON, wireSegmented,
   fmtNum, fmtDateRange, fmtMinutes,
 } from '../ui.js';
 

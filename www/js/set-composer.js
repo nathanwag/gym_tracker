@@ -6,7 +6,7 @@
  * pelos dois editores de proposito: e o mesmo formulario, com os mesmos rotulos.
  */
 
-import { usesDuration } from './seed.js';
+import { usesDuration } from './muscle-group.js';
 import { t } from './i18n.js';
 import {
   html, raw, node, ICON, ariaBool, createStepper, createDurationStepper,

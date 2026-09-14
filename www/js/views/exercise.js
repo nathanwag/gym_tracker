@@ -7,8 +7,8 @@ import {
   exerciseProgressRows,
 } from '../models.js';
 import {
-  groupLabel, usesDuration,
-} from '../seed.js';
+  groupLabel, usesDuration, exerciseMetric, groupColor, groupIcon,
+} from '../muscle-group.js';
 import { groupSlugFor } from '../groups.js';
 import { lineChart } from '../charts.js';
 import * as catalog from '../catalog.js';
@@ -23,7 +23,7 @@ import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtRelativeDay, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
   fmtSet, fmtSetWithUnit, stripAccents, refresh, wireSegmented, infoRow,
-  listInCard, groupColor, groupIcon, groupField, lastDoneLabel,
+  listInCard, groupField, lastDoneLabel,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -287,7 +287,7 @@ async function libraryData() {
   ]);
   const progress = new Map(exerciseProgressRows(
     sets, new Map(workouts.map((w) => [w.id, w])), exercises,
-    (ex) => (usesDuration(ex.muscleGroup) ? 'totalDuration' : 'bestE1rm'),
+    exerciseMetric,
   ).map((r) => [r.exercise.id, r]));
 
   return { exercises, unit: db.settings().unit, progress };

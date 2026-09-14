@@ -24,9 +24,11 @@ import {
 import { lineChart } from '../charts.js';
 import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
-import { groupLabel, usesDuration } from '../seed.js';
 import {
-  setTop, html, raw, node, ICON, groupColor, wireSegmented,
+  groupLabel, usesDuration, groupMetric, exerciseMetric, groupColor,
+} from '../muscle-group.js';
+import {
+  setTop, html, raw, node, ICON, wireSegmented,
   fmtNum, fmtDate, fmtDateShort, fmtTempoSerie, fmtSet, lastDoneLabel,
 } from '../ui.js';
 
@@ -65,8 +67,7 @@ async function loadGroups() {
   for (const { slug: group } of db.groups()) {
     const summaries = groupSessionSummaries(sets, workoutsById, exercisesById, group);
     if (!summaries.length) continue;
-    // Cardio/alongamento nao tem carga: o analogo do volume e o tempo total.
-    const field = usesDuration(group) ? 'totalDuration' : 'volume';
+    const field = groupMetric(group);
     rows.push({
       group,
       summaries,
@@ -183,8 +184,7 @@ export async function render(view) {
 function exerciseSection(sets, workoutsById, exercises, unit) {
   const rows = exerciseProgressRows(
     sets, workoutsById, exercises,
-    // Cardio/alongamento nao tem carga: o analogo do e1RM e o tempo total.
-    (ex) => (usesDuration(ex.muscleGroup) ? 'totalDuration' : 'bestE1rm'),
+    exerciseMetric,
   );
   if (!rows.length) return node('<div></div>');
 

@@ -12,19 +12,16 @@
 import * as db from '../db.js';
 import { themeVariant, FALLBACK_GROUP } from '../groups.js';
 import { t, tn } from '../i18n.js';
-import { groupLabel } from '../seed.js';
+import { groupLabel, groupIcon, repaintGroups } from '../muscle-group.js';
 import {
-  setTop, html, raw, node, ICON, groupIcon, listInCard, applyGroupTokens,
+  setTop, html, raw, node, ICON, listInCard,
   openSheet, closeSheet, toast, confirmSheet, refresh,
 } from '../ui.js';
 
-/** Regrava os --m-* e redesenha. Sem o primeiro passo um grupo recem-criado
- *  nasce sem cor: `groupColor()` devolve var(--m-<slug>) e o token so existe
- *  se `applyGroupTokens` tiver rodado depois da escrita — o bootstrap sozinho
- *  nao alcanca o que foi criado agora. */
+/** Regrava os --m-* e redesenha. O primeiro passo mora em `repaintGroups`,
+ *  junto da escrita: o bootstrap sozinho nao alcanca o grupo criado agora. */
 async function repaint() {
-  await db.listGroups();
-  applyGroupTokens();
+  await repaintGroups();
   refresh();
 }
 

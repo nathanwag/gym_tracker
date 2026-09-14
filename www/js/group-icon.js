@@ -107,7 +107,8 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({
  *  `color` e `ink` chegam como string de CSS (`var(--m-peito)`,
  *  `var(--ink-peito)`) e nao como hex: assim a mesma marcacao serve nos dois
  *  temas e trocar de tema continua sendo cascata, nao JS — igual a
- *  `groupColor()`. Quem gera os dois tokens e `applyGroupTokens()`.
+ *  `groupColor()`. Quem gera os dois tokens e `groupTokensCss()`, em
+ *  muscle-group.js.
  *
  *  `initials` so e usado quando o grupo nao tem pictograma, que hoje e
  *  exatamente o caso do grupo criado pelo usuario. */

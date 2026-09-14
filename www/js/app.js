@@ -5,8 +5,8 @@
 
 import {
   $, initSheet, openSheet, closeSheet, html, raw, node, refresh, ICON, listInCard,
-  applyGroupTokens,
 } from './ui.js';
+import { repaintGroups } from './muscle-group.js';
 import { t, tn } from './i18n.js';
 import * as db from './db.js';
 import { precacheMedia } from './media.js';
@@ -288,10 +288,9 @@ async function boot() {
 
   applyTheme(db.settings().theme);
   // Antes do primeiro render: a cor de cada grupo agora e dado, e toda tela
-  // pinta alguma coisa com ela. `applyGroupTokens` escreve os --m-* por cima
-  // dos de styles.css, que ficaram sendo so o valor inicial.
-  await db.listGroups();
-  applyGroupTokens();
+  // pinta alguma coisa com ela. Escreve os --m-* por cima dos de styles.css,
+  // que ficaram sendo so o valor inicial.
+  await repaintGroups();
   applyStaticLanguage();
   await router();
   await registerServiceWorker();

@@ -11,8 +11,8 @@
  */
 
 import * as db from './db.js';
-import { groupIcon, html, raw, esc, node, groupColor } from './ui.js';
-import { groupLabel } from './seed.js';
+import { html, raw, esc, node } from './ui.js';
+import { groupLabel, groupIcon, groupColor } from './muscle-group.js';
 import { t } from './i18n.js';
 
 // Precisa bater com MEDIA_CACHE em sw.js — o service worker e classico

@@ -15,9 +15,10 @@ import { takeLastAdded } from './exercise-picker.js';
 import { openShareSheet } from '../share-image.js';
 import { createSetComposer, isEmptySet } from '../set-composer.js';
 import { t, tn } from '../i18n.js';
+import { groupColor } from '../muscle-group.js';
 import {
   setTop, html, raw, node, ICON, toast, setLedger, workingCount,
-  confirmSheet, fmtNum, fmtDuration, buzz, groupColor,
+  confirmSheet, fmtNum, fmtDuration, buzz,
 } from '../ui.js';
 
 /** Estado da tela. Recriado a cada render; as telas nao compartilham estado. */

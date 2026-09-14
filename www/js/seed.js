@@ -1,7 +1,13 @@
-/* SEED_EXERCISES nao popula mais a biblioteca sozinho — ela comeca vazia, e o
- * usuario adiciona do catalogo de 873 (#/catalogo) ou a mao (botao "Novo").
- * O que sobra de uso real aqui e slugByName(): da figura a exercicios de quem
- * ja usava o app antes do `slug` existir, casando pelo nome.
+/* Tabela nome -> slug dos exercicios que o app conhecia antes do catalogo.
+ *
+ * NAO popula a biblioteca: ela comeca vazia, e o usuario adiciona do catalogo
+ * de 873 ou a mao. O unico uso real e slugByName(), que da figura a quem criou
+ * exercicio antes do `slug` existir, casando pelo nome.
+ *
+ * Grupo muscular saiu daqui: rotulo, duracao e ordem vivem em
+ * muscle-group.js, e o agrupamento em groups.js. Enquanto moravam neste
+ * arquivo eram incarregaveis sob `node --test`, e a ordem anatomica de
+ * groupBy quebrou em silencio por causa disso.
  *
  * O `slug` liga o exercicio a suas figuras em www/img/ex/ e a entrada do
  * catalogo em www/data/catalogo.json. Precisa ser estavel: o `id` do banco e
@@ -14,59 +20,6 @@
  */
 
 import { normalizeName } from './text.js';
-import { language } from './i18n.js';
-// Ciclo db -> seed -> db, como i18n.js ja faz: so chamamos db dentro de
-// funcao, nunca na inicializacao do modulo, entao o binding ja esta pronto.
-import * as db from './db.js';
-import { groupSlugFor, GROUP_LABELS_EN } from './groups.js';
-
-export const MUSCLE_GROUPS = [
-  'Peito',
-  'Costas',
-  'Lombar',
-  'Ombros',
-  'Trapézio',
-  'Pescoço',
-  'Bíceps',
-  'Tríceps',
-  'Quadríceps',
-  'Posterior',
-  'Glúteos',
-  'Panturrilha',
-  'Abdômen',
-  'Antebraço',
-  'Cardio',
-  'Alongamento',
-  'Outros',
-];
-
-// Cardio e alongamento nao usam peso/repeticoes: a serie e registrada como
-// duracao (ver session.js/models.js).
-/** true quando a serie do grupo e gravada como duracao, nao peso x reps.
- *  Era um conjunto fechado no codigo; virou campo do grupo pra que um grupo
- *  criado pelo usuario tambem possa se declarar assim. */
-export const usesDuration = (muscleGroup) => Boolean(findGroup(muscleGroup)?.usesDuration);
-
-
-/** Nome do grupo pra exibir na tela, no idioma ativo. `group` continua sendo
- *  a chave canonica (portugues) usada para gravar/comparar — so o texto
- *  mostrado muda. Use isto em todo lugar que hoje imprime `${group}` como
- *  texto; em `<select>`, o `value` do `<option>` continua o `group` original,
- *  so o texto visivel passa por aqui. */
-export function groupLabel(group) {
-  const record = findGroup(group);
-  if (!record) return group;
-  return language() === 'en' ? (GROUP_LABELS_EN[record.slug] || record.name) : record.name;
-}
-
-/** Aceita slug ('peito') ou o nome em portugues que o catalogo grava
- *  ('Peito'): as duas telas chamam as mesmas funcoes de cor e rotulo, e
- *  `catalogo.json` e dado commitado que nao migra junto com o banco. */
-function findGroup(value) {
-  if (!value) return null;
-  const slug = groupSlugFor(value);
-  return db.groups().find((g) => g.slug === slug) || null;
-}
 
 export const SEED_EXERCISES = {
   'Peito': [
@@ -170,23 +123,6 @@ export const SEED_EXERCISES = {
     { name: 'Farmer walk', slug: 'farmers-walk' },
   ],
 };
-
-/** Agrupa `items` pela chave que `groupOf` devolve, na ordem anatomica de
- *  MUSCLE_GROUPS; um grupo que nao esteja em MUSCLE_GROUPS (dado antigo,
- *  borda) sai no fim em vez de sumir. Grupos sem nenhum item nao aparecem no
- *  resultado. */
-export function groupBy(items, groupOf) {
-  const byGroup = new Map();
-  for (const item of items) {
-    const group = groupOf(item);
-    if (!byGroup.has(group)) byGroup.set(group, []);
-    byGroup.get(group).push(item);
-  }
-  const order = [...MUSCLE_GROUPS, ...[...byGroup.keys()].filter((g) => !MUSCLE_GROUPS.includes(g))];
-  return order
-    .map((group) => ({ group, items: byGroup.get(group) }))
-    .filter((g) => g.items?.length);
-}
 
 /** Nome normalizado -> slug, para dar figura a quem foi criado antes do catalogo.
  *  Memoizado: a migracao do banco chama isto de dentro de uma transacao, onde

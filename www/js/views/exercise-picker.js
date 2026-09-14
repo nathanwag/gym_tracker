@@ -13,11 +13,12 @@
 
 import * as db from '../db.js';
 import * as catalog from '../catalog.js';
-import { groupBy, groupLabel } from '../seed.js';
+import { groupBy } from '../groups.js';
+import { groupLabel, groupIcon, groupOrder } from '../muscle-group.js';
 import { thumbHtml, prefetchPhotos, preloadCustomThumbs } from '../media.js';
 import { t } from '../i18n.js';
 import {
-  html, raw, node, ICON, groupIcon, toast, setTop, openSheet, closeSheet, goBack,
+  html, raw, node, ICON, toast, setTop, openSheet, closeSheet, goBack,
   stripAccents, listInCard, groupField,
 } from '../ui.js';
 
@@ -191,9 +192,10 @@ async function renderPicker({
       return;
     }
 
-    // Etapa 1: os grupos, na ordem anatomica de MUSCLE_GROUPS.
+    // Etapa 1: os grupos, na ordem anatomica — que e a de db.groups(), nao
+    // uma lista no codigo: o usuario pode criar e reordenar grupo.
     const grid = node('<div class="tiles"></div>');
-    for (const { group, items } of groupBy(exercises, (e) => e.muscleGroup)) {
+    for (const { group, items } of groupBy(exercises, (e) => e.muscleGroup, groupOrder())) {
       const tile = node(html`
         <button class="tile" type="button">
           <span class="tile__icon" aria-hidden="true">${raw(groupIcon(group))}</span>

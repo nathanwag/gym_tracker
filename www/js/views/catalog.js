@@ -9,7 +9,7 @@
 
 import * as catalog from '../catalog.js';
 import * as db from '../db.js';
-import { groupLabel } from '../seed.js';
+import { groupLabel } from '../muscle-group.js';
 import {
   createAnimation, prefetchPhotos, fullUrl,
 } from '../media.js';

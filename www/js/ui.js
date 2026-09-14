@@ -6,10 +6,10 @@ import { t, tn, locale } from './i18n.js';
 import {
   isDurationSet, isUnilateralSet, setE1rm, workoutGroupBreakdown, workoutSummary,
 } from './models.js';
-import { groupLabel, usesDuration } from './seed.js';
-import * as db from './db.js';
-import { groupSlugFor, inkOn, groupInitials } from './groups.js';
-import { POSES, plateIcon } from './group-icon.js';
+import {
+  groupLabel, usesDuration, groupColor, groupIcon, allGroups,
+} from './muscle-group.js';
+import { groupSlugFor } from './groups.js';
 
 /** Nome do app. Nao passa por t(): e nome proprio, igual nos dois idiomas. */
 export const APP_NAME = 'Anilha';
@@ -494,46 +494,6 @@ export const ICON = {
   scale: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8.5h15l1.5 11H3zM9 8.5a3 3 0 016 0"/><path d="M8.5 12.5h7"/></svg>',
 };
 
-/* ---------- Cor por grupo muscular ----------
- * A chave e o valor gravado no banco (sempre em portugues); o sufixo e o nome
- * da variavel CSS, sem acento. Tem que casar com MUSCLE_GROUPS em seed.js e
- * com os tokens --m-* em styles.css.
- *
- * Devolve `var(--m-x)` em vez do hex: assim a mesma chamada serve nos dois
- * temas, sem a view saber qual esta ativo. */
-export const groupColor = (group) => `var(--m-${groupSlugFor(group)})`;
-
-/* Os tokens --m-* de styles.css deixam de ser a verdade e viram so o valor
- * inicial: a cor agora e dado, e o usuario pode troca-la. Este <style> repete
- * a MESMA cascata de tres blocos do CSS (claro; escuro por preferencia do
- * sistema quando o tema nao esta travado em claro; escuro explicito) para que
- * `groupColor()` continue devolvendo var() e trocar de tema continue sendo
- * coisa do CSS, nao do JS. Entra no fim do <head>, entao vence styles.css por
- * ordem, com a mesma especificidade. */
-export function applyGroupTokens() {
-  const groups = db.groups();
-  /* Dois tokens por grupo, nao um: a cor da anilha e a TINTA do pictograma
-     vazado nela. A tinta tem que trocar junto com o tema pelo mesmo motivo
-     que a cor — a paleta escura vai de #1c3a63 a #9aa1ab, e a tinta legivel
-     sobre uma nao e legivel sobre a outra. Calculando as duas aqui, o SVG
-     continua so citando var() e trocar de tema segue sendo cascata. */
-  const vars = (key) => groups
-    .map((g) => `--m-${g.slug}:${g[key]};--ink-${g.slug}:${inkOn(g[key])}`)
-    .join(';');
-  const light = vars('colorLight');
-  const dark = vars('colorDark');
-
-  let tag = document.getElementById('group-tokens');
-  if (!tag) {
-    tag = document.createElement('style');
-    tag.id = 'group-tokens';
-    document.head.append(tag);
-  }
-  tag.textContent = `:root{${light}}`
-    + `@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${dark}}}`
-    + `:root[data-theme="dark"]{${dark}}`;
-}
-
 /** A barra de assinatura de um treino: uma faixa por grupo, larga na
  *  proporcao das series. E o que faz um dia de perna ser reconhecivel de um
  *  de peito na lista do historico, sem ler uma palavra. */
@@ -543,54 +503,6 @@ export function signatureHtml(breakdown) {
     .map((g) => `<span class="sig__seg" style="flex:${g.sets};background:${groupColor(g.group)}"></span>`)
     .join('');
   return `<span class="sig" aria-hidden="true">${segs}</span>`;
-}
-
-/* Icone por grupo muscular: uma anilha na cor do grupo, com o pictograma do
- * gesto vazado nela. Aparece no indice de grupos, na tela de grupos, na grade
- * do seletor e como camada atras da foto do exercicio.
- *
- * O conjunto anterior era UMA silhueta com uma mancha mudando de lugar, e a
- * 22 px a mancha andava menos de dois pixels entre vizinhos: Ombros/Trapezio,
- * Biceps/Triceps e Quadriceps/Posterior liam identicos. Gesto conserta porque
- * cada pose tem silhueta inteira propria. O desenho mora em `group-icon.js`,
- * que e puro e testado; aqui fica so a ligacao com quem sabe cor e rotulo.
- *
- * A cor continua sendo legenda de FAMILIA e o pictograma passa a identificar o
- * grupo — por isso a paleta nao precisou mudar, e as barras e a assinatura do
- * treino seguem lendo como sempre.
- */
-
-/* A sigla do grupo que nao tem pictograma, resolvida contra as siglas dos
- * outros que tambem nao tem.
- *
- * Percorre `db.groups()` na ordem e desempata acumulando, em vez de comparar
- * cada um contra todos: se A desempatasse contra B e B contra A, os dois
- * chegariam no mesmo sufixo e voltariam a colidir. Leitura sincrona do cache,
- * como `db.settings()`. */
-function groupSigla(slug) {
-  const taken = [];
-  for (const g of db.groups()) {
-    if (POSES[g.slug]) continue;
-    const sigla = groupInitials(groupLabel(g.slug), taken);
-    taken.push(sigla);
-    if (g.slug === slug) return sigla;
-  }
-  return groupInitials(groupLabel(slug), taken);
-}
-
-/** Icone do grupo. Aceita slug ou o nome em portugues do catalogo, como
- *  groupColor e groupLabel.
- *
- *  Grupo criado pelo usuario nao tem gesto, entao cai na anilha com a sigla —
- *  a excecao "grupo novo nasce sem desenho" deixou de existir. */
-export function groupIcon(group) {
-  const slug = groupSlugFor(group);
-  return plateIcon({
-    slug,
-    color: groupColor(slug),
-    ink: `var(--ink-${slug})`,
-    initials: POSES[slug] ? null : groupSigla(slug),
-  });
 }
 
 /** Dia do mes e abreviacao do dia da semana (ou do mes), pro bloco de data da
@@ -647,7 +559,7 @@ export function workoutRow(workout, sets, exercisesById, { unit, prCount = 0, ba
 
 /** Campo "grupo muscular" dos formularios de exercicio. Estava copiado em
  *  quatro telas (catalogo, seletor, criar e editar exercicio) — a lista de
- *  MUSCLE_GROUPS montada a mao nas quatro, com a mesma `selected` no meio.
+ *  lista de grupos montada a mao nas quatro, com a mesma `selected` no meio.
  *
  *  Segue sendo `<select>` nativo, e nao pickSheet: aqui ele e um CAMPO de
  *  formulario, ao lado de um <input> de texto com a mesma moldura. pickSheet e
@@ -655,7 +567,7 @@ export function workoutRow(workout, sets, exercisesById, { unit, prCount = 0, ba
  *  de campo nao existiria pra dar contexto. */
 export function groupField(selected = null, { grow = false } = {}) {
   const chosen = selected ? groupSlugFor(selected) : null;
-  const options = db.groups()
+  const options = allGroups()
     .map((g) => `<option value="${esc(g.slug)}"${g.slug === chosen ? ' selected' : ''}>${esc(groupLabel(g.slug))}</option>`)
     .join('');
   return `

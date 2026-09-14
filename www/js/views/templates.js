@@ -10,7 +10,8 @@
 
 import * as db from '../db.js';
 import { moveInOrder, existingInOrder } from '../models.js';
-import { groupBy, groupLabel } from '../seed.js';
+import { groupBy } from '../groups.js';
+import { groupLabel, groupOrder } from '../muscle-group.js';
 import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
 import {
@@ -57,7 +58,7 @@ function templateItem(template, byId) {
   const items = existingInOrder(template.exerciseIds, byId.keys()).map((id) => byId.get(id));
   // Os grupos por extenso e na ordem anatomica: e o que diz de relance se este
   // e o dia de peito ou o de perna, sem abrir o modelo.
-  const groups = groupBy(items, (e) => e.muscleGroup).map(({ group }) => groupLabel(group));
+  const groups = groupBy(items, (e) => e.muscleGroup, groupOrder()).map(({ group }) => groupLabel(group));
 
   return node(html`
     <li class="list__item">
