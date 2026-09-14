@@ -39,7 +39,7 @@ prática é o preenchimento (ação primária é sólida, destrutiva é contorno
 ### Cor por grupo muscular
 
 `--m-peito`, `--m-costas`, … em `styles.css`, com **`groupColor(grupo)`** em
-`ui.js` devolvendo `var(--m-x)` — a mesma chamada serve nos dois temas, sem a
+`muscle-group.js` devolvendo `var(--m-x)` — a mesma chamada serve nos dois temas, sem a
 view saber qual está ativo.
 
 **Três famílias, não dezessete matizes soltos:**
@@ -149,17 +149,16 @@ Antes de criar a sexta, pergunte qual coluna é diferente. Se a resposta for
   inertes (leitura); presente as torna tocáveis. `ghost` é a série do treino
   anterior na posição da próxima.
 - `exerciseBanner()` (`media.js`) — cabeçalho com foto. `actions` muda por tela.
-- `signatureHtml()`, `groupColor()` (`ui.js`).
-- `pickSheet()` (`ui.js`) — escolher um valor entre poucos. Ver "Nada de menu
-  do sistema" abaixo.
+- `signatureHtml()` (`ui.js`), `groupColor()` (`muscle-group.js`).
+- `pickSheet()` — escolher um valor entre poucos. Privado de `ui.js`: quem
+  usa de fora usa `pickerRow()`. Ver "Nada de menu do sistema" abaixo.
 - `pickerRow()` / `infoRow()` (`ui.js`) — as linhas de ajuste. Moravam em
   `views/settings.js`; subiram quando o Perfil passou a desenhar as mesmas.
 - `numberSheet()` (`ui.js`) — a folha de um campo só, para ajuste que é número.
   `parse` devolve o valor ou `null`, e é a dica embaixo do campo que vira o
   recado do erro.
 - `groupField()` (`ui.js`) — o campo "grupo muscular" dos formulários. Estava
-  copiado em quatro telas com a lista de `MUSCLE_GROUPS` montada à mão nas
-  quatro.
+  copiado em quatro telas, com a lista de grupos montada à mão nas quatro.
 - `exerciseProgressRows()` (`models.js`) — a lista de exercícios com índice.
   Reusa `groupIndex()` em vez de ter a sua própria conta: grupo e exercício
   aparecem um embaixo do outro na mesma tela, e duas noções de "andou pra
@@ -288,10 +287,11 @@ Se ela já está respondida em outra linha, o número pertence àquela tela.
 ## Regras que quebram em silêncio
 
 - **A cor do grupo vive no banco, e o token só existe depois de
-  `applyGroupTokens()`** (`ui.js`). Ela gera um `<style>` que repete a cascata
-  de três blocos do `styles.css`, e roda no bootstrap **e depois de toda
-  escrita em grupo** — sem o segundo, um grupo recém-criado aparece sem cor
-  nenhuma, sem erro. Os `--m-*` do `styles.css` são só o valor inicial.
+  `repaintGroups()`** (`muscle-group.js`). Ele gera um `<style>` que repete a
+  cascata de três blocos do `styles.css` (a cascata é `groupTokensCss()`,
+  pura e testada), e roda no bootstrap **e depois de toda escrita em grupo**,
+  restauração de backup inclusive — sem isso, um grupo recém-criado aparece
+  sem cor nenhuma, sem erro. Os `--m-*` do `styles.css` são só o valor inicial.
 - **Grupo criado pelo usuário ganha a anilha com a sigla.** Os 17 têm
   pictograma; quem não tem cai em `groupInitials()`, derivada do rótulo
   exibido. Ninguém fica sem desenho.

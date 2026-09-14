@@ -559,7 +559,7 @@ export function workoutRow(workout, sets, exercisesById, { unit, prCount = 0, ba
 
 /** Campo "grupo muscular" dos formularios de exercicio. Estava copiado em
  *  quatro telas (catalogo, seletor, criar e editar exercicio) — a lista de
- *  lista de grupos montada a mao nas quatro, com a mesma `selected` no meio.
+ *  grupos montada a mao nas quatro, com a mesma `selected` no meio.
  *
  *  Segue sendo `<select>` nativo, e nao pickSheet: aqui ele e um CAMPO de
  *  formulario, ao lado de um <input> de texto com a mesma moldura. pickSheet e
@@ -710,8 +710,6 @@ export function buzz(ms = 12) {
   try { navigator.vibrate?.(ms); } catch { /* sem suporte */ }
 }
 
-
-
 /* ---------- Plataforma ---------- */
 
 export function isIOS() {
@@ -777,8 +775,8 @@ export function createStepper({
 }
 
 /**
- * Par de steppers min+seg pra series de Cardio/Alongamento (ver
- * DURATION_GROUPS em seed.js), que guardam duracao em vez de peso/reps.
+ * Par de steppers min+seg pra series de grupo medido em tempo (ver
+ * `usesDuration` em muscle-group.js), que guardam duracao em vez de peso.
  * Mesmo contrato de createStepper — get()/set() trabalham em segundos
  * totais — pra nao exigir tratamento especial nos call sites que hoje
  * esperam {el, get, set, focus}.

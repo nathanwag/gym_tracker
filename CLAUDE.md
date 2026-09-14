@@ -53,7 +53,9 @@ node --test --test-name-pattern="unilateral"    # por nome
 Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`).
 
 **Todo módulo de `www/js/` carrega sob `node --test`**, inclusive `db.js`,
-`ui.js` e as views. Já não foi assim: `i18n.js` lia `location` no escopo do
+`ui.js` e as 14 views — a única exceção é `app.js`, que lê `window` no
+escopo do módulo e chama `boot()` ao carregar, de propósito: ele é o ponto
+de entrada, não uma peça reutilizável. Já não foi assim: `i18n.js` lia `location` no escopo do
 módulo, numa checagem de paridade de chaves só de desenvolvimento, e como 22
 dos 32 módulos o importam, quase nada carregava fora do browser. Hoje a linha
 tem `typeof location !== 'undefined'` — **não tire o guard**, ele é o que

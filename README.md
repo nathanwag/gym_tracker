@@ -132,10 +132,13 @@ www/                     o app (e o webDir do Capacitor)
    ├─ catalog.js         única camada que lê www/data/
    ├─ media.js           figuras: URL, miniatura, animação de 2 frames
    ├─ models.js          1RM, volume, detecção de recordes
-   ├─ groups.js          grupos musculares: slug estável, cores, semente
-   ├─ seed.js            biblioteca inicial de exercícios
+   ├─ groups.js          grupos: slug estável, cor, sigla, semente (puro)
+   ├─ muscle-group.js    a porta do grupo: rótulo, cor, ícone, ordem, métrica
+   ├─ seed.js            tabela nome→slug dos exercícios pré-catálogo
    ├─ backup.js          exportar/importar JSON
    ├─ charts.js          gráfico de linha em SVG puro
+   ├─ chart-scale.js     domínio Y do gráfico: passo redondo, piso em zero
+   ├─ stepper-value.js   o núcleo numérico dos botões +/-
    └─ views/             uma tela por arquivo
 ```
 
