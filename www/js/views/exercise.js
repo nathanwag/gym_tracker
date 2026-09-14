@@ -8,6 +8,7 @@ import {
 } from '../models.js';
 import {
   groupLabel, usesDuration, exerciseMetric, groupColor, groupIcon,
+  allGroups, findGroup,
 } from '../muscle-group.js';
 import { groupSlugFor } from '../groups.js';
 import { lineChart } from '../charts.js';
@@ -95,7 +96,7 @@ export async function renderList(view) {
     // Ordem anatomica, inclusive os vazios: empurrar grupo sem exercicio pro
     // fim faria a lista se reordenar sozinha a cada exercicio criado, e a
     // posicao fixa de "Costas" e metade do que faz achar sem ler.
-    body.append(listInCard(db.groups().map((g) => groupItem(
+    body.append(listInCard(allGroups().map((g) => groupItem(
       g, mineByGroup.get(g.slug) || 0, catalogByGroup.get(g.slug) || 0,
     ))));
   };
@@ -178,7 +179,7 @@ export async function renderList(view) {
 let groupSearch = { slug: null, q: '' };
 
 export async function renderGroup(view, slug) {
-  const group = db.groups().find((g) => g.slug === slug);
+  const group = findGroup(slug);
   if (!group) {
     setTop({ title: t('exercise.listTitle'), back: '#/exercicios' });
     view.append(node(`<div class="card card__pad">${t('exercise.groups.notFound')}</div>`));

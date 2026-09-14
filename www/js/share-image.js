@@ -14,7 +14,7 @@
 
 import { workoutSummary, workoutHighlights, workoutGroupBreakdown } from './models.js';
 import * as db from './db.js';
-import { groupSlugFor } from './groups.js';
+import { findGroup } from './muscle-group.js';
 import { t, tn, locale } from './i18n.js';
 import {
   APP_NAME, html, raw, node, openSheet, onSheetClose, toast,
@@ -39,11 +39,7 @@ const COLOR_PR = '#e9b93a';
 // erradas pra quem usa o app no claro. Deixou de ser tabela literal quando a
 // cor virou dado editavel: uma copia aqui congelaria a cor que o usuario
 // escolheu no cartao compartilhado.
-const groupColorDark = (group) => {
-  const slug = groupSlugFor(group);
-  const found = db.groups().find((g) => g.slug === slug);
-  return found ? found.colorDark : '#5a626c';
-};
+const groupColorDark = (group) => findGroup(group)?.colorDark || '#5a626c';
 
 const font = (weight, size) => `${weight} ${size}px Manrope, sans-serif`;
 // A condensada carrega todo numero e todo rotulo em caixa alta — as duas

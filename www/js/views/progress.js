@@ -26,6 +26,7 @@ import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
 import {
   groupLabel, usesDuration, groupMetric, exerciseMetric, groupColor,
+  allGroups, findGroup,
 } from '../muscle-group.js';
 import {
   setTop, html, raw, node, ICON, wireSegmented,
@@ -37,7 +38,7 @@ import {
  * conversao no meio. A funcao continua existindo porque a rota e o unico lugar
  * que precisa dizer isso em voz alta. */
 export const groupSlug = (group) => group;
-const groupFromSlug = (slug) => db.groups().find((g) => g.slug === slug)?.slug || null;
+const groupFromSlug = (slug) => findGroup(slug)?.slug || null;
 
 // Referencia do indice. Nao e meta: e o proprio historico da pessoa.
 const INDEX_REF = 100;
@@ -64,7 +65,7 @@ async function loadGroups() {
   const exercisesById = new Map(exercises.map((e) => [e.id, e]));
 
   const rows = [];
-  for (const { slug: group } of db.groups()) {
+  for (const { slug: group } of allGroups()) {
     const summaries = groupSessionSummaries(sets, workoutsById, exercisesById, group);
     if (!summaries.length) continue;
     const field = groupMetric(group);
