@@ -9,7 +9,7 @@
 import { usesDuration } from './seed.js';
 import { t } from './i18n.js';
 import {
-  html, raw, node, ICON, createStepper, createDurationStepper,
+  html, raw, node, ICON, ariaBool, createStepper, createDurationStepper,
 } from './ui.js';
 
 function defaultBase(timeBased, unilateral) {
@@ -103,7 +103,7 @@ export function createSetComposer({
     actions.append(deleteBtn, cancelBtn, saveBtn);
   } else {
     const chip = node(html`
-      <button class="btn btn--sm btn--chip btn--ghost" data-warmup aria-pressed="${warmup}">${t('session.warmupAbbrev')}</button>
+      <button class="btn btn--sm btn--chip btn--ghost" data-warmup aria-pressed="${ariaBool(warmup)}">${t('session.warmupAbbrev')}</button>
     `);
     const addBtn = node(html`<button class="btn btn--primary" data-add>${t('session.addSet')}</button>`);
 

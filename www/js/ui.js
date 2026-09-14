@@ -46,6 +46,13 @@ export function esc(value) {
     .replace(/'/g, '&#39;');
 }
 
+/** Valor de atributo ARIA booleano. Existe porque render() logo abaixo devolve
+ *  string vazia para false — de proposito, e o que faz "cond && html" nao
+ *  imprimir nada. Mas aria-pressed="" nao significa "nao pressionado": e um
+ *  botao que nao e toggle, e o leitor de tela deixa de anunciar o estado. Nao
+ *  troque de volta por interpolar o booleano direto. */
+export const ariaBool = (value) => String(Boolean(value));
+
 function render(value) {
   if (value == null || value === false) return '';
   if (Array.isArray(value)) return value.map(render).join('');
@@ -737,7 +744,7 @@ export function setLedger({
 
     // Involucro por modo: <div> inerte na leitura, <button> tocavel na edicao.
     const row = onPick
-      ? node(html`<button class="${classes}" data-set="${s.id}" aria-current="${s.id === editingId}">${raw(inner)}</button>`)
+      ? node(html`<button class="${classes}" data-set="${s.id}" aria-current="${ariaBool(s.id === editingId)}">${raw(inner)}</button>`)
       : node(html`<div class="${classes}" data-set="${s.id}">${raw(inner)}</div>`);
     if (onPick) row.onclick = () => onPick(s);
     wrap.append(row);
