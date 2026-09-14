@@ -24,14 +24,28 @@ import {
 
 // Etapa atual: null = grade de grupos; nome do grupo = lista dele.
 let openGroup = null;
-// Quem chamou usa pra rolar ate o exercicio recem-adicionado depois de voltar.
-let lastAdded = null;
+/* A entrega do seletor pra tela que o chamou: o exercicio recem-adicionado,
+ * pra ela rolar ate ele. Atravessa uma navegacao de hash, entao nao pode ser
+ * evento — quem le so existe depois que esta tela saiu do ar.
+ *
+ * Guarda o treino junto, e nao so o id do exercicio: goBack() nao vai pro
+ * `backTo`, vai pro topo da pilha de navegacao do app.js. Se a entrega
+ * sobrasse, a proxima tela de treino a renderizar levava um exercicio que
+ * nao e dela, e o `?.` do querySelector fazia isso falhar sem ruido. */
+let pending = null;
 
-/** Id do exercicio adicionado na ultima passagem por aqui, consumido uma vez. */
-export function takeLastAdded() {
-  const id = lastAdded;
-  lastAdded = null;
-  return id;
+/** Anota o exercicio adicionado e a quem ele pertence. */
+export function rememberAdded(workoutId, exerciseId) {
+  pending = { workoutId, exerciseId };
+}
+
+/** O exercicio adicionado a ESTE treino, uma vez so. Outro treino recebe
+ *  null e nao consome: a entrega continua esperando a tela certa. */
+export function takeAddedTo(workoutId) {
+  if (!pending || pending.workoutId !== workoutId) return null;
+  const { exerciseId } = pending;
+  pending = null;
+  return exerciseId;
 }
 
 /** Escolher pra um treino: um toque adiciona e ja volta pra sessao. */
@@ -60,13 +74,14 @@ export async function render(view, workoutId) {
     chosenLabel: t('picker.inWorkout'),
     onChoose: async (exercise) => {
       await db.addExerciseToWorkout(workout.id, exercise.id);
-      lastAdded = exercise.id;
+      rememberAdded(workout.id, exercise.id);
       goBack(backTo);
     },
   });
 }
 
-/** Escolher pra um modelo: a tela FICA aberta a cada escolha. Montar uma
+/** Escolher pra um modelo: a tela FICA aberta a cada escolha. Nao anota
+ *  entrega nenhuma, de proposito — ninguem volta pra lugar nenhum. Montar uma
  *  rotina e por meia duzia de exercicios de uma vez — sair e voltar a cada um
  *  e justamente a dor que o modelo veio resolver. */
 export async function renderForTemplate(view, templateId) {

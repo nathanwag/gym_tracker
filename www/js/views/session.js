@@ -10,7 +10,7 @@
 import * as db from '../db.js';
 import { evaluatePR, prSetIds, workoutSummary } from '../models.js';
 import { exerciseBanner } from '../media.js';
-import { takeLastAdded } from './exercise-picker.js';
+import { takeAddedTo } from './exercise-picker.js';
 import { openShareSheet } from '../share-image.js';
 import { createSetComposer, composerConfig, emptyReason } from '../set-composer.js';
 import { t, tn } from '../i18n.js';
@@ -89,7 +89,7 @@ export async function render(view) {
 
   // Voltando do seletor: rola ate o exercicio que acabou de entrar, que fica
   // no fim da lista e pode estar fora da tela.
-  const added = takeLastAdded();
+  const added = takeAddedTo(ctx.workout.id);
   if (added) {
     document.querySelector(`[data-ex="${added}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }

@@ -7,7 +7,7 @@ import {
 } from '../models.js';
 import { exerciseBanner } from '../media.js';
 import { openShareSheet } from '../share-image.js';
-import { takeLastAdded } from './exercise-picker.js';
+import { takeAddedTo } from './exercise-picker.js';
 import { createSetComposer, composerConfig, emptyReason } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
@@ -156,7 +156,7 @@ export async function renderWorkout(view, workoutId) {
   paintWorkout();
 
   // Voltando do seletor: avisa e rola ate o exercicio recem-adicionado.
-  const added = takeLastAdded();
+  const added = takeAddedTo(ctx.workoutId);
   if (added) {
     toast(t('history.toastExerciseAdded'));
     document.querySelector(`[data-ex="${added}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
