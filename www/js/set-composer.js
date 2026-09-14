@@ -18,11 +18,25 @@ function defaultBase(timeBased, unilateral) {
   return { weight: 20, reps: 10, warmup: false };
 }
 
-/** true quando os valores digitados nao formam uma serie registravel. */
-export function isEmptySet(values) {
-  if ('durationSec' in values) return values.durationSec <= 0;
-  if ('repsLeft' in values) return values.repsLeft <= 0 && values.repsRight <= 0;
-  return values.reps <= 0;
+/** Por que estes valores nao formam uma serie registravel, como chave de
+ *  i18n — ou null quando formam.
+ *
+ *  Devolve a razao, e nao um booleano, porque a forma dos valores e o que
+ *  decide a mensagem, e quem sabe a forma e este modulo: era ele quem
+ *  montava os tres layouts. Enquanto respondia so sim/nao, as duas telas
+ *  re-derivavam `'durationSec' in values` pra escolher o texto — quatro
+ *  copias identicas da mesma linha.
+ *
+ *  Peso zero e serie legitima (barra vazia, peso do corpo): o que faz a
+ *  serie existir e a repeticao. Unilateral basta um lado. */
+export function emptyReason(values) {
+  if ('durationSec' in values) {
+    return values.durationSec > 0 ? null : 'session.enterDuration';
+  }
+  if ('repsLeft' in values) {
+    return values.repsLeft > 0 || values.repsRight > 0 ? null : 'session.enterReps';
+  }
+  return values.reps > 0 ? null : 'session.enterReps';
 }
 
 /**

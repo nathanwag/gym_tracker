@@ -13,7 +13,7 @@ import { evaluatePR, prSetIds, workoutSummary } from '../models.js';
 import { exerciseBanner } from '../media.js';
 import { takeLastAdded } from './exercise-picker.js';
 import { openShareSheet } from '../share-image.js';
-import { createSetComposer, isEmptySet } from '../set-composer.js';
+import { createSetComposer, emptyReason } from '../set-composer.js';
 import { t, tn } from '../i18n.js';
 import { groupColor } from '../muscle-group.js';
 import {
@@ -288,10 +288,8 @@ function completedItem(exId) {
 /* ---------- Mutacoes ---------- */
 
 async function addSet(exId, values, warmup) {
-  if (isEmptySet(values)) {
-    toast('durationSec' in values ? t('session.enterDuration') : t('session.enterReps'));
-    return;
-  }
+  const why = emptyReason(values);
+  if (why) { toast(t(why)); return; }
 
   const newSet = await db.addSet({
     workoutId: ctx.workout.id,
@@ -318,10 +316,8 @@ async function addSet(exId, values, warmup) {
 }
 
 async function saveEdit(exId, set, values) {
-  if (isEmptySet(values)) {
-    toast('durationSec' in values ? t('session.enterDuration') : t('session.enterReps'));
-    return;
-  }
+  const why = emptyReason(values);
+  if (why) { toast(t(why)); return; }
   await db.updateSet(set.id, values);
   Object.assign(set, values);
   ctx.editing.delete(exId);

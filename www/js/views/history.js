@@ -9,7 +9,7 @@ import {
 import { exerciseBanner } from '../media.js';
 import { openShareSheet } from '../share-image.js';
 import { takeLastAdded } from './exercise-picker.js';
-import { createSetComposer, isEmptySet } from '../set-composer.js';
+import { createSetComposer, emptyReason } from '../set-composer.js';
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet, workoutRow, setLedger, signatureHtml,
@@ -509,10 +509,8 @@ async function removeWorkoutExercise(exId, name) {
 }
 
 async function saveWorkoutSet(set, values) {
-  if (isEmptySet(values)) {
-    toast('durationSec' in values ? t('session.enterDuration') : t('session.enterReps'));
-    return;
-  }
+  const why = emptyReason(values);
+  if (why) { toast(t(why)); return; }
   await db.updateSet(set.id, values);
   editingSetId = null;
   await reloadWorkout();
@@ -529,10 +527,8 @@ async function deleteWorkoutSet(set) {
 }
 
 async function addWorkoutSet(exId, values, warmup) {
-  if (isEmptySet(values)) {
-    toast('durationSec' in values ? t('session.enterDuration') : t('session.enterReps'));
-    return;
-  }
+  const why = emptyReason(values);
+  if (why) { toast(t(why)); return; }
   await db.addSet({
     workoutId: ctx.workout.id, exerciseId: exId, ...values, warmup,
   });
