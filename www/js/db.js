@@ -29,7 +29,10 @@ const DB_NAME = 'treino';
 // v6: store `bodyWeights`, a serie de peso corporal do Perfil.
 // v7: store `muscleGroups` — grupo vira dado editavel, e `exercises`
 //     .muscleGroup passa a guardar o slug estavel em vez do nome.
-const DB_VERSION = 8;
+// v8: a ordem dos 17 grupos da semente passa a ser por frequencia de treino.
+// v9: carimba `onboardedAt` em quem ja usava o app, pra o wizard de boas-vindas
+//     nao aparecer pra quem tem historico.
+const DB_VERSION = 9;
 
 export const DEFAULT_SETTINGS = {
   unit: 'kg',
@@ -50,6 +53,13 @@ export const DEFAULT_SETTINGS = {
   // Versao do catalogo cujas miniaturas ja foram baixadas; evita repetir o
   // precache a cada abertura. Vazio = nunca baixou.
   mediaPrecacheVersion: '',
+  // Quando a pessoa passou pelas boas-vindas. Null = primeiro acesso, e o
+  // router desvia pra #/boas-vindas (ver onboarding.js). A migracao v9 carimba
+  // os bancos que ja existiam.
+  onboardedAt: null,
+  // O que o modo demonstracao criou, pra poder apagar exatamente isso e nada
+  // mais. Null = nao ha dados de exemplo no banco (ver demo.js).
+  demoIds: null,
 };
 
 let dbPromise = null;
@@ -295,6 +305,15 @@ export function open() {
           }
           cursor.continue();
         };
+      }
+
+      if (event.oldVersion > 0 && event.oldVersion < 9) {
+        // Banco que ja existia passou do primeiro acesso por definicao: o
+        // wizard nasceu depois dele. Sem este carimbo, quem tem meses de
+        // treino abriria o app nas boas-vindas. `oldVersion === 0` e banco
+        // novo e nao entra aqui — e justamente quem deve ver o wizard.
+        request.transaction.objectStore('settings')
+          .put({ key: 'onboardedAt', value: new Date().toISOString() });
       }
     };
 
@@ -597,6 +616,21 @@ export async function startWorkout() {
 }
 
 /** O treino em aberto (sem finishedAt), se existir. */
+/** Insere um treino ja terminado, em vez de abrir um e corrigir depois.
+ *  Existe pros dados de exemplo: com startWorkout(), cada um dos 23 treinos
+ *  fica um instante SEM finishedAt, e nesse instante getActiveWorkout() o
+ *  encontra — o botao vermelho vira "retomar" e um toque no meio da geracao
+ *  levaria a pessoa pra dentro de uma sessao de exemplo pela metade. */
+export async function addWorkout({
+  date, startedAt, finishedAt, exerciseIds = [], notes = '',
+}) {
+  const record = {
+    date, startedAt, finishedAt, notes, exerciseIds, completedIds: [],
+  };
+  const id = await tx('workouts', 'readwrite', (s) => req(s.add(record)));
+  return { ...record, id };
+}
+
 export async function getActiveWorkout() {
   const all = await tx('workouts', 'readonly', (s) => req(s.getAll()));
   const unfinished = all.filter((w) => !w.finishedAt);
@@ -728,10 +762,11 @@ export async function startWorkoutFromTemplate(templateId) {
 
 /* ---------- Series ---------- */
 
-export async function addSet({
+function setRecord({
   workoutId, exerciseId, weight, reps, repsLeft, repsRight, durationSec, warmup = false,
+  createdAt = null,
 }) {
-  const record = {
+  return {
     workoutId: Number(workoutId),
     exerciseId: Number(exerciseId),
     weight: Number(weight) || 0,
@@ -740,10 +775,26 @@ export async function addSet({
     repsRight: Math.max(0, Math.round(Number(repsRight) || 0)),
     durationSec: Math.max(0, Math.round(Number(durationSec) || 0)),
     warmup: Boolean(warmup),
-    createdAt: new Date().toISOString(),
+    createdAt: createdAt || new Date().toISOString(),
   };
+}
+
+export async function addSet(fields) {
+  const record = setRecord(fields);
   const id = await tx('sets', 'readwrite', (s) => req(s.add(record)));
   return { ...record, id };
+}
+
+/** Varias series numa transacao so — o `add` e sincrono dentro do callback,
+ *  como em replaceAll(). Uma por transacao sao centenas de idas ao banco na
+ *  geracao dos dados de exemplo, e o lote por treino tambem limita o estrago
+ *  de uma falha a um treino. */
+export async function addSets(rows) {
+  const records = rows.map(setRecord);
+  await tx('sets', 'readwrite', (store) => {
+    for (const record of records) store.add(record);
+  });
+  return records;
 }
 
 export async function updateSet(id, patch) {
@@ -844,11 +895,20 @@ export async function replaceAll({
   groupCache = null;
 }
 
-/** Apaga tudo, incluindo a biblioteca de exercicios. */
+/** Apaga tudo, incluindo a biblioteca de exercicios.
+ *
+ *  Limpa o store `settings` junto, `onboardedAt` inclusive: "apagar tudo"
+ *  devolve o app ao estado de fabrica, boas-vindas incluidas. Elas so aparecem
+ *  na proxima abertura, porque o guard mora no router e quem chama isto ja
+ *  termina navegando. */
 export async function resetAll() {
   await tx(['exercises', 'workouts', 'sets', 'settings', 'exerciseImages', 'workoutTemplates', 'bodyWeights'], 'readwrite',
     (ex, wo, se, st, im, tp, bw) => {
       ex.clear(); wo.clear(); se.clear(); st.clear(); im.clear(); tp.clear(); bw.clear();
     });
   exerciseCache = null;
+  // O cache de settings tambem: o guard do primeiro acesso le db.settings()
+  // sincrono, e um cache com o `onboardedAt` antigo faria o app seguir como se
+  // nada tivesse sido apagado ate alguem chamar getSettings().
+  settingsCache = { ...DEFAULT_SETTINGS };
 }
