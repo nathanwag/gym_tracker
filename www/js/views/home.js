@@ -24,7 +24,7 @@ import { workoutListNode } from './history.js';
 import { t, tn } from '../i18n.js';
 import { groupLabel, groupColor } from '../muscle-group.js';
 import {
-  setTop, html, raw, node, ICON, wireSegmented,
+  setTop, html, raw, node, ICON, wireSegmented, emptyState, startButton,
   fmtNum, fmtDateRange, fmtMinutes,
 } from '../ui.js';
 
@@ -59,16 +59,24 @@ export async function render(view) {
 
   const container = node('<div></div>');
 
-  if (!active && workouts.length === 0) container.append(firstTimeCard());
-
-  const firstWeek = workouts.length
-    ? mondayOf(workouts.reduce((min, w) => (w.startedAt < min ? w.startedAt : min), workouts[0].startedAt))
-    : null;
-  const weekAndTrend = node('<div></div>');
-  weekAndTrend.append(weekBlock(sets, workoutsById, exercisesById, unit, firstWeek));
-  if (workouts.length) weekAndTrend.append(trendCard(sets, workoutsById, unit));
-
-  container.append(weekAndTrend);
+  if (workouts.length === 0) {
+    // Sem treino nenhum, o resumo da semana seria um "0 kg" grande com a linha
+    // de meta e nenhuma barra, e duas setas de semana desabilitadas: numero
+    // grande que nao diz nada e controle sem funcao. No lugar dele, a unica
+    // coisa que ha pra fazer aqui.
+    container.append(emptyState({
+      message: t('home.firstTime'),
+      action: startButton(),
+    }));
+  } else {
+    const firstWeek = mondayOf(
+      workouts.reduce((min, w) => (w.startedAt < min ? w.startedAt : min), workouts[0].startedAt),
+    );
+    const weekAndTrend = node('<div></div>');
+    weekAndTrend.append(weekBlock(sets, workoutsById, exercisesById, unit, firstWeek));
+    weekAndTrend.append(trendCard(sets, workoutsById, unit));
+    container.append(weekAndTrend);
+  }
 
   const list = await workoutListNode({ limit: RECENT_LIMIT });
   if (list) {
@@ -89,14 +97,6 @@ export async function render(view) {
 }
 
 /* ---------- Treino ---------- */
-
-function firstTimeCard() {
-  return node(html`
-    <div class="card card__pad" style="text-align:center;margin-bottom:16px">
-      <p class="muted small" style="margin:0">${t('home.firstTime')}</p>
-    </div>
-  `);
-}
 
 /* ---------- Resumo da semana ---------- */
 

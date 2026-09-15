@@ -16,7 +16,7 @@ import { thumbHtml, preloadCustomThumbs } from '../media.js';
 import { t, tn } from '../i18n.js';
 import {
   html, raw, node, ICON, setTop, openSheet, closeSheet, confirmSheet, toast,
-  listInCard, refresh,
+  listInCard, refresh, emptyState,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -40,12 +40,7 @@ export async function renderList(view) {
   const list = root.querySelector('[data-list]');
 
   if (!templates.length) {
-    list.append(node(html`
-      <div class="card"><div class="empty">
-        ${raw(ICON.dumbbell)}
-        <p>${t('templates.emptyList')}</p>
-      </div></div>
-    `));
+    list.append(emptyState({ message: t('templates.emptyList') }));
   } else {
     list.append(listInCard(templates.map((tpl) => templateItem(tpl, byId))));
   }
@@ -144,12 +139,7 @@ export async function renderDetail(view, id) {
 
   const list = root.querySelector('[data-list]');
   if (!order.length) {
-    list.append(node(html`
-      <div class="card"><div class="empty">
-        ${raw(ICON.dumbbell)}
-        <p>${t('templates.emptyDetail')}</p>
-      </div></div>
-    `));
+    list.append(emptyState({ message: t('templates.emptyDetail') }));
   } else {
     list.append(listInCard(order.map((exId, i) => exerciseRow(template, order, i, byId.get(exId)))));
   }

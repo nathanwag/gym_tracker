@@ -29,7 +29,7 @@ import {
   allGroups, findGroup,
 } from '../muscle-group.js';
 import {
-  setTop, html, raw, node, ICON, wireSegmented,
+  setTop, html, raw, node, ICON, wireSegmented, emptyState, startButton,
   fmtNum, fmtDate, fmtTempoSerie, fmtSet, lastDoneLabel,
 } from '../ui.js';
 
@@ -98,13 +98,10 @@ export async function render(view) {
   const root = node('<div></div>');
 
   if (!rows.length) {
-    root.append(node(html`
-      <div class="card"><div class="empty">
-        ${raw(ICON.dumbbell)}
-        <p>${t('progress.empty')}</p>
-        <a class="btn btn--primary" href="#/">${t('history.empty.start')}</a>
-      </div></div>
-    `));
+    root.append(emptyState({
+      message: t('progress.empty'),
+      action: startButton(),
+    }));
     view.append(root);
     return;
   }

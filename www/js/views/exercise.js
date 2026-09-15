@@ -26,7 +26,7 @@ import {
   setTop, html, raw, node, esc, ICON, toast, openSheet, closeSheet, confirmSheet, goBack,
   fmtNum, fmtDateShort, fmtDayNum, fmtMonthShort, fmtTempoSerie,
   fmtSet, fmtSetWithUnit, refresh, wireSegmented, infoRow,
-  listInCard, groupField, lastDoneLabel,
+  listInCard, groupField, lastDoneLabel, emptyState,
 } from '../ui.js';
 
 /* ==========================================================================
@@ -91,6 +91,14 @@ export async function renderList(view) {
   const drawIndex = () => {
     body.append(templateRow(templates));
 
+    // A biblioteca comeca vazia de proposito (o catalogo nao e copiado pro
+    // banco), mas o indice dos 17 grupos nunca esta vazio — entao quem chega
+    // aqui na primeira vez ve 17 linhas dizendo "nenhum seu" e nenhuma pista do
+    // que fazer. A frase e o que liga uma coisa a outra.
+    if (!exercises.length) {
+      body.append(node(html`<p class="muted small welcome__hint">${t('exercise.libraryEmpty')}</p>`));
+    }
+
     const mineByGroup = countBy(exercises, (ex) => groupSlugFor(ex.muscleGroup));
     body.append(node(`<h2 class="section-title">${t('exercise.groups.section')}</h2>`));
     // Ordem do banco, inclusive os vazios: empurrar grupo sem exercicio pro
@@ -130,12 +138,7 @@ export async function renderList(view) {
     }
 
     if (!mine.length && !matches.length) {
-      body.append(node(html`
-        <div class="card"><div class="empty">
-          ${raw(ICON.dumbbell)}
-          <p>${t('exercise.noneFound')}</p>
-        </div></div>
-      `));
+      body.append(emptyState({ message: t('exercise.noneFound') }));
     }
 
     createButton.innerHTML = html`${raw(ICON.plus)} ${t('exercise.createNamed', { q })}`;
@@ -255,12 +258,9 @@ export async function renderGroup(view, slug) {
     }
 
     if (!shown.length && !matches.length) {
-      body.append(node(html`
-        <div class="card"><div class="empty">
-          ${raw(ICON.dumbbell)}
-          <p>${q ? t('exercise.noneFound') : t('exercise.groups.emptyGroup', { group: label })}</p>
-        </div></div>
-      `));
+      body.append(emptyState({
+        message: q ? t('exercise.noneFound') : t('exercise.groups.emptyGroup', { group: label }),
+      }));
     }
   };
 

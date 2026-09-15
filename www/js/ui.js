@@ -27,6 +27,14 @@ export const refresh = () => window.dispatchEvent(new Event('app:refresh'));
  *  motivo de refresh() acima — sem ciclo de modulos com app.js. */
 export const goBack = (fallback) => window.dispatchEvent(new CustomEvent('app:voltar', { detail: fallback }));
 
+/* Pede ao app.js pra comecar um treino — exatamente o caminho do botao vermelho
+ * da tabbar, folha de modelos inclusive. Existe pra um estado vazio poder
+ * oferecer o comeco sem mandar a pessoa procurar o botao: o Progresso vazio
+ * levava pra Home, que tambem nao tinha por onde comecar. Evento pelo mesmo
+ * motivo de refresh(), e privado porque quem precisa dele usa startButton() —
+ * exportado, colidiria com a startWorkout() local do app.js. */
+const startWorkout = () => window.dispatchEvent(new Event('app:iniciar-treino'));
+
 /* ---------- HTML seguro ----------
  * Nomes de exercicio e notas sao digitados pelo usuario, entao toda
  * interpolacao e escapada por padrao. Use raw() para injetar HTML de proposito. */
@@ -76,14 +84,20 @@ export function node(markup) {
 /* ---------- Topbar ---------- */
 
 /**
- * @param {{title: string, back?: string|null, actions?: string, showBar?: boolean}} opts
+ * @param {{title: string, back?: string|null, actions?: string,
+ *   showBar?: boolean, showTabs?: boolean}} opts
  *   back = rota (hash) do botao voltar; ausente esconde o botao.
  *   showBar = false esconde a barra inteira; hoje so a tela de exercicio usa
  *   isso, pra foto poder sangrar ate o topo (ver heroPhoto em exercise.js). O
  *   titulo da aba do navegador continua sendo definido normalmente.
+ *   showTabs = false esconde a tabbar; hoje so as boas-vindas usam, que e a
+ *   unica tela em que as quatro abas ainda nao significam nada. Fica AQUI, e
+ *   nao numa funcao propria, porque toda view chama setTop exatamente uma vez:
+ *   assim o padrao `true` traz a tabbar de volta sozinho na tela seguinte, sem
+ *   depender de alguem lembrar de desfazer.
  */
 export function setTop({
-  title, back = null, actions = '', showBar = true,
+  title, back = null, actions = '', showBar = true, showTabs = true,
 }) {
   const topbarEl = $('#topbar');
   const titleEl = $('#topbar-title');
@@ -98,6 +112,10 @@ export function setTop({
 
   topbarEl.hidden = !showBar;
   $('#view').classList.toggle('view--no-topbar', !showBar);
+  // No body tambem: a faixa de dados de exemplo e irma do #view e precisa
+  // saber subir pro lugar da topbar quando ela some.
+  document.body.classList.toggle('no-topbar', !showBar);
+  document.body.classList.toggle('no-tabbar', !showTabs);
 
   return actionsEl;
 }
@@ -193,6 +211,23 @@ export function confirmSheet({
  * @param {{title: string, options: {value: string, label: string}[], value: string}} opts
  * @returns {Promise<string|null>} null quando a folha e fechada sem escolher
  */
+/** A lista de opcoes do pickSheet, separada porque as boas-vindas desenham a
+ *  mesma coisa fora de folha nenhuma. Nao e `.segmented`: aquele botao tem
+ *  34px de altura, abaixo do alvo de toque, e no wizard a escolha e o conteudo
+ *  inteiro da tela. Quem chama liga o onclick nos `[data-v]`. */
+export function pickList({ options, value }) {
+  return node(html`
+    <div class="pick">
+      ${raw(options.map((o) => `
+        <button class="pick__o${String(o.value) === String(value) ? ' pick__o--on' : ''}" type="button" data-v="${esc(o.value)}">
+          <span>${esc(o.label)}</span>
+          ${String(o.value) === String(value) ? ICON.check : ''}
+        </button>
+      `).join(''))}
+    </div>
+  `);
+}
+
 function pickSheet({ title, options, value }) {
   return new Promise((resolve) => {
     let answered = false;
@@ -202,19 +237,11 @@ function pickSheet({ title, options, value }) {
       resolve(picked);
     };
 
-    const body = openSheet(title, node(html`
-      <div class="pick">
-        ${raw(options.map((o) => `
-          <button class="pick__o${o.value === String(value) ? ' pick__o--on' : ''}" data-v="${esc(o.value)}">
-            <span>${esc(o.label)}</span>
-            ${o.value === String(value) ? ICON.check : ''}
-          </button>
-        `).join(''))}
-      </div>
-    `));
+    const list = pickList({ options, value });
+    openSheet(title, list);
 
     sheetOnClose = () => finish(null);
-    for (const button of body.querySelectorAll('[data-v]')) {
+    for (const button of list.querySelectorAll('[data-v]')) {
       button.onclick = () => { finish(button.dataset.v); closeSheet(); };
     }
   });
@@ -693,6 +720,28 @@ export function listInCard(items) {
   return card;
 }
 
+
+/** O estado vazio de uma tela: icone, uma frase e, quando ha pra onde ir, uma
+ *  acao. Estava copiado em seis views, e o card+empty+svg divergia em cada uma.
+ *  `action` e um elemento pronto (botao ou link) — a tela decide o destino. */
+export function emptyState({ icon = ICON.dumbbell, message, action = null }) {
+  const card = node(html`
+    <div class="card"><div class="empty">
+      ${raw(icon)}
+      <p>${message}</p>
+    </div></div>
+  `);
+  if (action) card.querySelector('.empty').append(action);
+  return card;
+}
+
+/** O botao de comecar dos estados vazios. Chama o mesmo fluxo do botao
+ *  vermelho, entao com modelo montado ele abre a folha de escolha. */
+export function startButton(label = t('history.empty.start')) {
+  const el = node(html`<button class="btn btn--primary" type="button">${label}</button>`);
+  el.onclick = startWorkout;
+  return el;
+}
 
 /** "Hoje · 135 kg": a ultima vez que o exercicio foi feito e com quanto. O
  *  Progresso e a busca de exercicio desenham a mesma frase, e duas copias

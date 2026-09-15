@@ -12,6 +12,7 @@ import { createSetComposer, composerConfig, emptyReason } from '../set-composer.
 import { t, tn, locale } from '../i18n.js';
 import {
   setTop, html, raw, node, ICON, toast, confirmSheet, workoutRow, setLedger, signatureHtml,
+  emptyState, startButton,
   fmtNum, fmtDate, fmtWeekday, fmtDuration, fmtSet, fmtTempoSerie, fmtWeight,
 } from '../ui.js';
 
@@ -36,13 +37,10 @@ export async function renderList(view) {
 
   const list = await workoutListNode();
   if (!list) {
-    view.append(node(html`
-      <div class="card"><div class="empty">
-        ${raw(ICON.dumbbell)}
-        <p>${t('history.empty.message')}</p>
-        <a class="btn btn--primary" href="#/">${t('history.empty.start')}</a>
-      </div></div>
-    `));
+    view.append(emptyState({
+      message: t('history.empty.message'),
+      action: startButton(),
+    }));
     return;
   }
   view.append(list);
