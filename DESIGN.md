@@ -128,6 +128,8 @@ três, e é o que separa "planilha" de "painel". Escala em `--fs-xs` … `--fs-h
 | `.delta` | o que mudou desde a última vez, exercício por exercício | detalhe do treino |
 | `.chip` | pastilha de grupo com cor e, quando há, o índice | Progresso |
 | `.sec` | seção com título e respiro próprio | Perfil, Configurações |
+| `.demobar` | faixa fixa de "você está vendo dados de exemplo", com a saída à direita | casca, enquanto o modo demonstração estiver ligado |
+| `.welcome__*` | as três telas de boas-vindas: marca, pergunta, rodapé fixo com os pontinhos | primeiro acesso |
 
 Cartão (`.card`) virou **exceção**, não regra: só o que precisa mesmo estar
 contido. Se for pôr algo num cartão, justifique.
@@ -165,6 +167,11 @@ Antes de criar a sexta, pergunte qual coluna é diferente. Se a resposta for
   frente" se contradiriam ali.
 - `lastDoneLabel()` (`ui.js`) — "Hoje · 135 kg": a última vez que o exercício
   foi feito e com quanto. Progresso e a busca desenham a mesma frase.
+- `emptyState()` (`ui.js`) — ícone, uma frase e a saída. Estava copiado em seis
+  views, e dois deles apontavam pra uma tela que também estava vazia.
+- `pickList()` (`ui.js`) — as opções do `pickSheet()`, separadas porque as
+  boas-vindas desenham a mesma lista fora de folha nenhuma. Não é `.segmented`:
+  aquele botão tem 34 px, abaixo do alvo de toque, e ali a escolha é a tela.
 
 Duas cópias divergem no primeiro ajuste de coluna. Já aconteceu.
 
@@ -211,6 +218,12 @@ idioma — e treinos por semana, que a semana já limita a sete.
 Duas consequências no detalhe: a linha leva `ICON.chevron`, não `ICON.down` —
 não há lista de valores ali, há outra folha; e o campo aceita vírgula, que é o
 que o teclado do celular oferece em português.
+
+**Todo estado vazio tem ícone, uma frase concreta e uma saída que leva a algum
+lugar de verdade.** Se o botão aponta pra uma tela que também está vazia, ele não
+é saída: era o caso do Progresso, cujo "Começar o primeiro" levava pra Home, que
+por sua vez não tinha botão nenhum — o caminho morria no botão vermelho, que
+nenhum estado vazio consegue apertar. Daí o evento `app:iniciar-treino`.
 
 **Valor recusado se explica no lugar onde foi digitado**: o texto de ajuda do
 campo vira vermelho (`.hint--err`), e não um toast. O toast do app aparece no
@@ -269,6 +282,7 @@ a próxima métrica de ser jogada na home por falta de lugar:
 | Exercício | A carga subiu? | e1RM e peso máximo |
 | Perfil | Quem eu sou, e como o app se comporta? | totais, metas, peso corporal, backup |
 | Grupos | O que eu tenho pra classificar exercício? | nome, cor e uso de cada grupo |
+| Boas-vindas | Quem é você, e como você treina? | nome, unidade e treinos por semana — uma pergunta por tela |
 
 A linha dos Grupos é a única que não responde com número: ela é manutenção do
 vocabulário, não leitura de progresso. Por isso mora **atrás** dos Exercícios,

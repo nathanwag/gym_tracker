@@ -86,6 +86,22 @@ Safari coloca seu histórico em risco.
 
 ---
 
+## Primeiro acesso
+
+Na primeira vez que o app abre, três telas perguntam o essencial — seu nome, se
+você levanta em **kg ou lb**, e quantos treinos por semana você pretende fazer
+(vira a meta da semana). Dá pra pular tudo: os padrões de fábrica são kg e 4
+treinos, e os três continuam editáveis no Perfil.
+
+No fim tem a opção **ver com dados de exemplo**: o app se popula com 12 semanas
+de treino fictício pra você conhecer as telas cheias — gráficos, recordes e o
+índice do Progresso só fazem sentido com histórico. Enquanto o exemplo está
+ligado, uma faixa no topo avisa, e o botão dela apaga **só** o que o exemplo
+criou; o que você registrou de verdade fica. A mesma opção mora em
+**Configurações → Seus dados**.
+
+---
+
 ## Backup
 
 Os treinos vivem apenas no seu aparelho — não há nuvem, não há conta. Em **Perfil → Backup →
@@ -126,6 +142,9 @@ www/                     o app (e o webDir do Capacitor)
 ├─ img/ex/               873 miniaturas e 1746 fotos em WebP (geradas)
 └─ js/
    ├─ app.js             bootstrap + roteador por hash
+   ├─ onboarding.js      regras do primeiro acesso (puro)
+   ├─ demo-plan.js       o plano dos dados de exemplo (puro)
+   ├─ demo.js            grava e apaga os dados de exemplo
    ├─ ui.js              helpers de DOM, toast, bottom sheet, formatação
    ├─ text.js            normalização de texto, sem DOM (db.js também usa)
    ├─ db.js              única camada que fala com o IndexedDB

@@ -28,10 +28,12 @@ Abre no Opera (se achar o executável; senão navegador padrão) em
 (`http://192.168.x.x:3000`) abre no celular na mesma WiFi, sem commit/push.
 `bs-config.cjs` (raiz, fora de `www/`, não empacotado) é o config; `.cjs` porque
 `package.json` é `type: module`. Duas rotas só de dev: `/phone` (viewport de
-celular) e `/seed` (popula o IndexedDB local com treinos de exemplo — `js/db.js`/
-`js/seed.js` reais; treino gerado leva `notes: 'seed'`; `/seed?auto` gera sozinho
-ao abrir). IndexedDB é por navegador — a 1ª vez em cada um precisa passar no
-`/seed`.
+celular) e `/seed` (popula o IndexedDB local com treinos de exemplo;
+`/seed?auto` gera sozinho ao abrir). IndexedDB é por navegador — a 1ª vez em
+cada um precisa passar no `/seed`. **A página de dev não tem plano próprio**:
+ela dirige `js/demo.js`, o mesmo módulo do modo demonstração que o app publica.
+As ~150 linhas do plano moravam dentro de uma string de HTML no `bs-config.cjs`,
+sem teste nenhum e sem o app poder reusá-las.
 
 Fallback sem Node — `python -m http.server 8000 -d www`. Armadilha do
 `http.server` padrão: não manda `Cache-Control` e responde `304` a
@@ -153,6 +155,38 @@ portas pro mesmo lugar é o que faz a pessoa não achar nenhuma.
 na rota `/ajustes`, que ficou com o nome antigo de propósito: ela não aparece
 como rótulo em lugar nenhum e o store do IndexedDB também se chama `settings`.
 
+**Primeiro acesso** (`views/welcome.js`, `/boas-vindas`) — três telas, uma
+pergunta cada: nome, unidade e treinos por semana. Os três já eram ajuste do
+Perfil; o wizard só os pergunta antes, porque unidade e meta mudam a primeira
+tela que a pessoa vê. É a **única tela sem tabbar** — `setTop({ showTabs:
+false })`, pelo mesmo mecanismo do `showBar` e no mesmo lugar de propósito: toda
+view chama `setTop` uma vez, então o padrão `true` traz a barra de volta sozinho
+e não há nada pra alguém esquecer de desfazer.
+
+**Quem vê o wizard é quem não tem `onboardedAt`** (setting), e o guard é a
+primeira linha do `router()` — antes do lookup de rota, pra hash desconhecido
+também cair nele, e antes da pilha de navegação, pra o desvio não virar item do
+`backStack`. Três coisas carimbam a chave, e as três são necessárias: o próprio
+wizard, a **migração v9** (banco que já existia passou do primeiro acesso por
+definição — sem ela, todo mundo que atualiza o app cai no wizard) e o `restore()`
+do backup (backup gerado antes da v9 não tem a chave, e `replaceAll` troca o
+store de settings inteiro). `/boas-vindas` **tem** que estar em `ROUTES`: sem a
+rota, o `if (!route)` devolve pra `#/`, o guard devolve pra ela, e o app troca de
+hash pra sempre. No `TABS` **não** entra — acenderia uma aba invisível.
+
+**Modo demonstração** (`demo.js` + `demo-plan.js`) — 12 semanas de push/pull/legs
+que a pessoa pode gerar pra ver o app cheio e depois limpar. Entra pelas
+boas-vindas e por **Configurações → Seus dados** (o wizard acontece uma vez só;
+sem a segunda porta, quem pulou nunca mais veria o recurso). `demo-plan.js` é
+puro e testado, com `today` por parâmetro; `demo.js` só escreve. **O que foi
+criado vai pro setting `demoIds`**, e não num campo `demo: true` espalhado pelos
+stores: a limpeza tem que ser exata. **Ela não pode usar `resetAll()`**, que
+limpa o store `settings` junto — a pessoa sairia do exemplo sem o nome, a unidade
+e a meta que acabou de escolher. Apaga na ordem treinos → modelos → exercícios, e
+**exercício com série de treino real é mantido** (`deleteExercise` recusa, e é o
+comportamento certo: ele virou dela). A faixa de aviso mora no `index.html`, não
+no `#view`, e quem a acende é o `router()`.
+
 **Camadas de dados (isoladas para permitir trocar o backend sem tocar telas):**
 - `db.js` — única a falar com IndexedDB. Stores: `exercises`, `workouts`, `sets`,
   `settings`, `exerciseImages`, `workoutTemplates`, `bodyWeights`,
@@ -161,7 +195,12 @@ como rótulo em lugar nenhum e o store do IndexedDB também se chama `settings`.
   é o único caminho de "treinar a partir de um modelo"). `DB_VERSION` +
   `onupgradeneeded` com blocos `if (event.oldVersion < N)`. Migração tem que ser
   **100% síncrona** (WebKit encerra transação que fica ociosa — nada de `await`
-  no meio). Helper `tx()`.
+  no meio). Helper `tx()`. A **v9 é a única com limite inferior**
+  (`oldVersion > 0`), e é o ponto dela: só carimba banco que já existia.
+  `addWorkout()` e `addSets()` existem pro modo demonstração — um treino já
+  pronto em vez de abrir e corrigir (senão `getActiveWorkout()` o encontra no
+  meio da geração e o botão vermelho vira "retomar"), e as séries de um treino
+  numa transação só.
   A biblioteca de exercícios (~80 itens) fica em cache na memória; qualquer
   escrita invalida.
 - `catalog.js` — única a ler `www/data/`. O catálogo (873 exercícios,
@@ -292,6 +331,9 @@ tela.** O que quebra o app, e por isso fica aqui:
 - **Os 3 `woff2` da Barlow Condensed** (`www/fonts/`, estáticos — a família não
   é variável) precisam estar no `ASSETS` do `sw.js`, senão a tipografia quebra
   offline.
+- **Todo `.js` novo de `www/js/` também precisa entrar no `ASSETS`** — isso
+  agora tem teste (`assets.test.js`), depois de dois módulos ficarem de fora em
+  silêncio. O bump de `VERSION` continua sendo por conta de quem edita.
 - **O cartão de compartilhar lê `colorDark` direto do banco** (`share-image.js`):
   canvas não resolve `var()`, e o cartão é sempre escuro mesmo com o app no tema
   claro. Era uma tabela de hex copiada; virou leitura porque uma cópia
@@ -301,7 +343,11 @@ tela.** O que quebra o app, e por isso fica aqui:
 Dicionário em `i18n-strings.js` (PT/EN, chaves planas com namespace por ponto).
 O que não tem PT aparece em inglês com selo `EN` — estado suportado.
 
-**`ui.js`** — `html`/`raw`/`node`: tagged template que **escapa toda interpolação
+**`ui.js`** — além do abaixo: `setTop({showBar, showTabs})` é a declaração de
+casca da tela, `emptyState()` é o estado vazio de todas elas (estava copiado em
+seis views) e `startButton()`/`startWorkout()` disparam `app:iniciar-treino`, o
+mesmo caminho do botão vermelho — antes, o Progresso vazio mandava pra Home, que
+também não tinha por onde começar. `html`/`raw`/`node`: tagged template que **escapa toda interpolação
 por padrão** (nome de exercício e nota são digitados pelo usuário); `raw()` para
 injetar HTML de propósito. Também `setTop`, toast, bottom sheet, formatadores
 Intl. `refresh()` e `goBack()` disparam eventos em `window` em vez de importar
