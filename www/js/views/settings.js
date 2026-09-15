@@ -13,10 +13,11 @@ import * as db from '../db.js';
 import { MEDIA_CACHE, APP_CACHE_PREFIX, precacheMedia } from '../media.js';
 import { parseWeightStep, MIN_STEP, MAX_STEP } from '../weight-step.js';
 import { daysSince } from '../profile.js';
+import { clearDemo, generateDemo, hasDemo } from '../demo.js';
 import { t, tn } from '../i18n.js';
 import {
   setTop, html, raw, node, toast, openSheet, confirmSheet,
-  pickerRow, infoRow, numberSheet, fmtNum, ICON,
+  pickerRow, infoRow, numberSheet, fmtNum, ICON, refresh,
 } from '../ui.js';
 
 export async function render(view) {
@@ -156,7 +157,44 @@ function dataSection(cfg) {
     { icon: ICON.person, hint: t('settings.data.accountHint'), muted: true },
   );
 
-  return section(t('settings.section.data'), backup, photosRow(), account);
+  return section(t('settings.section.data'), backup, photosRow(), demoRow(), account);
+}
+
+/* A casa permanente dos dados de exemplo. O wizard os oferece uma vez e nunca
+ * mais; sem esta linha, quem pulou as boas-vindas nao teria como conhecer as
+ * telas cheias, e quem ligou o exemplo dependeria da faixa continuar na tela. */
+function demoRow() {
+  if (hasDemo()) {
+    return infoRow(t('demo.settings.on'), '', async () => {
+      const ok = await confirmSheet({
+        title: t('demo.confirm.title'),
+        message: t('demo.confirm.message'),
+        confirmLabel: t('demo.clear'),
+        danger: true,
+      });
+      if (!ok) return;
+      await clearDemo();
+      toast(t('demo.toastCleared'));
+      refresh();
+    }, { icon: ICON.dumbbell, hint: t('demo.settings.onHint') });
+  }
+
+  return infoRow(t('demo.settings.off'), '', async () => {
+    const ok = await confirmSheet({
+      title: t('demo.settings.off'),
+      message: t('demo.settings.offConfirm'),
+      confirmLabel: t('demo.settings.generate'),
+    });
+    if (!ok) return;
+    toast(t('welcome.demoRunning'));
+    try {
+      await generateDemo();
+      refresh();
+    } catch (err) {
+      console.error(err);
+      toast(t('welcome.demoFailed'));
+    }
+  }, { icon: ICON.dumbbell, hint: t('demo.settings.offHint') });
 }
 
 /* As fotos podem chegar a dezenas de MB no aparelho. O tamanho fica na linha

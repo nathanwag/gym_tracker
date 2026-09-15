@@ -62,6 +62,9 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --topbar-h: 52px;
   --tabbar-h: 58px;
+  /* Altura da faixa de dados de exemplo: 0 quando ela nao existe, pra o padding
+     da .view ser uma conta so nos dois estados. */
+  --demo-h: 0px;
 
   color-scheme: light dark;
 }
@@ -293,12 +296,15 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   max-width: 620px;
   margin: 0 auto;
   padding:
-    calc(var(--topbar-h) + var(--safe-top) + 12px)
+    calc(var(--topbar-h) + var(--safe-top) + var(--demo-h) + 12px)
     var(--pad)
     calc(var(--tabbar-h) + var(--safe-bottom) + 24px);
   outline: none;
 }
-.view--no-topbar { padding-top: calc(var(--safe-top) + 12px); }
+.view--no-topbar { padding-top: calc(var(--safe-top) + var(--demo-h) + 12px); }
+/* Sem tabbar (boas-vindas): o rodape da view volta a ser so o respiro. */
+body.no-tabbar .tabbar { display: none; }
+body.no-tabbar .view { padding-bottom: calc(var(--safe-bottom) + 24px); }
 
 .stack > * + * { margin-top: 10px; }
 
@@ -1604,4 +1610,96 @@ a.chip:active { background: var(--border); }
   .flip .flip__frame--b { opacity: 0; }
   .flip.is-forced .flip__frame { animation: flip-a 1.4s steps(1, end) infinite !important; }
   .flip.is-forced .flip__frame--b { animation-name: flip-b !important; }
+}
+
+/* ---------- Faixa de dados de exemplo ---------- */
+
+/* Persistente e nao-descartavel de proposito: um aviso que some vira dado falso
+   esquecido, e a pessoa passa a ler o grafico de outra pessoa como se fosse o
+   dela. Mesma ideia da faixa de modo de teste do Stripe. */
+body.is-demo { --demo-h: 38px; }
+
+.demobar {
+  position: fixed;
+  top: calc(var(--topbar-h) + var(--safe-top));
+  inset-inline: 0;
+  z-index: 19; /* logo abaixo da topbar, que e 20 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: var(--demo-h);
+  padding: 0 var(--pad);
+  background: color-mix(in srgb, var(--pr) 22%, var(--bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--pr) 45%, transparent);
+  font-size: .84rem;
+}
+.demobar #demobar-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.demobar .btn { min-height: 28px; padding: 0 12px; font-size: .84rem; }
+/* Na tela de exercicio a topbar some pra foto sangrar ate o topo; a faixa sobe
+   pro lugar dela em vez de flutuar sobre a imagem. */
+body.no-topbar .demobar { top: var(--safe-top); }
+
+/* ---------- Boas-vindas ---------- */
+
+.welcome { min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px); }
+.welcome__screen {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: inherit;
+}
+/* O rodape desce pro fim da tela: os botoes ficam sempre no mesmo lugar nas
+   tres etapas, que e o que faz avancar sem reprocurar o alvo. */
+.welcome__foot { margin-top: auto; display: grid; gap: 8px; }
+.welcome__body { display: grid; gap: 10px; }
+
+.welcome__screen--hero { justify-content: center; text-align: center; }
+.welcome__hero { display: grid; gap: 10px; justify-items: center; margin: auto 0; }
+.welcome__mark { width: 96px; height: 96px; }
+/* A marca e preenchida, nao tracejada: o svg global e `fill:none` +
+   `stroke: currentColor`, que aqui poria um contorno claro em volta dos
+   tracos e desmancharia a progressao de espessura. */
+.welcome__mark rect { fill: var(--accent); stroke: none; }
+.welcome__app {
+  margin: 0;
+  font-family: var(--display);
+  font-size: var(--fs-xl);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.welcome__tagline { margin: 0; font-size: 1.05rem; }
+.welcome__pitch { margin: 0; max-width: 34ch; color: var(--muted); font-size: .92rem; }
+.welcome__title { margin: 0 0 4px; font-size: var(--fs-lg); }
+.welcome__hint { margin: 0; }
+.welcome__howto {
+  margin: 0 0 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: .88rem;
+}
+
+.welcome__dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 4px; }
+.welcome__dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.welcome__dots i.is-on { background: var(--accent); }
+
+/* Texto so pro leitor de tela: o "passo 2 de 3" que os pontinhos dizem a vista. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

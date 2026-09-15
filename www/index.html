@@ -27,6 +27,15 @@
   <div class="topbar__actions" id="topbar-actions"></div>
 </header>
 
+<!-- Faixa de dados de exemplo. Fica na casca, e nao no #view, porque o #view e
+     reconstruido a cada render; quem a acende e o router (paintDemoBar). O
+     texto tambem existe aqui em PT, como o rotulo das abas: aparece antes de o
+     i18n rodar, e initDemoBar() o traduz. -->
+<div class="demobar" id="demobar" hidden>
+  <span id="demobar-label">Voce esta vendo dados de exemplo</span>
+  <button class="btn btn--sm" id="demobar-exit" type="button">Limpar</button>
+</div>
+
 <main class="view" id="view" tabindex="-1"></main>
 
 <nav class="tabbar" id="tabbar" aria-label="Navegacao principal">

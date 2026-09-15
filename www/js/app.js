@@ -5,11 +5,15 @@
 
 import {
   $, initSheet, openSheet, closeSheet, html, raw, node, refresh, ICON, listInCard,
+  setTop, toast, confirmSheet,
 } from './ui.js';
 import { repaintGroups } from './muscle-group.js';
+import { needsOnboarding } from './onboarding.js';
+import { clearDemo, hasDemo } from './demo.js';
 import { t, tn } from './i18n.js';
 import * as db from './db.js';
 import { precacheMedia } from './media.js';
+import * as welcome from './views/welcome.js';
 import * as home from './views/home.js';
 import * as session from './views/session.js';
 import * as history from './views/history.js';
@@ -24,8 +28,14 @@ import * as profile from './views/profile.js';
 import * as backup from './views/backup.js';
 import * as bodyWeight from './views/body-weight.js';
 
+const WELCOME = '/boas-vindas';
+
 const ROUTES = [
   [/^\/?$/, (view) => home.render(view)],
+  // Primeiro acesso. Precisa estar aqui mesmo escondendo a tabbar: sem a rota,
+  // o `if (!route)` do router devolveria pra #/, o guard devolveria pra ca, e o
+  // app trocaria de hash pra sempre.
+  [new RegExp(`^${WELCOME}$`), (view) => welcome.render(view)],
   [/^\/sessao$/, (view) => session.render(view)],
   // A aba Treino corta a lista nos 5 mais recentes; /historico e o resto
   // dela. Nao ganha aba: o TABS abaixo mantem os dois sob a do Treino.
@@ -62,6 +72,8 @@ const ROUTES = [
   [/^\/peso$/, (view) => bodyWeight.render(view)],
 ];
 
+// /boas-vindas NAO entra aqui de proposito: a tabbar esta escondida na rota, e
+// acender uma aba invisivel so confundiria quem for ler isto depois.
 const TABS = [
   [/^\/(sessao)?$/, 'workout'],
   // Modelo nao tem aba propria: mora atras do Treino, que e onde ele vira
@@ -99,18 +111,62 @@ async function updateFab() {
   fab.setAttribute('aria-label', active ? t('app.fab.resume') : t('app.fab.start'));
 }
 
-function initFab() {
+/** O caminho de comecar um treino. Extraido do clique do FAB porque os estados
+ *  vazios oferecem o mesmo comeco pelo evento `app:iniciar-treino` — antes, o
+ *  Progresso vazio mandava pra Home, que tambem nao tinha por onde comecar. */
+async function openStartFlow() {
   const fab = $('#fab-workout');
-  fab.onclick = async () => {
-    const active = await db.getActiveWorkout();
-    if (active) { location.hash = '#/sessao'; return; }
+  const active = await db.getActiveWorkout();
+  if (active) { location.hash = '#/sessao'; return; }
 
-    // So pergunta quando ha o que perguntar: sem modelo montado, o FAB abre um
-    // treino vazio direto, como sempre fez.
-    const templates = (await db.listTemplates()).filter((tpl) => (tpl.exerciseIds || []).length);
-    if (!templates.length) { startWorkout(fab, null); return; }
-    openStartSheet(fab, templates);
+  // So pergunta quando ha o que perguntar: sem modelo montado, abre um treino
+  // vazio direto, como sempre fez.
+  const templates = (await db.listTemplates()).filter((tpl) => (tpl.exerciseIds || []).length);
+  if (!templates.length) { startWorkout(fab, null); return; }
+  openStartSheet(fab, templates);
+}
+
+function initFab() {
+  $('#fab-workout').onclick = openStartFlow;
+}
+
+/** A faixa de dados de exemplo. Mora na casca (index.html) porque o #view e
+ *  reconstruido a cada render, e e repintada pelo router, ao lado de
+ *  highlightTab() — assim ela nao tem como dessincronizar do banco. */
+function paintDemoBar() {
+  const bar = $('#demobar');
+  if (!bar) return;
+  bar.hidden = !hasDemo();
+  document.body.classList.toggle('is-demo', hasDemo());
+}
+
+function initDemoBar() {
+  $('#demobar-label').textContent = t('demo.bar');
+  const button = $('#demobar-exit');
+  button.textContent = t('demo.clear');
+  button.onclick = async () => {
+    const ok = await confirmSheet({
+      title: t('demo.confirm.title'),
+      message: t('demo.confirm.message'),
+      confirmLabel: t('demo.clear'),
+      danger: true,
+    });
+    if (!ok) return;
+    await clearDemo();
+    toast(t('demo.toastCleared'));
+    location.hash = '#/';
+    refresh();
   };
+}
+
+/** Carimba quem ja usava o app mas nao tem o carimbo — o caso do backup gerado
+ *  antes da migracao v9, que troca o store de settings inteiro. So toca no
+ *  banco quando o carimbo falta, entao nao custa nada nas aberturas seguintes. */
+async function resolveWelcome() {
+  if (!needsOnboarding(db.settings())) return;
+  const [exercises, workouts] = await Promise.all([db.listExercises(), db.listWorkouts()]);
+  if (!exercises.length && !workouts.length) return;
+  await db.setSetting('onboardedAt', new Date().toISOString());
 }
 
 /** `templateId` null = treino livre. O FAB e desabilitado antes do await pra
@@ -168,6 +224,19 @@ let isGoingBack = false;
 
 async function router() {
   const path = currentPath();
+
+  // Primeiro acesso, antes de tudo: antes do lookup de rota, pra um hash
+  // desconhecido tambem cair no wizard, e antes da pilha de navegacao abaixo,
+  // pra o desvio nao virar item do backStack — "voltar" levaria pra uma tela
+  // que a pessoa nunca viu. Retornar sem renderizar e o que evita o render
+  // duplo: a atribuicao dispara hashchange, e e ele quem desenha.
+  if (needsOnboarding(db.settings())) {
+    if (path !== WELCOME) { location.hash = `#${WELCOME}`; return; }
+  } else if (path === WELCOME) {
+    location.hash = '#/';
+    return;
+  }
+
   const route = ROUTES.find(([re]) => re.test(path));
 
   if (!route) { location.hash = '#/'; return; }
@@ -183,6 +252,7 @@ async function router() {
   const token = ++renderToken;
   closeSheet();
   highlightTab(path);
+  paintDemoBar();
   updateFab();
 
   const view = $('#view');
@@ -203,6 +273,9 @@ async function router() {
 }
 
 function showError(view, err) {
+  // Restaura a casca: o erro pode ter vindo de uma tela que escondeu a topbar
+  // ou a tabbar, e sem isto a pessoa fica com a mensagem e nenhuma saida.
+  setTop({ title: t('app.error.title') });
   view.innerHTML = html`
     <div class="card card__pad">
       <h2>${t('app.error.title')}</h2>
@@ -262,6 +335,7 @@ async function boot() {
   initFab();
   window.addEventListener('hashchange', router);
   window.addEventListener('app:refresh', router);
+  window.addEventListener('app:iniciar-treino', openStartFlow);
   window.addEventListener('app:voltar', (e) => {
     if (backStack.length) {
       isGoingBack = true;
@@ -274,6 +348,7 @@ async function boot() {
   try {
     await db.init();
     await db.getSettings();
+    await resolveWelcome();
   } catch (err) {
     console.error(err);
     $('#view').append(node(html`
@@ -292,6 +367,7 @@ async function boot() {
   // que ficaram sendo so o valor inicial.
   await repaintGroups();
   applyStaticLanguage();
+  initDemoBar();
   await router();
   await registerServiceWorker();
   requestPersistence();
