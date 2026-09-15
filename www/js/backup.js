@@ -16,6 +16,7 @@ import * as db from './db.js';
 import { slugByName } from './seed.js';
 import { groupSlugFor, groupsForRestore } from './groups.js';
 import { repaintGroups } from './muscle-group.js';
+import { needsOnboarding } from './onboarding.js';
 import { normalizeName } from './text.js';
 import { t } from './i18n.js';
 
@@ -280,5 +281,14 @@ export async function validate(payload) {
 export async function restore(data) {
   await db.replaceAll(data);
   await db.getSettings();
+  // Todo backup gerado antes das boas-vindas existirem vem sem `onboardedAt`, e
+  // o replaceAll troca o store de settings inteiro — sem este carimbo, quem
+  // acabou de restaurar oito meses de treino cairia no wizard de primeiro
+  // acesso. A migracao v9 nao alcanca este caso: ela roda no upgrade do banco,
+  // nao na importacao.
+  const used = Boolean(data.exercises?.length || data.workouts?.length);
+  if (used && needsOnboarding(db.settings())) {
+    await db.setSetting('onboardedAt', new Date().toISOString());
+  }
   await repaintGroups();
 }
