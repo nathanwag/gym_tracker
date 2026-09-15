@@ -12,7 +12,7 @@
  * GitHub Pages quanto na origem local do WebView nativo.
  */
 
-const VERSION = 'anilha-v75';
+const VERSION = 'anilha-v76';
 
 // Dois caches de proposito. O do app e versionado e descartavel: bumpar VERSION
 // e como se deploya. O de midia NAO e versionado — sao dezenas de MB de fotos
@@ -48,9 +48,12 @@ const ASSETS = [
   './js/text.js',
   './js/weight-step.js',
   './js/profile.js',
+  './js/onboarding.js',
   './js/db.js',
   './js/models.js',
   './js/seed.js',
+  './js/demo-plan.js',
+  './js/demo.js',
   './js/groups.js',
   './js/muscle-group.js',
   './js/stepper-value.js',
@@ -64,6 +67,7 @@ const ASSETS = [
   './js/catalog.js',
   './js/media.js',
   './js/set-composer.js',
+  './js/views/welcome.js',
   './js/views/home.js',
   './js/views/session.js',
   './js/views/exercise-picker.js',
