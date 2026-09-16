@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { needsOnboarding, cleanName, MAX_NAME } from './onboarding.js';
+import { needsOnboarding, ensureOnboarded, cleanName, MAX_NAME } from './onboarding.js';
 
 test('sem carimbo de primeiro acesso, o app abre nas boas-vindas', () => {
   assert.equal(needsOnboarding({ onboardedAt: null }), true);
@@ -36,10 +36,48 @@ test('cleanName devolve vazio pro que nao tem letra nenhuma', () => {
   assert.equal(cleanName(undefined), '');
 });
 
-/* O carimbo cobre quem atualiza o app (migracao v9) e quem passa pelo wizard,
- * mas nao quem RESTAURA um backup gerado antes da v9: replaceAll troca o store
- * de settings inteiro, e o backup antigo nao tem a chave. Sem esta rede, quem
- * troca de celular e importa 8 meses de treino cai no wizard. */
-test('banco com historico nao abre o wizard, mesmo sem o carimbo', () => {
-  assert.equal(needsOnboarding({ onboardedAt: null }, { used: true }), false);
+/* ensureOnboarded() e a rede pros dois casos que a migracao v9 nao alcanca: o
+ * backup gerado ANTES dela (replaceAll troca o store de settings inteiro) e o
+ * banco que ja tinha dado por outro caminho. O banco entra por parametro
+ * porque e um boundary — o mesmo seam do demo.test.js. */
+function fakeStore({ onboardedAt = null, exercises = [], workouts = [] } = {}) {
+  const cfg = { onboardedAt };
+  const lidas = [];
+  return {
+    cfg,
+    lidas,
+    settings: () => cfg,
+    listExercises: async () => { lidas.push('exercises'); return exercises; },
+    listWorkouts: async () => { lidas.push('workouts'); return workouts; },
+    setSetting: async (key, value) => { cfg[key] = value; },
+  };
+}
+
+/* Quem troca de celular e importa 8 meses de treino nao pode cair no wizard. */
+test('banco com historico ganha o carimbo sem passar pelo wizard', async () => {
+  const store = fakeStore({ workouts: [{ id: 1 }] });
+
+  await ensureOnboarded({ store });
+
+  assert.ok(store.cfg.onboardedAt, 'ficou sem carimbo: o app abriria nas boas-vindas');
+});
+
+/* O outro lado: banco vazio e exatamente quem DEVE ver o wizard. Carimbar aqui
+ * faria o primeiro acesso nunca acontecer. */
+test('banco vazio segue sem carimbo, que e quem ve as boas-vindas', async () => {
+  const store = fakeStore();
+
+  await ensureOnboarded({ store });
+
+  assert.equal(store.cfg.onboardedAt, null);
+});
+
+/* Roda em toda abertura do app: com o carimbo no lugar nao pode custar duas
+ * leituras de tabela inteira. */
+test('com o carimbo gravado, nem chega a ler o banco', async () => {
+  const store = fakeStore({ onboardedAt: '2026-09-14T12:00:00.000Z' });
+
+  await ensureOnboarded({ store });
+
+  assert.deepEqual(store.lidas, []);
 });

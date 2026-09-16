@@ -8,7 +8,7 @@ import {
   setTop,
 } from './ui.js';
 import { repaintGroups } from './muscle-group.js';
-import { needsOnboarding } from './onboarding.js';
+import { ensureOnboarded, needsOnboarding } from './onboarding.js';
 import { confirmAndClear, hasDemo } from './demo.js';
 import { t, tn } from './i18n.js';
 import * as db from './db.js';
@@ -152,16 +152,6 @@ function initDemoBar() {
     if (currentPath() === '/') refresh();
     else location.hash = '#/';
   };
-}
-
-/** Carimba quem ja usava o app mas nao tem o carimbo — o caso do backup gerado
- *  antes da migracao v9, que troca o store de settings inteiro. So toca no
- *  banco quando o carimbo falta, entao nao custa nada nas aberturas seguintes. */
-async function resolveWelcome() {
-  if (!needsOnboarding(db.settings())) return;
-  const [exercises, workouts] = await Promise.all([db.listExercises(), db.listWorkouts()]);
-  if (!exercises.length && !workouts.length) return;
-  await db.setSetting('onboardedAt', new Date().toISOString());
 }
 
 /** `templateId` null = treino livre. O FAB e desabilitado antes do await pra
@@ -343,7 +333,7 @@ async function boot() {
   try {
     await db.init();
     await db.getSettings();
-    await resolveWelcome();
+    await ensureOnboarded();
   } catch (err) {
     console.error(err);
     $('#view').append(node(html`

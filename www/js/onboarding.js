@@ -1,20 +1,40 @@
-/* Regras do primeiro acesso, sem DOM e sem banco.
+/* Regras do primeiro acesso.
  *
  * Quem decide se as boas-vindas aparecem e o router (app.js), mas a REGRA mora
- * aqui: ela precisa valer igual pro guard da rota e pra qualquer tela que
- * pergunte "essa pessoa ja passou pelo onboarding?". */
+ * aqui: ela precisa valer igual pro guard da rota, pro boot e pra restauracao
+ * de um backup. Ja morou copiada em duas grafias diferentes nesses dois
+ * ultimos, que e o que este modulo existe pra impedir. */
+
+import * as db from './db.js';
+
+/** Se a pessoa ainda nao passou pelas boas-vindas. Leitura sincrona: o guard
+ *  do router roda antes de qualquer await. */
+export function needsOnboarding(settings) {
+  return !settings?.onboardedAt;
+}
 
 /**
- * Se a pessoa ainda nao passou pelas boas-vindas.
+ * Carimba quem ja usava o app mas nao tem o carimbo.
  *
- * `used` e a rede pro unico caso que a migracao v9 nao alcanca: um backup
- * gerado ANTES dela nao tem o carimbo, e restore() substitui o store de
- * settings inteiro — quem troca de celular e importa oito meses de treino cairia
- * no wizard. Quem chama passa se o banco ja tem exercicio ou treino.
+ * A migracao v9 cobre quem atualizou o app, e o wizard cobre quem passou por
+ * ele. Sobra quem chega com dado por outro caminho — o backup gerado ANTES da
+ * v9, que nao tem a chave e cujo replaceAll troca o store de settings inteiro.
+ * Sem esta rede, quem troca de celular e importa oito meses de treino cai no
+ * wizard.
+ *
+ * So le o banco quando o carimbo falta, entao nao custa nada nas aberturas
+ * seguintes. `store` e o banco, e entra por parametro so pra o teste — em
+ * producao e sempre o db.js.
  */
-export function needsOnboarding(settings, { used = false } = {}) {
-  if (settings?.onboardedAt) return false;
-  return !used;
+export async function ensureOnboarded({ store = db } = {}) {
+  if (!needsOnboarding(store.settings())) return;
+
+  const [exercises, workouts] = await Promise.all([
+    store.listExercises(), store.listWorkouts(),
+  ]);
+  if (!exercises.length && !workouts.length) return;
+
+  await store.setSetting('onboardedAt', new Date().toISOString());
 }
 
 // O nome e desenhado numa linha so ao lado do avatar, no Perfil. O input do
