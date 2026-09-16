@@ -18,7 +18,7 @@ import { cleanName, MAX_NAME } from '../onboarding.js';
 import { runDemo } from '../demo.js';
 import { t, tn } from '../i18n.js';
 import {
-  setTop, html, raw, node, esc, toast, pickList, APP_NAME,
+  setTop, html, raw, node, toast, pickList, APP_NAME,
 } from '../ui.js';
 
 const STEPS = 3;
@@ -91,8 +91,8 @@ export async function render(view) {
             <span class="field__label">${t('welcome.you.name')}</span>
             <input class="input" data-name type="text" autocomplete="name"
                    enterkeyhint="next" maxlength="${MAX_NAME}"
-                   placeholder="${esc(t('welcome.you.namePlaceholder'))}"
-                   value="${esc(draft.name)}">
+                   placeholder="${t('welcome.you.namePlaceholder')}"
+                   value="${draft.name}">
           </label>
           <p class="muted small welcome__hint">${t('welcome.you.nameHint')}</p>
           <h2 class="section-title">${t('welcome.you.unit')}</h2>
