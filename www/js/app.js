@@ -5,11 +5,11 @@
 
 import {
   $, initSheet, openSheet, closeSheet, html, raw, node, refresh, ICON, listInCard,
-  setTop, toast, confirmSheet,
+  setTop,
 } from './ui.js';
 import { repaintGroups } from './muscle-group.js';
 import { needsOnboarding } from './onboarding.js';
-import { clearDemo, hasDemo } from './demo.js';
+import { confirmAndClear, hasDemo } from './demo.js';
 import { t, tn } from './i18n.js';
 import * as db from './db.js';
 import { precacheMedia } from './media.js';
@@ -145,17 +145,12 @@ function initDemoBar() {
   const button = $('#demobar-exit');
   button.textContent = t('demo.clear');
   button.onclick = async () => {
-    const ok = await confirmSheet({
-      title: t('demo.confirm.title'),
-      message: t('demo.confirm.message'),
-      confirmLabel: t('demo.clear'),
-      danger: true,
-    });
-    if (!ok) return;
-    await clearDemo();
-    toast(t('demo.toastCleared'));
-    location.hash = '#/';
-    refresh();
+    if (!await confirmAndClear()) return;
+    // Volta pra Home: a tela de agora pode ser o detalhe de um treino que
+    // acabou de deixar de existir. Ja estando nela, `location.hash` nao dispara
+    // hashchange nenhum — dai o refresh() no lugar, e nao junto (dois renders).
+    if (currentPath() === '/') refresh();
+    else location.hash = '#/';
   };
 }
 

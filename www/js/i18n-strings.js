@@ -76,13 +76,13 @@ export const DICT = {
     'welcome.finish': 'Começar a treinar',
     'welcome.demo': 'Ver com dados de exemplo',
     'welcome.demoHint': '12 semanas de treino fictício, só pra conhecer as telas. Dá pra limpar num toque.',
-    'welcome.demoRunning': 'Montando o exemplo',
-    'welcome.demoProgress': 'treino {n} de {total}',
-    'welcome.demoFailed': 'Não foi possível montar o exemplo.',
 
     // ---------- demo.js: a faixa de dados de exemplo ----------
     'demo.bar': 'Você está vendo dados de exemplo',
     'demo.clear': 'Limpar',
+    'demo.running': 'Montando o exemplo',
+    'demo.progress': 'treino {n} de {total}',
+    'demo.failed': 'Não foi possível montar o exemplo.',
     'demo.confirm.title': 'Limpar os dados de exemplo?',
     'demo.confirm.message': 'Apaga só os treinos, modelos e exercícios que o exemplo criou. O que você registrou continua aqui.',
     'demo.toastCleared': 'Dados de exemplo apagados.',
@@ -630,13 +630,13 @@ export const DICT = {
     'welcome.finish': 'Start training',
     'welcome.demo': 'See it with sample data',
     'welcome.demoHint': '12 weeks of made-up training, just to see the screens. You can wipe it in one tap.',
-    'welcome.demoRunning': 'Building the sample',
-    'welcome.demoProgress': 'workout {n} of {total}',
-    'welcome.demoFailed': "Couldn't build the sample.",
 
     // ---------- demo.js: a faixa de dados de exemplo ----------
     'demo.bar': "You're viewing sample data",
     'demo.clear': 'Wipe',
+    'demo.running': 'Building the sample',
+    'demo.progress': 'workout {n} of {total}',
+    'demo.failed': "Couldn't build the sample.",
     'demo.confirm.title': 'Wipe the sample data?',
     'demo.confirm.message': 'Deletes only the workouts, routines and exercises the sample created. Anything you logged stays.',
     'demo.toastCleared': 'Sample data deleted.',

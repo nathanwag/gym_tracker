@@ -13,7 +13,7 @@ import * as db from '../db.js';
 import { MEDIA_CACHE, APP_CACHE_PREFIX, precacheMedia } from '../media.js';
 import { parseWeightStep, MIN_STEP, MAX_STEP } from '../weight-step.js';
 import { daysSince } from '../profile.js';
-import { clearDemo, generateDemo, hasDemo } from '../demo.js';
+import { confirmAndClear, hasDemo, runDemo } from '../demo.js';
 import { t, tn } from '../i18n.js';
 import {
   setTop, html, raw, node, toast, openSheet, confirmSheet,
@@ -166,16 +166,7 @@ function dataSection(cfg) {
 function demoRow() {
   if (hasDemo()) {
     return infoRow(t('demo.settings.on'), '', async () => {
-      const ok = await confirmSheet({
-        title: t('demo.confirm.title'),
-        message: t('demo.confirm.message'),
-        confirmLabel: t('demo.clear'),
-        danger: true,
-      });
-      if (!ok) return;
-      await clearDemo();
-      toast(t('demo.toastCleared'));
-      refresh();
+      if (await confirmAndClear()) refresh();
     }, { icon: ICON.dumbbell, hint: t('demo.settings.onHint') });
   }
 
@@ -186,14 +177,11 @@ function demoRow() {
       confirmLabel: t('demo.settings.generate'),
     });
     if (!ok) return;
-    toast(t('welcome.demoRunning'));
-    try {
-      await generateDemo();
-      refresh();
-    } catch (err) {
-      console.error(err);
-      toast(t('welcome.demoFailed'));
-    }
+    toast(t('demo.running'));
+    // Redesenha mesmo se falhar: uma geracao interrompida no meio deixa o que
+    // entrou registrado, e e esta linha que passa a oferecer limpar.
+    await runDemo();
+    refresh();
   }, { icon: ICON.dumbbell, hint: t('demo.settings.offHint') });
 }
 

@@ -15,7 +15,7 @@
 
 import * as db from '../db.js';
 import { cleanName, MAX_NAME } from '../onboarding.js';
-import { generateDemo } from '../demo.js';
+import { runDemo } from '../demo.js';
 import { t, tn } from '../i18n.js';
 import {
   setTop, html, raw, node, esc, toast, pickList, APP_NAME,
@@ -188,7 +188,7 @@ export async function render(view) {
       <div class="welcome__screen welcome__screen--hero">
         <div class="welcome__hero">
           ${raw(MARK)}
-          <p class="welcome__tagline">${t('welcome.demoRunning')}</p>
+          <p class="welcome__tagline">${t('demo.running')}</p>
           <p class="welcome__pitch" data-progress aria-live="polite"></p>
         </div>
       </div>
@@ -196,14 +196,9 @@ export async function render(view) {
     root.append(screen);
     const line = screen.querySelector('[data-progress]');
 
-    try {
-      await generateDemo({
-        onProgress: (n, total) => { line.textContent = t('welcome.demoProgress', { n, total }); },
-      });
-    } catch (err) {
-      console.error(err);
-      toast(t('welcome.demoFailed'));
-    }
+    await runDemo({
+      onProgress: (n, total) => { line.textContent = t('demo.progress', { n, total }); },
+    });
     location.hash = '#/';
   }
 
