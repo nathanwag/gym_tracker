@@ -615,7 +615,6 @@ export async function startWorkout() {
   return { ...record, id };
 }
 
-/** O treino em aberto (sem finishedAt), se existir. */
 /** Insere um treino ja terminado, em vez de abrir um e corrigir depois.
  *  Existe pros dados de exemplo: com startWorkout(), cada um dos 23 treinos
  *  fica um instante SEM finishedAt, e nesse instante getActiveWorkout() o
@@ -631,6 +630,7 @@ export async function addWorkout({
   return { ...record, id };
 }
 
+/** O treino em aberto (sem finishedAt), se existir. */
 export async function getActiveWorkout() {
   const all = await tx('workouts', 'readonly', (s) => req(s.getAll()));
   const unfinished = all.filter((w) => !w.finishedAt);

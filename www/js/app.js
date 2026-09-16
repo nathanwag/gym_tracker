@@ -136,8 +136,9 @@ function initFab() {
 function paintDemoBar() {
   const bar = $('#demobar');
   if (!bar) return;
-  bar.hidden = !hasDemo();
-  document.body.classList.toggle('is-demo', hasDemo());
+  const on = hasDemo();
+  bar.hidden = !on;
+  document.body.classList.toggle('is-demo', on);
 }
 
 function initDemoBar() {

@@ -26,9 +26,20 @@ function modulesIn(dir) {
   });
 }
 
+/** So o miolo do `const ASSETS = [...]`. Varrer o arquivo inteiro fazia um
+ *  caminho citado em COMENTARIO valer como precache: o teste ficava verde com o
+ *  modulo fora da lista, que e exatamente o que ele existe pra pegar. */
+function assetsArray(sw) {
+  const start = sw.indexOf('const ASSETS = [');
+  assert.notEqual(start, -1, 'nao achei o `const ASSETS = [` no sw.js');
+  const end = sw.indexOf('];', start);
+  assert.notEqual(end, -1, 'o array ASSETS nao fecha');
+  return sw.slice(start, end);
+}
+
 test('todo modulo de www/js/ esta no precache do sw.js', () => {
   const sw = fs.readFileSync(path.join(WWW, 'sw.js'), 'utf8');
-  const assets = new Set([...sw.matchAll(/'(\.\/[^']+)'/g)].map((m) => m[1]));
+  const assets = new Set([...assetsArray(sw).matchAll(/'(\.\/[^']+)'/g)].map((m) => m[1]));
   const faltando = modulesIn(JS_DIR).filter((m) => !assets.has(m));
   assert.deepEqual(faltando, [], `fora do ASSETS do sw.js: ${faltando.join(', ')}`);
 });

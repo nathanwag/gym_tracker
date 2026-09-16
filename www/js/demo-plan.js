@@ -40,20 +40,25 @@ const DAY_OFFSET = { push: 4, pull: 2, legs: 0 };
 // Quanto dura cada sessao de exemplo.
 const DURATION = 55 * 60000;
 
-// [dia, grupo, nome (de SEED_EXERCISES), carga inicial, incremento/sessao,
-//  sessoes, forma]. Tudo aqui e privado: buildDemo() e a unica porta, e e o
-// seam que o teste usa — helper exportado viraria teste preso a implementacao.
+/* Uma linha por exercicio do plano. `name` e de SEED_EXERCISES, `base` e a
+ * carga da primeira sessao, `step` o quanto sobe por sessao, `sessions` quantas
+ * vezes o exercicio foi feito (ver o cabecalho) e `shape` a forma da evolucao.
+ *
+ * Campo com nome, e nao tupla: as cinco leituras abaixo liam coisas como
+ * `([d, , , , , sessions])`, e acrescentar um campo era recontar virgula em
+ * todas elas. Tudo aqui e privado: buildDemo() e a unica porta, e e o seam que
+ * o teste usa — helper exportado viraria teste preso a implementacao. */
 const PLAN = [
-  ['push', 'Peito', 'Supino reto com barra', 60, 2.5, 12, 'linear'],
-  ['push', 'Ombros', 'Desenvolvimento com halteres', 20, 1, 8, 'surge'],
-  ['push', 'Tríceps', 'Tríceps na polia (corda)', 25, 1.5, 2, 'linear'],
-  ['pull', 'Costas', 'Puxada frontal (pulley)', 45, 2.5, 6, 'stall'],
-  ['pull', 'Costas', 'Remada curvada com barra', 50, 2.5, 6, 'linear'],
-  ['pull', 'Bíceps', 'Rosca direta com barra', 30, 1, 1, 'linear'],
-  ['legs', 'Quadríceps', 'Agachamento livre', 80, 5, 3, 'linear'],
-  ['legs', 'Posterior', 'Levantamento terra romeno', 70, 5, 4, 'stall'],
-  ['legs', 'Panturrilha', 'Panturrilha em pé', 90, 2.5, 5, 'linear'],
-  ['legs', 'Abdômen', 'Abdominal supra', 20, 2.5, 0, 'linear'],
+  { day: 'push', group: 'Peito', name: 'Supino reto com barra', base: 60, step: 2.5, sessions: 12, shape: 'linear' },
+  { day: 'push', group: 'Ombros', name: 'Desenvolvimento com halteres', base: 20, step: 1, sessions: 8, shape: 'surge' },
+  { day: 'push', group: 'Tríceps', name: 'Tríceps na polia (corda)', base: 25, step: 1.5, sessions: 2, shape: 'linear' },
+  { day: 'pull', group: 'Costas', name: 'Puxada frontal (pulley)', base: 45, step: 2.5, sessions: 6, shape: 'stall' },
+  { day: 'pull', group: 'Costas', name: 'Remada curvada com barra', base: 50, step: 2.5, sessions: 6, shape: 'linear' },
+  { day: 'pull', group: 'Bíceps', name: 'Rosca direta com barra', base: 30, step: 1, sessions: 1, shape: 'linear' },
+  { day: 'legs', group: 'Quadríceps', name: 'Agachamento livre', base: 80, step: 5, sessions: 3, shape: 'linear' },
+  { day: 'legs', group: 'Posterior', name: 'Levantamento terra romeno', base: 70, step: 5, sessions: 4, shape: 'stall' },
+  { day: 'legs', group: 'Panturrilha', name: 'Panturrilha em pé', base: 90, step: 2.5, sessions: 5, shape: 'linear' },
+  { day: 'legs', group: 'Abdômen', name: 'Abdominal supra', base: 20, step: 2.5, sessions: 0, shape: 'linear' },
 ];
 
 /** Em que sessao do exercicio a semana w cai; negativo antes da primeira.
@@ -79,7 +84,7 @@ function isoDate(when) {
 /** Os exercicios do plano, sem repetir, na ordem em que aparecem. */
 function demoExercises() {
   const seen = new Map();
-  for (const [, group, name] of PLAN) {
+  for (const { group, name } of PLAN) {
     if (!seen.has(name)) seen.set(name, { name, group, slug: slugFor(group, name) });
   }
   return [...seen.values()];
@@ -89,7 +94,7 @@ function demoExercises() {
 function demoTemplates() {
   return DAYS.map((day) => ({
     name: DAY_NAME[day],
-    exercises: PLAN.filter(([d]) => d === day).map(([, , name]) => name),
+    exercises: PLAN.filter((e) => e.day === day).map((e) => e.name),
   }));
 }
 
@@ -102,7 +107,7 @@ export function buildDemo({ today = new Date() } = {}) {
     for (const day of DAYS) {
       // So os exercicios que ja tinham comecado nesta semana. Sem nenhum, o dia
       // nao aconteceu: gravar treino vazio sujaria o historico.
-      const doing = PLAN.filter(([d, , , , , sessions]) => d === day && sessionIndex(w, sessions) >= 0);
+      const doing = PLAN.filter((e) => e.day === day && sessionIndex(w, e.sessions) >= 0);
       if (!doing.length) continue;
 
       const when = new Date(today);
@@ -116,7 +121,7 @@ export function buildDemo({ today = new Date() } = {}) {
       const startedAt = when.toISOString();
 
       const sets = [];
-      for (const [, , name, base, step, sessions, shape] of doing) {
+      for (const { name, base, step, sessions, shape } of doing) {
         const k = sessionIndex(w, sessions);
         const late = k >= sessions - lateCount(sessions);
         const progressed = shape === 'stall' ? Math.min(k, Math.ceil(sessions / 2)) : k;
@@ -133,7 +138,7 @@ export function buildDemo({ today = new Date() } = {}) {
         date: isoDate(when),
         startedAt,
         finishedAt: new Date(when.getTime() + DURATION).toISOString(),
-        exercises: doing.map(([, , name]) => name),
+        exercises: doing.map((e) => e.name),
         sets,
       });
     }
