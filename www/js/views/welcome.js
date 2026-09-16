@@ -179,10 +179,13 @@ export async function render(view) {
       location.hash = '#/';
       return;
     }
-    await runDemo();
+    await demoScreen();
   }
 
-  async function runDemo() {
+  /* A tela de "montando o exemplo": o progresso e desenhado aqui, e o erro ja
+   * vem tratado do demo.js. Navega em qualquer caso — o carimbo do onboarding
+   * ja foi gravado, e ficar nesta tela nao ofereceria saida nenhuma. */
+  async function demoScreen() {
     root.innerHTML = '';
     const screen = node(html`
       <div class="welcome__screen welcome__screen--hero">
