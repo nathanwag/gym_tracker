@@ -96,7 +96,7 @@ export async function renderList(view) {
     // aqui na primeira vez ve 17 linhas dizendo "nenhum seu" e nenhuma pista do
     // que fazer. A frase e o que liga uma coisa a outra.
     if (!exercises.length) {
-      body.append(node(html`<p class="muted small welcome__hint">${t('exercise.libraryEmpty')}</p>`));
+      body.append(node(html`<p class="hint">${t('exercise.libraryEmpty')}</p>`));
     }
 
     const mineByGroup = countBy(exercises, (ex) => groupSlugFor(ex.muscleGroup));

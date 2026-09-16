@@ -94,7 +94,7 @@ export async function render(view) {
                    placeholder="${t('welcome.you.namePlaceholder')}"
                    value="${draft.name}">
           </label>
-          <p class="muted small welcome__hint">${t('welcome.you.nameHint')}</p>
+          <p class="hint">${t('welcome.you.nameHint')}</p>
           <h2 class="section-title">${t('welcome.you.unit')}</h2>
         </div>
         <div class="welcome__foot">
@@ -136,7 +136,7 @@ export async function render(view) {
           <p class="welcome__howto">${t('welcome.week.howTo')}</p>
           <button class="btn btn--primary btn--block btn--lg" type="button" data-finish>${t('welcome.finish')}</button>
           <button class="btn btn--block btn--ghost" type="button" data-demo>${t('welcome.demo')}</button>
-          <p class="muted small welcome__hint">${t('welcome.demoHint')}</p>
+          <p class="hint">${t('welcome.demoHint')}</p>
           <button class="btn btn--block btn--ghost" type="button" data-back>${t('welcome.back')}</button>
         </div>
       </div>
@@ -150,7 +150,7 @@ export async function render(view) {
 
     const body = el.querySelector('.welcome__body');
     body.append(goal);
-    body.append(node(html`<p class="muted small welcome__hint">${t('welcome.week.hint')}</p>`));
+    body.append(node(html`<p class="hint">${t('welcome.week.hint')}</p>`));
 
     el.querySelector('[data-finish]').onclick = () => finish({ save: true });
     el.querySelector('[data-demo]').onclick = () => finish({ save: true, demo: true });

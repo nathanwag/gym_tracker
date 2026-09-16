@@ -111,9 +111,9 @@ export function setTop({
   actionsEl.innerHTML = actions;
 
   topbarEl.hidden = !showBar;
-  $('#view').classList.toggle('view--no-topbar', !showBar);
-  // No body tambem: a faixa de dados de exemplo e irma do #view e precisa
-  // saber subir pro lugar da topbar quando ela some.
+  // No body, e nao no #view: a faixa de dados de exemplo tambem precisa saber
+  // subir pro lugar da topbar quando ela some, e ela e irma do #view. Uma
+  // classe so pros dois — duas pelo mesmo booleano e o que dessincroniza.
   document.body.classList.toggle('no-topbar', !showBar);
   document.body.classList.toggle('no-tabbar', !showTabs);
 

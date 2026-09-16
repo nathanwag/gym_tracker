@@ -301,7 +301,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
     calc(var(--tabbar-h) + var(--safe-bottom) + 24px);
   outline: none;
 }
-.view--no-topbar { padding-top: calc(var(--safe-top) + var(--demo-h) + 12px); }
+body.no-topbar .view { padding-top: calc(var(--safe-top) + var(--demo-h) + 12px); }
 /* Sem tabbar (boas-vindas): o rodape da view volta a ser so o respiro. */
 body.no-tabbar .tabbar { display: none; }
 body.no-tabbar .view { padding-bottom: calc(var(--safe-bottom) + 24px); }
@@ -341,6 +341,10 @@ body.no-tabbar .view { padding-bottom: calc(var(--safe-bottom) + 24px); }
 
 .muted { color: var(--muted); }
 .small { font-size: .84rem; }
+/* A linha de apoio embaixo de um campo ou de um botao. Era `muted small`
+   mais um reset de margem, e o reset morava numa classe das boas-vindas que
+   as outras telas acabaram pegando emprestada. */
+.hint { margin: 0; color: var(--muted); font-size: .84rem; }
 .tnum { font-variant-numeric: tabular-nums; }
 .row { display: flex; align-items: center; gap: 10px; }
 .row--between { justify-content: space-between; }
@@ -1133,7 +1137,7 @@ a.chip:active { background: var(--border); }
    grande do app pedia licenca. */
 
 /* Cancela o padding da .view pra foto encostar nas quatro bordas. So existe
-   dentro de .view--no-topbar: a tela esconde a barra justamente pra isso. */
+   dentro de body.no-topbar: a tela esconde a barra justamente pra isso. */
 .hero-photo {
   position: relative;
   margin: calc(-1 * (var(--safe-top) + 12px)) calc(-1 * var(--pad)) 0;
@@ -1675,7 +1679,6 @@ body.no-topbar .demobar { top: var(--safe-top); }
 .welcome__tagline { margin: 0; font-size: 1.05rem; }
 .welcome__pitch { margin: 0; max-width: 34ch; color: var(--muted); font-size: .92rem; }
 .welcome__title { margin: 0 0 4px; font-size: var(--fs-lg); }
-.welcome__hint { margin: 0; }
 .welcome__howto {
   margin: 0 0 4px;
   padding: 12px 14px;
