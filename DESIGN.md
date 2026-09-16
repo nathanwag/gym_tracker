@@ -128,6 +128,7 @@ três, e é o que separa "planilha" de "painel". Escala em `--fs-xs` … `--fs-h
 | `.delta` | o que mudou desde a última vez, exercício por exercício | detalhe do treino |
 | `.chip` | pastilha de grupo com cor e, quando há, o índice | Progresso |
 | `.sec` | seção com título e respiro próprio | Perfil, Configurações |
+| `.hint` | linha de apoio embaixo de um campo ou botão: cinza, um degrau menor, sem margem | boas-vindas, biblioteca de exercícios |
 | `.demobar` | faixa fixa de "você está vendo dados de exemplo", com a saída à direita | casca, enquanto o modo demonstração estiver ligado |
 | `.welcome__*` | as três telas de boas-vindas: marca, pergunta, rodapé fixo com os pontinhos | primeiro acesso |
 

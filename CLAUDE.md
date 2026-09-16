@@ -55,7 +55,7 @@ node --test --test-name-pattern="unilateral"    # por nome
 Testes ficam colados ao módulo (`models.test.js` ao lado de `models.js`).
 
 **Todo módulo de `www/js/` carrega sob `node --test`**, inclusive `db.js`,
-`ui.js` e as 14 views — a única exceção é `app.js`, que lê `window` no
+`ui.js` e as 15 views — a única exceção é `app.js`, que lê `window` no
 escopo do módulo e chama `boot()` ao carregar, de propósito: ele é o ponto
 de entrada, não uma peça reutilizável. Já não foi assim: `i18n.js` lia `location` no escopo do
 módulo, numa checagem de paridade de chaves só de desenvolvimento, e como 22
@@ -168,9 +168,13 @@ primeira linha do `router()` — antes do lookup de rota, pra hash desconhecido
 também cair nele, e antes da pilha de navegação, pra o desvio não virar item do
 `backStack`. Três coisas carimbam a chave, e as três são necessárias: o próprio
 wizard, a **migração v9** (banco que já existia passou do primeiro acesso por
-definição — sem ela, todo mundo que atualiza o app cai no wizard) e o `restore()`
-do backup (backup gerado antes da v9 não tem a chave, e `replaceAll` troca o
-store de settings inteiro). `/boas-vindas` **tem** que estar em `ROUTES`: sem a
+definição — sem ela, todo mundo que atualiza o app cai no wizard) e
+`ensureOnboarded()` (`onboarding.js`), que o boot e o `restore()` do backup
+chamam — backup gerado antes da v9 não tem a chave, e `replaceAll` troca o store
+de settings inteiro. **É a mesma função nos dois**, de propósito: a regra "sem
+carimbo mas com histórico" já morou escrita em duas grafias, uma lendo o banco e
+outra derivando do payload do backup, e depois do `replaceAll` o banco *é* o
+backup — não há o que derivar. `/boas-vindas` **tem** que estar em `ROUTES`: sem a
 rota, o `if (!route)` devolve pra `#/`, o guard devolve pra ela, e o app troca de
 hash pra sempre. No `TABS` **não** entra — acenderia uma aba invisível.
 
@@ -178,7 +182,13 @@ hash pra sempre. No `TABS` **não** entra — acenderia uma aba invisível.
 que a pessoa pode gerar pra ver o app cheio e depois limpar. Entra pelas
 boas-vindas e por **Configurações → Seus dados** (o wizard acontece uma vez só;
 sem a segunda porta, quem pulou nunca mais veria o recurso). `demo-plan.js` é
-puro e testado, com `today` por parâmetro; `demo.js` só escreve. **O que foi
+puro e testado, com `today` por parâmetro; `demo.js` escreve e é dono do fluxo
+(`confirmAndClear()`, `runDemo()`) — confirmar, avisar e tratar o erro são os
+mesmos passos nas três portas do recurso, e copiados nas três foi o que fez os
+Ajustes acabarem chamando chaves `welcome.*`. **Uma geração interrompida no meio
+grava o que criou** (`finally` no `generateDemo()`): sem isso `demoIds` ficava
+null, `hasDemo()` dizia que não havia exemplo e a linha dos Ajustes ainda
+oferecia gerar, empilhando uma segunda cópia sobre a órfã. **O que foi
 criado vai pro setting `demoIds`**, e não num campo `demo: true` espalhado pelos
 stores: a limpeza tem que ser exata. **Ela não pode usar `resetAll()`**, que
 limpa o store `settings` junto — a pessoa sairia do exemplo sem o nome, a unidade
